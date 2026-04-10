@@ -84,3 +84,98 @@ export interface MarketDataProvider {
   getCorporateActions(code: string, from?: string, to?: string): Promise<CorporateAction[]>;
   getTradingCalendar(market: Market, from: string, to: string): Promise<TradingCalendar[]>;
 }
+
+export type CapabilityStatus = "supported" | "partial" | "unsupported";
+export type CapabilityKey =
+  | "instrument"
+  | "quote"
+  | "kline"
+  | "financialSnapshot"
+  | "corporateActions"
+  | "tradingCalendar"
+  | "news";
+export type SupportedMarket = Market | "US";
+
+export interface CapabilityEntry {
+  market: SupportedMarket;
+  capability: CapabilityKey;
+  status: CapabilityStatus;
+  note?: string;
+}
+
+export interface CapabilityMatrix {
+  schemaVersion: string;
+  entries: CapabilityEntry[];
+}
+
+export interface DataPackMarket {
+  instrument: Instrument;
+  quote: Quote;
+  klines: KlineBar[];
+  financialSnapshot?: FinancialSnapshot;
+  tradingCalendar?: TradingCalendar[];
+  corporateActions?: CorporateAction[];
+  news?: NewsItem[];
+}
+
+export interface PdfSectionsMetadata {
+  pdfFile: string;
+  totalPages: number;
+  extractTime: string;
+  sectionsFound: number;
+  sectionsTotal: number;
+}
+
+export interface PdfSectionBlock {
+  title?: string;
+  content?: string;
+  pageFrom?: number;
+  pageTo?: number;
+}
+
+export interface PdfSections {
+  metadata: PdfSectionsMetadata;
+  P2?: PdfSectionBlock;
+  P3?: PdfSectionBlock;
+  P4?: PdfSectionBlock;
+  P6?: PdfSectionBlock;
+  P13?: PdfSectionBlock;
+  MDA?: PdfSectionBlock;
+  SUB?: PdfSectionBlock;
+}
+
+export interface QualitativeReport {
+  code: string;
+  generatedAt: string;
+  summary: string;
+  evidence: string[];
+  factorScores?: Record<string, number>;
+}
+
+export interface ValuationMethodResult {
+  method: "DCF" | "DDM" | "PE_BAND" | "PEG" | "PS";
+  value?: number;
+  currency?: string;
+  assumptions?: Record<string, number | string>;
+  note?: string;
+}
+
+export interface ValuationComputed {
+  code: string;
+  generatedAt: string;
+  methods: ValuationMethodResult[];
+}
+
+export interface AnalysisReportMeta {
+  code: string;
+  schemaVersion: string;
+  dataSource: string;
+  generatedAt: string;
+  capabilityFlags?: CapabilityEntry[];
+}
+
+export interface AnalysisReport {
+  meta: AnalysisReportMeta;
+  title: string;
+  sections: Array<{ heading: string; content: string }>;
+}

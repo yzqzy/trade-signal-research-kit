@@ -13,31 +13,259 @@ export interface HttpProviderOptions {
   baseUrl: string;
   apiKey?: string;
   timeoutMs?: number;
+  apiBasePath?: string;
 }
+
+type ApiEnvelope<T> = {
+  success?: boolean;
+  data?: T;
+  message?: string;
+};
+
+type StockDetailPayload = {
+  code?: string;
+  secucode?: string;
+  name?: string;
+  currency?: string;
+  lotSize?: number;
+  lot_size?: number;
+  tickSize?: number;
+  tick_size?: number;
+  market?: string | number;
+};
+
+type StockQuotePayload = {
+  code?: string;
+  secucode?: string;
+  name?: string;
+  newPrice?: number;
+  price?: number;
+  latestPrice?: number;
+  changeRate?: number;
+  changePct?: number;
+  volume?: number;
+  amount?: number;
+  quoteTime?: string;
+  updateTime?: string;
+  timestamp?: string;
+};
+
+type KlineRecord =
+  | {
+      date?: string;
+      time?: string;
+      open?: number;
+      high?: number;
+      low?: number;
+      close?: number;
+      volume?: number;
+    }
+  | string;
+
+type KlinePayload = {
+  code?: string;
+  secucode?: string;
+  klines?: KlineRecord[];
+  data?: KlineRecord[];
+};
+
+type FinancialPayload = {
+  code?: string;
+  secucode?: string;
+  reportDate?: string;
+  period?: string;
+  revenue?: number;
+  operatingRevenue?: number;
+  totalRevenue?: number;
+  netProfit?: number;
+  parentNetProfit?: number;
+  operatingCashFlow?: number;
+  netCashflowOper?: number;
+  totalAssets?: number;
+  totalLiabilities?: number;
+};
+
+const PERIOD_TO_FQT: Record<"none" | "forward" | "backward", "none" | "pre" | "after"> = {
+  none: "none",
+  forward: "pre",
+  backward: "after",
+};
+
+const SUPPORTED_PERIODS = new Set<KlineBar["period"]>(["day", "week", "month"]);
+
+const asNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
+
+const pickTimestamp = (...values: Array<unknown>): string => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") return value;
+    if (typeof value === "number" && Number.isFinite(value)) return new Date(value).toISOString();
+  }
+  return new Date().toISOString();
+};
+
+const inferMarket = (input: string): Market => {
+  const code = input.trim().toUpperCase();
+  if (code.endsWith(".HK") || /^\d{5}$/.test(code)) return "HK";
+  return "CN_A";
+};
+
+const parseKlineRecord = (record: KlineRecord): {
+  ts?: string;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  volume?: number;
+} => {
+  if (typeof record === "string") {
+    const parts = record.split(",");
+    return {
+      ts: parts[0]?.trim(),
+      open: asNumber(parts[1]),
+      close: asNumber(parts[2]),
+      high: asNumber(parts[3]),
+      low: asNumber(parts[4]),
+      volume: asNumber(parts[5]),
+    };
+  }
+  return {
+    ts: typeof record.date === "string" ? record.date : record.time,
+    open: asNumber(record.open),
+    high: asNumber(record.high),
+    low: asNumber(record.low),
+    close: asNumber(record.close),
+    volume: asNumber(record.volume),
+  };
+};
 
 export class FeedHttpProvider implements MarketDataProvider {
   constructor(private readonly options: HttpProviderOptions) {}
 
-  async getInstrument(_code: string): Promise<Instrument> {
-    throw new Error("Not implemented: map feed HTTP response to Instrument");
+  private get apiBase(): string {
+    const trimmed = this.options.baseUrl.replace(/\/+$/, "");
+    const apiBasePath = (this.options.apiBasePath ?? "/api/v1").replace(/\/+$/, "");
+    return `${trimmed}${apiBasePath}`;
   }
 
-  async getQuote(_code: string): Promise<Quote> {
-    throw new Error("Not implemented: map feed HTTP response to Quote");
+  private async request<T>(path: string, query?: Record<string, string | undefined>): Promise<T> {
+    const url = new URL(`${this.apiBase}${path}`);
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined && value !== "") {
+          url.searchParams.set(key, value);
+        }
+      }
+    }
+
+    const controller = new AbortController();
+    const timeoutMs = this.options.timeoutMs ?? 10_000;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          ...(this.options.apiKey ? { "x-api-key": this.options.apiKey } : {}),
+        },
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} when requesting ${path}`);
+      }
+      const payload = (await response.json()) as ApiEnvelope<T> | T;
+      if (payload && typeof payload === "object" && "data" in payload) {
+        const wrapped = payload as ApiEnvelope<T>;
+        if (wrapped.success === false) {
+          throw new Error(wrapped.message || `Feed responded with success=false for ${path}`);
+        }
+        if (wrapped.data !== undefined) {
+          return wrapped.data;
+        }
+      }
+      return payload as T;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  async getKlines(_input: {
+  async getInstrument(code: string): Promise<Instrument> {
+    const payload = await this.request<StockDetailPayload>(`/stock/detail/${encodeURIComponent(code)}`);
+    return {
+      code: payload.code ?? payload.secucode ?? code,
+      market: inferMarket(payload.code ?? payload.secucode ?? code),
+      name: payload.name ?? code,
+      currency: payload.currency,
+      lotSize: asNumber(payload.lotSize ?? payload.lot_size),
+      tickSize: asNumber(payload.tickSize ?? payload.tick_size),
+    };
+  }
+
+  async getQuote(code: string): Promise<Quote> {
+    const payload = await this.request<StockQuotePayload>(
+      `/stock/indicator/realtime/${encodeURIComponent(code)}`,
+    );
+    return {
+      code: payload.code ?? payload.secucode ?? code,
+      price: asNumber(payload.newPrice ?? payload.price ?? payload.latestPrice) ?? 0,
+      changePct: asNumber(payload.changeRate ?? payload.changePct),
+      volume: asNumber(payload.volume ?? payload.amount),
+      timestamp: pickTimestamp(payload.quoteTime, payload.updateTime, payload.timestamp),
+    };
+  }
+
+  async getKlines(input: {
     code: string;
     period: "1m" | "5m" | "15m" | "30m" | "60m" | "day" | "week" | "month";
     from?: string;
     to?: string;
     adj?: "none" | "forward" | "backward";
   }): Promise<KlineBar[]> {
-    throw new Error("Not implemented: map feed HTTP response to KlineBar[]");
+    if (!SUPPORTED_PERIODS.has(input.period)) {
+      throw new Error(
+        `Feed HTTP does not support period=${input.period} yet. Need upstream minute-kline API.`,
+      );
+    }
+    const payload = await this.request<KlinePayload>("/stock/kline", {
+      code: input.code,
+      period: input.period,
+      fqt: PERIOD_TO_FQT[input.adj ?? "forward"],
+    });
+    const records = payload.klines ?? payload.data ?? [];
+    return records
+      .map((record) => parseKlineRecord(record))
+      .filter((record) => record.ts && record.open !== undefined && record.close !== undefined)
+      .map((record) => ({
+        code: payload.code ?? payload.secucode ?? input.code,
+        period: input.period,
+        ts: record.ts as string,
+        open: record.open as number,
+        high: record.high ?? (record.open as number),
+        low: record.low ?? (record.close as number),
+        close: record.close as number,
+        volume: record.volume,
+      }));
   }
 
-  async getFinancialSnapshot(_code: string, _period: string): Promise<FinancialSnapshot> {
-    throw new Error("Not implemented: map feed HTTP response to FinancialSnapshot");
+  async getFinancialSnapshot(code: string, period: string): Promise<FinancialSnapshot> {
+    const payload = await this.request<FinancialPayload>(
+      `/stock/indicator/financial/${encodeURIComponent(code)}`,
+    );
+    return {
+      code: payload.code ?? payload.secucode ?? code,
+      period: payload.period ?? payload.reportDate ?? period,
+      revenue: asNumber(payload.revenue ?? payload.operatingRevenue ?? payload.totalRevenue),
+      netProfit: asNumber(payload.netProfit ?? payload.parentNetProfit),
+      operatingCashFlow: asNumber(payload.operatingCashFlow ?? payload.netCashflowOper),
+      totalAssets: asNumber(payload.totalAssets),
+      totalLiabilities: asNumber(payload.totalLiabilities),
+    };
   }
 
   async getCorporateActions(
@@ -45,7 +273,9 @@ export class FeedHttpProvider implements MarketDataProvider {
     _from?: string,
     _to?: string,
   ): Promise<CorporateAction[]> {
-    throw new Error("Not implemented: map feed HTTP response to CorporateAction[]");
+    throw new Error(
+      "Feed HTTP corporate actions endpoint not found. Please add /stock/corporate-actions API.",
+    );
   }
 
   async getTradingCalendar(
@@ -53,7 +283,7 @@ export class FeedHttpProvider implements MarketDataProvider {
     _from: string,
     _to: string,
   ): Promise<TradingCalendar[]> {
-    throw new Error("Not implemented: map feed HTTP response to TradingCalendar[]");
+    throw new Error("Feed HTTP trading calendar endpoint not found. Please add /market/trading-calendar API.");
   }
 
   getConfig(): HttpProviderOptions {
