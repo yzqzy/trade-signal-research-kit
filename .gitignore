@@ -17,3 +17,6 @@ pnpm-lock.yaml
 Thumbs.db
 *.swp
 *.swo
+
+# reference files
+references/
