@@ -60,6 +60,7 @@ export interface TradingCalendar {
   market: Market;
   date: string;
   isTradingDay: boolean;
+  /** 以 `isTradingDay` 为主；`half` 为扩展预留，常见公开「交易日列表」数据源不区分半日 */
   sessionType?: "full" | "half" | "closed";
 }
 

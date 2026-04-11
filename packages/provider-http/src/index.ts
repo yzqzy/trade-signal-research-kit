@@ -91,8 +91,6 @@ const PERIOD_TO_FQT: Record<"none" | "forward" | "backward", "none" | "pre" | "a
   backward: "after",
 };
 
-const SUPPORTED_PERIODS = new Set<KlineBar["period"]>(["day", "week", "month"]);
-
 const asNumber = (value: unknown): number | undefined => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {
@@ -227,15 +225,12 @@ export class FeedHttpProvider implements MarketDataProvider {
     to?: string;
     adj?: "none" | "forward" | "backward";
   }): Promise<KlineBar[]> {
-    if (!SUPPORTED_PERIODS.has(input.period)) {
-      throw new Error(
-        `Feed HTTP does not support period=${input.period} yet. Need upstream minute-kline API.`,
-      );
-    }
     const payload = await this.request<KlinePayload>("/stock/kline", {
       code: input.code,
       period: input.period,
       fqt: PERIOD_TO_FQT[input.adj ?? "forward"],
+      from: input.from,
+      to: input.to,
     });
     const records = payload.klines ?? payload.data ?? [];
     return records
@@ -269,21 +264,49 @@ export class FeedHttpProvider implements MarketDataProvider {
   }
 
   async getCorporateActions(
-    _code: string,
-    _from?: string,
-    _to?: string,
+    code: string,
+    from?: string,
+    to?: string,
   ): Promise<CorporateAction[]> {
-    throw new Error(
-      "Feed HTTP corporate actions endpoint not found. Please add /stock/corporate-actions API.",
-    );
+    const payload = await this.request<
+      Array<{
+        code?: string;
+        actionType?: CorporateAction["actionType"];
+        exDate?: string;
+        recordDate?: string;
+        cashDividendPerShare?: number;
+        splitRatio?: number;
+      }>
+    >("/stock/corporate-actions", { code, from, to });
+    return (payload ?? []).map((item) => ({
+      code: item.code ?? code,
+      actionType: item.actionType ?? "other",
+      exDate: item.exDate,
+      recordDate: item.recordDate,
+      cashDividendPerShare: asNumber(item.cashDividendPerShare),
+      splitRatio: asNumber(item.splitRatio),
+    }));
   }
 
   async getTradingCalendar(
-    _market: Market,
-    _from: string,
-    _to: string,
+    market: Market,
+    from: string,
+    to: string,
   ): Promise<TradingCalendar[]> {
-    throw new Error("Feed HTTP trading calendar endpoint not found. Please add /market/trading-calendar API.");
+    const payload = await this.request<
+      Array<{
+        market?: Market;
+        date?: string;
+        isTradingDay?: boolean;
+        sessionType?: TradingCalendar["sessionType"];
+      }>
+    >("/market/trading-calendar", { market, from, to });
+    return (payload ?? []).map((item) => ({
+      market: item.market ?? market,
+      date: item.date ?? "",
+      isTradingDay: Boolean(item.isTradingDay),
+      sessionType: item.sessionType ?? (item.isTradingDay ? "full" : "closed"),
+    }));
   }
 
   getConfig(): HttpProviderOptions {

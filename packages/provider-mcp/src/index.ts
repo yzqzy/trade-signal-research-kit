@@ -75,7 +75,6 @@ type StockFinancialPayload = {
   };
 };
 
-const SUPPORTED_PERIODS = new Set<KlineBar["period"]>(["day", "week", "month"]);
 const ADJ_TO_FQT: Record<"none" | "forward" | "backward", "none" | "pre" | "after"> = {
   none: "none",
   forward: "pre",
@@ -176,13 +175,12 @@ export class FeedMcpProvider implements MarketDataProvider {
     to?: string;
     adj?: "none" | "forward" | "backward";
   }): Promise<KlineBar[]> {
-    if (!SUPPORTED_PERIODS.has(input.period)) {
-      throw new Error(`Feed MCP tool get_stock_kline does not support period=${input.period}.`);
-    }
     const payload = await this.callTool<StockKlinePayload>("get_stock_kline", {
       code: input.code,
       period: input.period,
       fqt: ADJ_TO_FQT[input.adj ?? "forward"],
+      from: input.from,
+      to: input.to,
     });
     const records = payload.klines ?? payload.data ?? [];
     return records
@@ -215,19 +213,49 @@ export class FeedMcpProvider implements MarketDataProvider {
   }
 
   async getCorporateActions(
-    _code: string,
-    _from?: string,
-    _to?: string,
+    code: string,
+    from?: string,
+    to?: string,
   ): Promise<CorporateAction[]> {
-    throw new Error("Feed MCP corporate actions tool not found. Please add get_stock_corporate_actions.");
+    const payload = await this.callTool<
+      Array<{
+        code?: string;
+        actionType?: CorporateAction["actionType"];
+        exDate?: string;
+        recordDate?: string;
+        cashDividendPerShare?: number;
+        splitRatio?: number;
+      }>
+    >("get_stock_corporate_actions", { code, from, to });
+    return (payload ?? []).map((item) => ({
+      code: item.code ?? code,
+      actionType: item.actionType ?? "other",
+      exDate: item.exDate,
+      recordDate: item.recordDate,
+      cashDividendPerShare: asNumber(item.cashDividendPerShare),
+      splitRatio: asNumber(item.splitRatio),
+    }));
   }
 
   async getTradingCalendar(
-    _market: Market,
-    _from: string,
-    _to: string,
+    market: Market,
+    from: string,
+    to: string,
   ): Promise<TradingCalendar[]> {
-    throw new Error("Feed MCP trading calendar tool not found. Please add get_trading_calendar.");
+    const payload = await this.callTool<
+      Array<{
+        market?: TradingCalendar["market"];
+        date?: string;
+        isTradingDay?: boolean;
+        sessionType?: TradingCalendar["sessionType"];
+      }>
+    >("get_trading_calendar", { market, from, to });
+    return (payload ?? []).map((item) => ({
+      market: item.market ?? market,
+      date: item.date ?? "",
+      isTradingDay: Boolean(item.isTradingDay),
+      sessionType: item.sessionType ?? (item.isTradingDay ? "full" : "closed"),
+    }));
   }
 
   getConfig(): McpProviderOptions {
