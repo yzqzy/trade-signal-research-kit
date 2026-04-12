@@ -17,6 +17,7 @@ export * from "./phase1b/types.js";
 export * from "./phase1b/collector.js";
 export * from "./phase1b/renderer.js";
 export * from "./phase2a/extractor.js";
+export * from "./phase2b/renderer.js";
 
 export async function runBaselineAnalysis(
   context: AnalysisContext,

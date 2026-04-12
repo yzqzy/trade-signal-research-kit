@@ -22,3 +22,6 @@ Thumbs.db
 
 # reference files
 references/
+
+# output files
+output/

@@ -9,7 +9,7 @@ export type CliResultInput = {
   filesize?: number;
   url: string;
   stockCode: string;
-  reportType: string;
+  category: string;
   year: string;
   message: string;
   source?: "network" | "cache";
@@ -24,7 +24,7 @@ export function printPhase0CliResult(input: CliResultInput): void {
   console.log(`filesize: ${input.filesize ?? 0}`);
   console.log(`url: ${input.url}`);
   console.log(`stock_code: ${input.stockCode}`);
-  console.log(`report_type: ${input.reportType}`);
+  console.log(`category: ${input.category}`);
   console.log(`year: ${input.year}`);
   console.log(`source: ${input.source ?? ""}`);
   console.log(`sha256: ${input.sha256 ?? ""}`);

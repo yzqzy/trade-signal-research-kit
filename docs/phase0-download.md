@@ -18,7 +18,7 @@
 pnpm phase0:download -- \
   --url "https://stockn.xueqiu.com/path/to/report.pdf" \
   --stock-code "SH600519" \
-  --report-type "年报" \
+  --category "年报" \
   --year "2024" \
   --save-dir "./cache/reports/SH600519" \
   --max-retries 3
@@ -30,7 +30,7 @@ pnpm phase0:download -- \
 npx --package @trade-signal/research-strategies ts-phase0-download \
   --url "https://stockn.xueqiu.com/path/to/report.pdf" \
   --stock-code "SH600519" \
-  --report-type "年报" \
+  --category "年报" \
   --year "2024"
 ```
 
@@ -44,7 +44,7 @@ CLI 会自动尝试加载项目根目录 `.env`，支持以下变量：
 
 - `PHASE0_REPORT_URL`
 - `PHASE0_STOCK_CODE`
-- `PHASE0_REPORT_TYPE`
+- `PHASE0_CATEGORY`
 - `PHASE0_YEAR`
 - `PHASE0_SAVE_DIR`
 - `PHASE0_MAX_RETRIES`

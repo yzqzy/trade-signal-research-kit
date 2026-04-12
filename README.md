@@ -118,6 +118,24 @@ pnpm --filter @trade-signal/research-strategies run phase2a:extract -- \
 
 输出结构对齐 `PdfSections`：`metadata` + `P2/P3/P4/P6/P13/MDA/SUB`（章节命中时带 `title/content/pageFrom/pageTo`）。
 
+### Phase2B：生成 `data_pack_report.md`（5+1，不含 MDA）
+
+```bash
+pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
+  --pdf "./cache/reports/SH600519/600519_2024_年报.pdf" \
+  --phase2a-output "./output/pdf_sections.json" \
+  --output "./output/data_pack_report.md"
+```
+
+也支持直接基于已有 `pdf_sections.json` 渲染：
+
+```bash
+pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
+  --sections "./output/pdf_sections.json" \
+  --output "./output/data_pack_report.md"
+```
+
+
 ### 环境变量配置（packages 统一口径）
 
 仅入口读取 `.env`，库层保持显式参数。  

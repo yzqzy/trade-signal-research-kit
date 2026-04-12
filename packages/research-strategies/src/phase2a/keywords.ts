@@ -1,6 +1,7 @@
 export const PHASE2A_SECTION_ORDER = ["P2", "P3", "P4", "P6", "P13", "MDA", "SUB"] as const;
 
 export type Phase2ASectionId = (typeof PHASE2A_SECTION_ORDER)[number];
+export const PHASE2A_SECTION_PHASE2B_TARGETS = ["P2", "P3", "P4", "P6", "P13", "SUB"] as const;
 
 export const PHASE2A_SECTION_TITLES: Record<Phase2ASectionId, string> = {
   P2: "受限资产",

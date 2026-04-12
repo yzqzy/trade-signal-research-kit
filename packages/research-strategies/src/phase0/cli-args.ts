@@ -6,7 +6,7 @@ import { config as loadDotenv } from "dotenv";
 export type CliArgs = {
   url?: string;
   stockCode?: string;
-  reportType?: string;
+  category?: string;
   year?: string;
   saveDir?: string;
   maxRetries?: number;
@@ -16,7 +16,7 @@ export type CliArgs = {
 export type ResolvedCliInput = {
   url?: string;
   stockCode?: string;
-  reportType?: string;
+  category?: string;
   year?: string;
   saveDir: string;
   maxRetries: number;
@@ -56,7 +56,7 @@ export function parsePhase0CliArgs(argv: string[]): CliArgs {
   return {
     url: values["url"] ? String(values["url"]) : undefined,
     stockCode: values["stock-code"] ? String(values["stock-code"]) : undefined,
-    reportType: values["report-type"] ? String(values["report-type"]) : undefined,
+    category: values["category"] ? String(values["category"]) : undefined,
     year: values["year"] ? String(values["year"]) : undefined,
     saveDir: values["save-dir"] ? String(values["save-dir"]) : undefined,
     maxRetries: values["max-retries"] ? Number(values["max-retries"]) : undefined,
@@ -76,7 +76,7 @@ export function resolvePhase0CliInput(args: CliArgs, env: NodeJS.ProcessEnv = pr
   return {
     url: args.url ?? env.PHASE0_REPORT_URL,
     stockCode: args.stockCode ?? env.PHASE0_STOCK_CODE,
-    reportType: args.reportType ?? env.PHASE0_REPORT_TYPE ?? "年报",
+    category: args.category ?? env.PHASE0_CATEGORY ?? "年报",
     year: args.year ?? env.PHASE0_YEAR,
     saveDir: args.saveDir ?? env.PHASE0_SAVE_DIR ?? ".",
     maxRetries: args.maxRetries ?? (env.PHASE0_MAX_RETRIES ? Number(env.PHASE0_MAX_RETRIES) : 3),

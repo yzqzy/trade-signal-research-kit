@@ -10,7 +10,7 @@ export interface Phase0Input {
   code: string;
   reportUrl: string;
   fiscalYear?: string;
-  reportType?: string;
+  category?: string;
   saveDir?: string;
   maxRetries?: number;
   forceRefresh?: boolean;
@@ -65,16 +65,16 @@ function deriveFileName(reportUrl: string): string {
   return "annual-report.pdf";
 }
 
-function normalizeReportType(reportType?: string): string {
-  if (!reportType) return "年报";
-  const value = reportType.toLowerCase();
+function normalizeCategory(category?: string): string {
+  if (!category) return "年报";
+  const value = category.toLowerCase();
   const mapping: Record<string, string> = {
     annual: "年报",
     interim: "中报",
     q1: "一季报",
     q3: "三季报",
   };
-  return mapping[value] ?? reportType;
+  return mapping[value] ?? category;
 }
 
 function stripExchangePrefix(code: string): string {
@@ -83,7 +83,7 @@ function stripExchangePrefix(code: string): string {
 
 function buildOutputFileName(input: Phase0Input): string {
   if (input.fiscalYear) {
-    return `${stripExchangePrefix(input.code)}_${input.fiscalYear}_${normalizeReportType(input.reportType)}.pdf`;
+    return `${stripExchangePrefix(input.code)}_${input.fiscalYear}_${normalizeCategory(input.category)}.pdf`;
   }
   return deriveFileName(input.reportUrl);
 }

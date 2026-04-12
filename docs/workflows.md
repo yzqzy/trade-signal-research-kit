@@ -84,6 +84,23 @@ pnpm --filter @trade-signal/research-strategies run phase2a:extract -- \
   --output "./output/pdf_sections.json"
 ```
 
+Phase2B CLI（research-strategies，输出 5+1 `data_pack_report.md`，不含 MDA）：
+
+```bash
+pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
+  --pdf "./cache/reports/SH600519/600519_2024_年报.pdf" \
+  --phase2a-output "./output/pdf_sections.json" \
+  --output "./output/data_pack_report.md"
+```
+
+如果已经有 `pdf_sections.json`，可直接渲染：
+
+```bash
+pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
+  --sections "./output/pdf_sections.json" \
+  --output "./output/data_pack_report.md"
+```
+
 ### `qualitative_report`（Phase 1B/2B 输出）
 
 - 用途：为 Phase 3 的定性与估值假设提供依据

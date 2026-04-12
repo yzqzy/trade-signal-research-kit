@@ -26,7 +26,7 @@ async function main(): Promise<void> {
       status: "FAILED",
       url: "",
       stockCode: "",
-      reportType: "",
+      category: "",
       year: "",
       message,
     });
@@ -36,14 +36,14 @@ async function main(): Promise<void> {
 
   const resolved = resolvePhase0CliInput(args, process.env);
 
-  const requiredFields: Array<keyof typeof resolved> = ["url", "stockCode", "reportType", "year"];
+  const requiredFields: Array<keyof typeof resolved> = ["url", "stockCode", "category", "year"];
   for (const field of requiredFields) {
     if (!resolved[field]) {
       printPhase0CliResult({
         status: "FAILED",
         url: resolved.url ?? "",
         stockCode: resolved.stockCode ?? "",
-        reportType: resolved.reportType ?? "",
+        category: resolved.category ?? "",
         year: resolved.year ?? "",
         message: `Missing required argument or env for ${field}`,
       });
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
     const artifact = await runPhase0DownloadAndCache({
       code: resolved.stockCode as string,
       reportUrl: resolved.url as string,
-      reportType: resolved.reportType as string,
+      category: resolved.category as string,
       fiscalYear: resolved.year as string,
       saveDir: resolved.saveDir,
       maxRetries: resolved.maxRetries,
@@ -69,7 +69,7 @@ async function main(): Promise<void> {
       filesize: artifact.sizeBytes,
       url: resolved.url as string,
       stockCode: resolved.stockCode as string,
-      reportType: resolved.reportType as string,
+      category: resolved.category as string,
       year: resolved.year as string,
       source: artifact.source,
       sha256: artifact.sha256,
@@ -84,7 +84,7 @@ async function main(): Promise<void> {
       status: "FAILED",
       url: resolved.url as string,
       stockCode: resolved.stockCode as string,
-      reportType: resolved.reportType as string,
+      category: resolved.category as string,
       year: resolved.year as string,
       message,
     });
