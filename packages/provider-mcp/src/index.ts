@@ -23,8 +23,7 @@ export function createFeedMcpProviderFromEnv(
   callTool: McpToolCaller,
   overrides: Partial<Omit<McpProviderOptions, "callTool">> = {},
 ): FeedMcpProvider {
-  const serverName =
-    overrides.serverName ?? process.env.FEED_MCP_SERVER ?? process.env.FEED_MCP_URL ?? "trade-signal-feed";
+  const serverName = overrides.serverName ?? "trade-signal-feed";
   return new FeedMcpProvider({
     serverName,
     transport: overrides.transport,

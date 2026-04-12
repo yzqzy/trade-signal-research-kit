@@ -55,7 +55,7 @@
 
 - Phase 0：年报下载、缓存、版本命名（详见 [Phase 0 年报下载器](./phase0-download.md)）
 - Phase 1A：通过 `MarketDataProvider` 采集结构化数据
-- Phase 1B：补充外部非结构化信息
+- Phase 1B：补充外部非结构化信息（治理/行业/MD&A，默认 HTTP 调用 feed 检索）
 - Phase 2A：PDF 章节定位与切分
 - Phase 2B：附注与关键段落精提取
 - Phase 3：定性分析 + 定量分析 + 估值 + 报告渲染
@@ -79,6 +79,7 @@
 
 - 用途：为 Phase 3 的定性与估值假设提供依据
 - 最小内容：结论、证据引用、参数化因子表
+- Phase1B 当前补充范围：§7 管理层与治理、§8 行业与竞争、§10 MD&A 摘要（每项保留来源 URL）
 
 ### `valuation_computed`（Phase 3 中间产物）
 

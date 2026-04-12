@@ -14,6 +14,12 @@
 - 协同通道：`MCP`
 - 统一入口：`MarketDataProvider`
 
+## 通道选择规则（项目级）
+
+- 默认：优先 `HTTP`（脚本、批处理、CI/CD、可观测性优先场景）
+- AI 场景：使用 `MCP`（Agent 交互、工具链编排、动态检索补充）
+- 约束：切换通道不改变输出契约，必须保持标准字段语义一致
+
 ## 标准字段范围（v0.1）
 
 - 标的基础信息（代码、市场、名称、币种、lot/tick）
@@ -69,6 +75,29 @@ const dataPack = await collectPhase1ADataPack(provider, {
   to: "2024-12-31",
 });
 ```
+
+## Phase1B（外部信息补全）调用方式
+
+- 聚合入口：`collectPhase1BQualitative(input, options)`（默认 `channel=http`）
+- 渲染入口：`renderPhase1BMarkdown(supplement)`
+- 章节覆盖：§7 管理层与治理、§8 行业与竞争、§10 MD&A 摘要
+- 来源约束：每个条目保留来源 URL；未命中时标记 `⚠️ 未搜索到相关信息`
+
+依赖的 feed 配置（HTTP）：
+
+- `FEED_BASE_URL`
+- `FEED_API_KEY`（可选）
+
+说明：
+
+- HTTP API 基础前缀固定为 `/api/v1`（代码内置默认）
+- Phase1B 检索 endpoint 固定为 `/stock/report/search`（代码内置默认）
+
+MCP 场景（AI/Agent）：
+
+- 设置 `input.channel = "mcp"`
+- 通过 `options.mcpCallTool` 注入 MCP `callTool` 实现
+- 可选 `options.mcpToolName`（默认 `search_stock_reports`）
 
 ## 不做事项
 

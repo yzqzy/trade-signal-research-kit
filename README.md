@@ -109,22 +109,16 @@ pnpm run build
 
 ### 环境变量配置（packages 统一口径）
 
-仅入口读取 `.env`，库层保持显式参数；`.env` 示例见项目根 `/.env.example`。
+仅入口读取 `.env`，库层保持显式参数。  
+项目提供两套模板：
+- 极简：`/.env.example`（开箱只需地址 + API Key）
+- 全量：`/.env.full`（包含 Phase0/Phase1B demo 与 MCP 可选项）
 
 | 变量名 | 用途 | 作用包 | 默认值 |
 |------|------|------|------|
-| `PHASE0_REPORT_URL` | Phase0 默认下载 URL | `research-strategies` | 无 |
-| `PHASE0_STOCK_CODE` | Phase0 默认股票代码 | `research-strategies` | 无 |
-| `PHASE0_REPORT_TYPE` | Phase0 默认报告类型 | `research-strategies` | `年报` |
-| `PHASE0_YEAR` | Phase0 默认年份 | `research-strategies` | 无 |
-| `PHASE0_SAVE_DIR` | Phase0 默认落盘目录 | `research-strategies` | `.` |
-| `PHASE0_MAX_RETRIES` | Phase0 默认重试次数 | `research-strategies` | `3` |
-| `PHASE0_FORCE_REFRESH` | Phase0 是否默认强制刷新 | `research-strategies` | `false` |
 | `FEED_BASE_URL` | Feed HTTP 根地址 | `provider-http` | 无 |
 | `FEED_API_KEY` | Feed API Key | `provider-http` / `provider-mcp` | 无 |
-| `FEED_API_BASE_PATH` | Feed HTTP API 前缀 | `provider-http` | `/api/v1` |
-| `FEED_MCP_URL` | Feed MCP endpoint（记录/透传） | `provider-mcp` | 无 |
-| `FEED_MCP_SERVER` | Feed MCP serverName | `provider-mcp` | `trade-signal-feed` |
+| `FEED_MCP_URL` | Feed MCP endpoint（仅 MCP 场景） | `provider-mcp` | 无 |
 
 ## 项目结构（简版）
 
@@ -146,6 +140,13 @@ trade-signal-schema-kit/
 - 主数据通道：`trade-signal-feed`
 - 接入方式：HTTP API + MCP（同语义字段输出）
 - 设计原则：分析层只依赖标准字段，不直接依赖上游原始字段名
+
+## 通道使用规则（统一约定）
+
+- 默认执行通道：`HTTP`（脚本、批处理、流水线场景优先）
+- AI/Agent 场景：`MCP`（交互式检索、工具编排、按需补充）
+- 同一语义输出：HTTP/MCP 只更换通道，不更换标准字段语义
+- 建议实践：默认先走 HTTP，只有在需要 Agent 能力时再切 MCP
 
 ## 参考与致谢
 
