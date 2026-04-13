@@ -13,6 +13,10 @@ import { runPhase2AExtractPdfSections } from "../phase2a/extractor.js";
 import { renderPhase2BDataPackReport } from "../phase2b/renderer.js";
 import { runPhase3Strict } from "../phase3/analyzer.js";
 import { renderPhase3Html, renderPhase3Markdown } from "../phase3/report-renderer.js";
+import {
+  strictWorkflowTurtleMissingPdf,
+  strictWorkflowTurtleMissingReportPack,
+} from "../pipeline/strict-messages.js";
 
 export type WorkflowMode = "standard" | "turtle-strict";
 
@@ -66,9 +70,7 @@ function validateTurtleStrictInput(input: RunWorkflowInput): void {
   const hasPdf = Boolean(input.pdfPath?.trim());
   const hasUrl = Boolean(input.reportUrl?.trim());
   if (!hasPdf && !hasUrl) {
-    throw new Error(
-      "[workflow --mode turtle-strict] 缺少 PDF 输入：请提供 --pdf <path> 或 --report-url <url>（用于生成 data_pack_report.md 并进入 Phase3）。",
-    );
+    throw new Error(strictWorkflowTurtleMissingPdf());
   }
 }
 
@@ -254,9 +256,7 @@ export async function runResearchWorkflow(input: RunWorkflowInput): Promise<Work
   const pipeline = await executeWorkflowDataPipeline(input);
 
   if (input.mode === "turtle-strict" && !pipeline.reportPackMarkdown) {
-    throw new Error(
-      "[workflow --mode turtle-strict] 未生成 data_pack_report.md：请确认 PDF 可读且 Phase2A/2B 成功（或检查 --pdf / --report-url）。",
-    );
+    throw new Error(strictWorkflowTurtleMissingReportPack());
   }
 
   const {
@@ -286,7 +286,11 @@ export async function runResearchWorkflow(input: RunWorkflowInput): Promise<Work
   await writeText(reportMarkdownPath, reportMarkdown);
   await writeText(reportHtmlPath, renderPhase3Html(reportMarkdown));
 
-  const manifestPath = path.join(outputDir, "workflow_manifest.json");
+  const manifestPath = path.resolve(outputDir, "workflow_manifest.json");
+  const marketRelW = path.relative(outputDir, marketPackPath) || "data_pack_market.md";
+  const reportRelW = phase2bMarkdownPath
+    ? path.relative(outputDir, phase2bMarkdownPath)
+    : undefined;
   const manifest = {
     generatedAt: new Date().toISOString(),
     input: {
@@ -304,6 +308,15 @@ export async function runResearchWorkflow(input: RunWorkflowInput): Promise<Work
       valuationPath,
       reportMarkdownPath,
       reportHtmlPath,
+    },
+    pipeline: {
+      valuation: {
+        relativePaths: {
+          marketMd: marketRelW,
+          ...(reportRelW ? { reportMd: reportRelW } : {}),
+        },
+        note: "workflow 已输出完整 Phase3 报告；如需单独刷新估值摘要可运行 valuation:run 并传入相同 market/report 路径。",
+      },
     },
   };
   await writeText(manifestPath, JSON.stringify(manifest, null, 2));

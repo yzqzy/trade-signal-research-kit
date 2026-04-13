@@ -22,7 +22,7 @@ pnpm run business-analysis:run -- \
 ## 输入校验
 
 - `--code`：必填。
-- `--strict`：必须同时提供 `--pdf` 或 `--report-url`，且需成功生成 `data_pack_report.md`；否则 fail-fast。
+- `--strict`：必须同时提供 `--pdf` 或 `--report-url`，且需成功生成 `data_pack_report.md`；否则 fail-fast（报错前缀 `[strict:business-analysis]`）。
 - 无 PDF / 无 URL：非 strict 模式下仍会产出 `data_pack_market.md` 与 `qualitative_report.md`（Phase1B），但不会生成 `data_pack_report.md`。
 
 ## 降级与补充
@@ -35,9 +35,10 @@ pnpm run business-analysis:run -- \
 - `qualitative_report.md`（定性补充，含 Phase1B 渲染正文）
 - `data_pack_market.md`
 - 可选 `data_pack_report.md`（有 PDF 分支时）
-- `business_analysis_manifest.json`
+- `business_analysis_manifest.json`（含 `pipeline.valuation`，可接 `/valuation`）
 - 中间件：`phase1a_data_pack.json`、`phase1b_qualitative.{json,md}` 等
 
 ## 后续衔接
 
+- 仅估值摘要：`pnpm run valuation:run -- --from-manifest "<输出目录>/business_analysis_manifest.json"`（`/valuation`）。
 - 完整估值与终稿报告：使用 `/turtle-analysis`（`workflow:run -- --mode turtle-strict`）或标准 `workflow:run`。

@@ -2,6 +2,10 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { renderPhase1BMarkdown } from "../phase1b/renderer.js";
+import {
+  strictBusinessAnalysisMissingPdf,
+  strictBusinessAnalysisMissingReportPack,
+} from "../pipeline/strict-messages.js";
 import { executeWorkflowDataPipeline, type RunWorkflowInput } from "../workflow/orchestrator.js";
 
 export type RunBusinessAnalysisInput = RunWorkflowInput & {
@@ -24,9 +28,7 @@ function validateStrictPdfInput(input: RunBusinessAnalysisInput): void {
   const hasPdf = Boolean(input.pdfPath?.trim());
   const hasUrl = Boolean(input.reportUrl?.trim());
   if (!hasPdf && !hasUrl) {
-    throw new Error(
-      "[business-analysis --strict] 缺少 PDF 输入：请提供 --pdf <path> 或 --report-url <url>（用于生成 data_pack_report.md）。",
-    );
+    throw new Error(strictBusinessAnalysisMissingPdf());
   }
 }
 
@@ -42,9 +44,7 @@ export async function runBusinessAnalysis(
   const pipeline = await executeWorkflowDataPipeline(workflowInput);
 
   if (input.strict && !pipeline.reportPackMarkdown) {
-    throw new Error(
-      "[business-analysis --strict] 未生成 data_pack_report.md：请确认 PDF 路径有效且 Phase2A/2B 成功。",
-    );
+    throw new Error(strictBusinessAnalysisMissingReportPack());
   }
 
   const qualitativeReportPath = path.join(pipeline.outputDir, "qualitative_report.md");
@@ -63,7 +63,11 @@ export async function runBusinessAnalysis(
   ].join("\n");
   await writeFile(qualitativeReportPath, qualitativeBody, "utf-8");
 
-  const manifestPath = path.join(pipeline.outputDir, "business_analysis_manifest.json");
+  const manifestPath = path.resolve(pipeline.outputDir, "business_analysis_manifest.json");
+  const marketRel = path.relative(pipeline.outputDir, pipeline.marketPackPath) || "data_pack_market.md";
+  const reportRel = pipeline.phase2bMarkdownPath
+    ? path.relative(pipeline.outputDir, pipeline.phase2bMarkdownPath)
+    : undefined;
   const manifest = {
     generatedAt: new Date().toISOString(),
     kind: "business-analysis",
@@ -80,6 +84,15 @@ export async function runBusinessAnalysis(
       phase1bJsonPath: pipeline.phase1bJsonPath,
       phase1bMarkdownPath: pipeline.phase1bMarkdownPath,
       dataPackReportPath: pipeline.phase2bMarkdownPath,
+    },
+    pipeline: {
+      valuation: {
+        relativePaths: {
+          marketMd: marketRel,
+          ...(reportRel ? { reportMd: reportRel } : {}),
+        },
+        suggestedNextCommand: `pnpm run valuation:run -- --from-manifest "${manifestPath}"`,
+      },
     },
   };
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");

@@ -49,6 +49,36 @@ CLI：`pnpm run business-analysis:run`（根目录）或 filter 等价命令。C
 
 产出：`qualitative_report.md`、`data_pack_market.md`、可选 `data_pack_report.md`、`business_analysis_manifest.json`。
 
+`business_analysis_manifest.json` 内含 `pipeline.valuation.relativePaths` 与建议的 `valuation:run --from-manifest ...`，便于与独立估值入口串接。
+
+## 独立估值与 HTML 转换
+
+**Valuation**（仅输出 `valuation_computed.json` + `valuation_summary.md`，不生成完整 Phase3 长报告）：
+
+```bash
+pnpm run valuation:run -- \
+  --market-md "./output/workflow/600887/data_pack_market.md" \
+  [--report-md "./output/workflow/600887/data_pack_report.md"] \
+  [--output-dir "./output/workflow/600887"]
+```
+
+或从 manifest 解析路径：
+
+```bash
+pnpm run valuation:run -- --from-manifest "./output/workflow/600887/business_analysis_manifest.json"
+```
+
+**report-to-html**（任意 Markdown → HTML，包装与 Phase3 一致）：
+
+```bash
+pnpm run report-to-html:run -- \
+  --input-md "./output/workflow/600887/analysis_report.md"
+```
+
+Claude：`/valuation`、`/report-to-html`（见 `.claude/commands/`）。
+
+`workflow_manifest.json` 同样包含 `pipeline.valuation.relativePaths`，便于对照路径。
+
 ## 阶段职责
 
 - Phase 0：年报下载、缓存、版本命名（详见 [Phase 0 年报下载器](./phase0-download.md)）
@@ -194,6 +224,8 @@ pnpm --filter @trade-signal/research-strategies run quality:phase3-golden -- --s
 ```
 
 说明：`contract` 使用 `output/phase3_golden/cn_a/`；`regression` / `phase3-golden` 支持 `--suite cn_a|hk|all`（`quality:all` 默认 `all`）。`regression` 为重跑 Phase3 后与 golden 基线做规范化哈希对比；`phase3-golden` 为各套件 `run/golden_manifest.json` 中文件的 sha256+字节数校验。详见 [数据源与字段契约](./data-source.md)。
+
+**港股（HK）**：质量门禁中的 `hk` 套件用于防回归快照；与 A 股同等级别的端到端深度能力 **暂未实现**，将在后续版本补齐。
 
 Next.js 在线 MVP（请在 **monorepo 根目录**启动，以便 API 解析 `packages/research-strategies/dist/...`）：
 

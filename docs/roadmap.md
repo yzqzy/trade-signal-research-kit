@@ -10,8 +10,11 @@
 - **独立流程 `business-analysis`**：已实现 CLI `pnpm run business-analysis:run` 与 Claude `/business-analysis`（定性 + 数据包，默认不跑 Phase3）
 - **workflow `turtle-strict` 模式**：已实现 `--mode turtle-strict`（PDF/报告包前置校验 + fail-fast），Claude `/turtle-analysis`
 - **质量回归**：`cn_a` + `hk` 双套件 golden（`quality:regression` / `quality:phase3-golden` 默认 `--suite all`）
+- **独立估值入口**：`pnpm run valuation:run`（`/valuation`），可与 `business-analysis` manifest 串接
+- **Markdown 转 HTML**：`pnpm run report-to-html:run`（`/report-to-html`）
 - 输出：独立 `phase3:run` 与编排均在指定目录下产出 `analysis_report.md` / `analysis_report.html`（文件名固定；可用输出目录区分标的）
-- A 股优先可用，港股基础可用（实时、日周月 K、基础信息）
+- **A 股优先**：主流程与契约以 A 股为第一目标
+- **港股**：基础数据与 `hk` 黄金样例已具备；与 A 股同等级别的深度流程 **暂未实现**，列入后续里程碑
 
 ## v0.2（计划中）
 

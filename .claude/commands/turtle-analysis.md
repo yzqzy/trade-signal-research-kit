@@ -30,6 +30,7 @@ pnpm run workflow:run -- --code 600887 --year 2024
 
 - 启动前：**必须** `--pdf` 或 `--report-url`。
 - 管线结束后：必须已成功生成 `data_pack_report.md`，否则 fail-fast 并提示检查 PDF/下载/2A/2B。
+- CLI 报错前缀统一为 `[strict:workflow:turtle-strict]`，便于检索与文档对照。
 
 ## 产物
 

@@ -89,10 +89,12 @@ User Input (stock code [+ PDF or report URL])
 | Business analysis (no Phase3 by default) | `pnpm run business-analysis:run -- ...` | `/business-analysis` |
 | Full workflow, strict PDF branch | `pnpm run workflow:run -- --mode turtle-strict ...` | `/turtle-analysis` |
 | Annual report download | `pnpm run phase0:download -- ...` | `/download-annual-report` |
+| Valuation-only (JSON + summary md) | `pnpm run valuation:run -- ...` | `/valuation` |
+| Markdown to HTML | `pnpm run report-to-html:run -- ...` | `/report-to-html` |
 
 - Skills: `.claude/skills/business-analysis/SKILL.md`, `turtle-strict/SKILL.md`, `quality-gates/SKILL.md`.
 - `workflow:run --mode standard` keeps legacy behavior (Phase3 may run without `data_pack_report.md`).
-- Quality: `pnpm run quality:all` runs regression + golden for **cn_a** and **hk** (`output/phase3_golden/<suite>/`).
+- Quality: `pnpm run quality:all` runs regression + golden for **cn_a** and **hk** (`output/phase3_golden/<suite>/`). HK suite is snapshot regression; full HK depth is not yet at A-share parity.
 
 ## Environment Requirements
 

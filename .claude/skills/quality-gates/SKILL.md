@@ -20,6 +20,8 @@ description: "质量门禁：conformance → contract → regression → phase3-
 | hk | `output/phase3_golden/hk/` |
 | all | 依次运行 cn_a + hk |
 
+`hk` 套件为黄金快照防回归；港股与 A 股同等深度的业务语义 **暂未与 cn_a 对齐**，后续里程碑补齐。
+
 ## 常用命令
 
 ```bash

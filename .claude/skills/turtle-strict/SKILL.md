@@ -15,6 +15,7 @@ description: "workflow turtle-strict 模式：全流程编排，关键输入与 
 2. 在 **turtle-strict** 下：
    - 运行前校验：`--pdf` 或 `--report-url` 至少其一。
    - 运行后校验：必须存在 `data_pack_report.md`（即 `reportPackMarkdown` 已生成）。
+   - 报错前缀：`[strict:workflow:turtle-strict]`。
 
 ## 与 standard 的差异
 

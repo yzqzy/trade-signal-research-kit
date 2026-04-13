@@ -124,3 +124,5 @@ MCP 场景（AI/Agent）：
   - 依次校验 `output/phase3_golden/<suite>/run/golden_manifest.json` 清单内各文件的 **sha256 + 字节数**。也可用 `--manifest <path>` 指定单个 manifest（忽略 `--suite`）。
 
 **依赖**：`contract`、`regression`、`phase3-golden` 均要求仓库内已存在 `output/phase3_golden/cn_a/` 与 `output/phase3_golden/hk/`（及其中 `run/` 基线）；缺失会导致检查失败。
+
+**港股说明**：`hk` 黄金样例用于回归一致性；港股侧与 A 股同等深度的业务语义与专项验证 **暂未实现**，后续里程碑会单独补齐。
