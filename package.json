@@ -9,6 +9,12 @@
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
     "phase0:download": "pnpm --filter @trade-signal/research-strategies run phase0:download",
+    "workflow:run": "pnpm --filter @trade-signal/research-strategies run workflow:run",
+    "quality:conformance": "pnpm --filter @trade-signal/research-strategies run quality:conformance",
+    "quality:contract": "pnpm --filter @trade-signal/research-strategies run quality:contract",
+    "quality:regression": "pnpm --filter @trade-signal/research-strategies run quality:regression",
+    "quality:phase3-golden": "pnpm --filter @trade-signal/research-strategies run quality:phase3-golden",
+    "quality:all": "pnpm --filter @trade-signal/research-strategies run quality:all",
     "screener:run": "pnpm --filter @trade-signal/research-strategies run screener:run",
     "web:dev": "pnpm --filter @trade-signal/screener-web run dev"
   },

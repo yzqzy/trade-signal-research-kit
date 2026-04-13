@@ -117,6 +117,21 @@ pnpm --filter @trade-signal/research-strategies run phase3:run -- \
 - `output/analysis_report.md`
 - `output/analysis_report.html`
 
+Workflow CLI（一键串联 Phase1A/1B/2A/2B/3）：
+
+```bash
+pnpm --filter @trade-signal/research-strategies run workflow:run -- \
+  --code 600887 \
+  --year 2024 \
+  --pdf "./references/tmp/1216664083.pdf" \
+  --output-dir "./output/workflow/600887"
+```
+
+说明：
+- 必填：`--code`
+- 可选 PDF 分支：`--pdf` 或 `--report-url`（启用 Phase2A/2B）
+- 主要产物：`phase1a_data_pack.json`、`data_pack_market.md`、`phase1b_qualitative.md`、`valuation_computed.json`、`analysis_report.{md,html}`、`workflow_manifest.json`
+
 Screener CLI（独立/组合双模式）：
 
 ```bash
@@ -139,6 +154,12 @@ Screener 输出：
 - `screener_results.json`
 - `screener_report.md`
 - `screener_report.html`
+
+质量门禁（当前基线）：
+
+```bash
+pnpm --filter @trade-signal/research-strategies run quality:phase3-golden
+```
 
 Next.js 在线 MVP：
 

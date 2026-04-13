@@ -103,3 +103,13 @@ MCP 场景（AI/Agent）：
 
 - 不在策略层直接拼接上游字段
 - 不在业务文档中暴露上游供应商命名
+
+## 质量门禁（v0.1 当前实现）
+
+- conformance：`pnpm run quality:conformance`
+  - 以同源 fixture 驱动 `provider-http` 与 `provider-mcp`，校验 `instrument/quote/klines/financial/corporateActions/tradingCalendar` 的语义一致性
+- contract：`pnpm run quality:contract`
+  - 校验关键产物契约：`data_pack_market.md`（关键字段）与 `valuation_computed.json`（结构+方法集）
+- regression：`pnpm run quality:regression`
+  - 重跑 Phase3（golden 输入）并对比 manifest（sha256 + bytes）
+- 全量：`pnpm run quality:all`

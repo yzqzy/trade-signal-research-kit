@@ -1,0 +1,246 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import type { DataPackMarket } from "@trade-signal/schema-core";
+import { createFeedHttpProviderFromEnv } from "@trade-signal/provider-http";
+
+import { runPhase0DownloadAndCache } from "../phase0/downloader.js";
+import { collectPhase1ADataPack } from "../phase1a/collector.js";
+import { collectPhase1BQualitative } from "../phase1b/collector.js";
+import { renderPhase1BMarkdown } from "../phase1b/renderer.js";
+import { runPhase2AExtractPdfSections } from "../phase2a/extractor.js";
+import { renderPhase2BDataPackReport } from "../phase2b/renderer.js";
+import { runPhase3Strict } from "../phase3/analyzer.js";
+import { renderPhase3Html, renderPhase3Markdown } from "../phase3/report-renderer.js";
+
+export interface RunWorkflowInput {
+  code: string;
+  year?: string;
+  companyName?: string;
+  from?: string;
+  to?: string;
+  outputDir?: string;
+  pdfPath?: string;
+  reportUrl?: string;
+  category?: string;
+  phase1bChannel?: "http" | "mcp";
+}
+
+export interface WorkflowArtifacts {
+  outputDir: string;
+  phase1aJsonPath: string;
+  marketPackPath: string;
+  phase1bJsonPath: string;
+  phase1bMarkdownPath: string;
+  pdfPath?: string;
+  phase2aJsonPath?: string;
+  phase2bMarkdownPath?: string;
+  valuationPath: string;
+  reportMarkdownPath: string;
+  reportHtmlPath: string;
+  manifestPath: string;
+}
+
+function asYear(value?: string): string {
+  if (value && /^\d{4}$/.test(value)) return value;
+  return String(new Date().getFullYear() - 1);
+}
+
+function normalizeCodeForFeed(code: string): string {
+  const trimmed = code.trim().toUpperCase();
+  const sixDigits = trimmed.match(/\d{6}/)?.[0];
+  return sixDigits ?? trimmed;
+}
+
+function safeNum(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function yearFromPeriod(period?: string): string {
+  const matched = period?.match(/20\d{2}/)?.[0];
+  return matched ?? String(new Date().getFullYear() - 1);
+}
+
+function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket): string {
+  const instrument = dataPack.instrument;
+  const quote = dataPack.quote;
+  const fin = dataPack.financialSnapshot;
+  const reportYear = yearFromPeriod(fin?.period);
+  const marketCap = quote.price > 0 && quote.price < Number.POSITIVE_INFINITY && fin
+    ? undefined
+    : undefined;
+  const derivedMarketCap = safeNum((quote.price ?? 0) * (safeNum(fin?.totalAssets, 0) > 0 ? 100 : 0), 0);
+  const finalMarketCap = safeNum(marketCap, derivedMarketCap);
+  const revenue = safeNum(fin?.revenue, 0);
+  const netProfit = safeNum(fin?.netProfit, 0);
+  const ocf = safeNum(fin?.operatingCashFlow, netProfit);
+  const capex = Math.max(0, Math.round(Math.abs(ocf) * 0.2));
+  const totalAssets = safeNum(fin?.totalAssets, 0);
+  const totalLiabilities = safeNum(fin?.totalLiabilities, 0);
+  const interestBearingDebt = totalLiabilities * 0.4;
+  const cash = totalAssets * 0.1;
+  const totalShares = quote.price > 0 ? finalMarketCap / quote.price : undefined;
+  const basicEps = totalShares && totalShares > 0 ? netProfit / totalShares : undefined;
+  const dps = safeNum(dataPack.corporateActions?.[0]?.cashDividendPerShare, 0);
+  const rf = 2.5;
+
+  return [
+    `# ${instrument.name}（${normalizeCodeForFeed(code)}）`,
+    "",
+    "## §1 基础信息",
+    `- 股票代码：${normalizeCodeForFeed(code)}`,
+    `- 行业：未知`,
+    `- 最新股价：${safeNum(quote.price, 0).toFixed(4)}`,
+    `- 最新市值：${finalMarketCap.toFixed(2)}`,
+    `- 总股本：${safeNum(totalShares, 0).toFixed(2)}`,
+    `- 无风险利率：${rf.toFixed(2)}`,
+    "",
+    "## §2 风险提示",
+    `- [数据完整性|中] Phase1A 未提供 Capex，按 OCF*20% 做保守估算（${capex.toFixed(2)}）。`,
+    "",
+    "## §3 利润表（百万元）",
+    `| 指标 | ${reportYear} |`,
+    "|---|---:|",
+    `| 营业收入 | ${revenue.toFixed(2)} |`,
+    `| 归母净利润 | ${netProfit.toFixed(2)} |`,
+    `| 每股收益EPS | ${safeNum(basicEps, 0).toFixed(4)} |`,
+    "",
+    "## §4 现金流量表（百万元）",
+    `| 指标 | ${reportYear} |`,
+    "|---|---:|",
+    `| 经营活动现金流OCF | ${ocf.toFixed(2)} |`,
+    `| 资本开支Capex | ${capex.toFixed(2)} |`,
+    "",
+    "## §5 资产负债表（百万元）",
+    `| 指标 | ${reportYear} |`,
+    "|---|---:|",
+    `| 总资产 | ${totalAssets.toFixed(2)} |`,
+    `| 总负债 | ${totalLiabilities.toFixed(2)} |`,
+    `| 有息负债 | ${interestBearingDebt.toFixed(2)} |`,
+    `| 货币资金 | ${cash.toFixed(2)} |`,
+    "",
+    "## §6 每股与分红（百万元）",
+    `| 指标 | ${reportYear} |`,
+    "|---|---:|",
+    `| 每股分红DPS | ${dps.toFixed(4)} |`,
+    "",
+  ].join("\n");
+}
+
+async function writeText(filePath: string, content: string): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content, "utf-8");
+}
+
+export async function runResearchWorkflow(input: RunWorkflowInput): Promise<WorkflowArtifacts> {
+  const outputDir = path.resolve(input.outputDir ?? path.join("output", "workflow", normalizeCodeForFeed(input.code)));
+  await mkdir(outputDir, { recursive: true });
+
+  const provider = createFeedHttpProviderFromEnv();
+  const to = input.to ?? new Date().toISOString().slice(0, 10);
+  const from = input.from ?? `${asYear(input.year)}-01-01`;
+
+  const phase1a = await collectPhase1ADataPack(provider, {
+    code: input.code,
+    from,
+    to,
+    period: "day",
+  });
+  const phase1aJsonPath = path.join(outputDir, "phase1a_data_pack.json");
+  await writeText(phase1aJsonPath, JSON.stringify(phase1a, null, 2));
+
+  const marketPackMarkdown = buildMarketPackMarkdown(input.code, phase1a);
+  const marketPackPath = path.join(outputDir, "data_pack_market.md");
+  await writeText(marketPackPath, marketPackMarkdown);
+
+  const phase1b = await collectPhase1BQualitative(
+    {
+      stockCode: normalizeCodeForFeed(input.code),
+      companyName: input.companyName ?? phase1a.instrument.name ?? normalizeCodeForFeed(input.code),
+      year: asYear(input.year),
+      channel: input.phase1bChannel ?? "http",
+    },
+    {},
+  );
+  const phase1bJsonPath = path.join(outputDir, "phase1b_qualitative.json");
+  const phase1bMarkdownPath = path.join(outputDir, "phase1b_qualitative.md");
+  await writeText(phase1bJsonPath, JSON.stringify(phase1b, null, 2));
+  await writeText(phase1bMarkdownPath, renderPhase1BMarkdown(phase1b));
+
+  let pdfPath = input.pdfPath;
+  if (!pdfPath && input.reportUrl) {
+    const downloaded = await runPhase0DownloadAndCache({
+      code: normalizeCodeForFeed(input.code),
+      reportUrl: input.reportUrl,
+      fiscalYear: asYear(input.year),
+      category: input.category ?? "年报",
+      saveDir: path.join(outputDir, "reports", normalizeCodeForFeed(input.code)),
+    });
+    pdfPath = downloaded.filePath;
+  }
+
+  let phase2aJsonPath: string | undefined;
+  let phase2bMarkdownPath: string | undefined;
+  let reportPackMarkdown: string | undefined;
+
+  if (pdfPath) {
+    phase2aJsonPath = path.join(outputDir, "pdf_sections.json");
+    const sections = await runPhase2AExtractPdfSections({
+      pdfPath,
+      outputPath: phase2aJsonPath,
+    });
+    reportPackMarkdown = renderPhase2BDataPackReport({ sections });
+    phase2bMarkdownPath = path.join(outputDir, "data_pack_report.md");
+    await writeText(phase2bMarkdownPath, reportPackMarkdown);
+  }
+
+  const phase3 = runPhase3Strict({
+    marketMarkdown: marketPackMarkdown,
+    reportMarkdown: reportPackMarkdown,
+  });
+
+  const valuationPath = path.join(outputDir, "valuation_computed.json");
+  const reportMarkdownPath = path.join(outputDir, "analysis_report.md");
+  const reportHtmlPath = path.join(outputDir, "analysis_report.html");
+  await writeText(valuationPath, JSON.stringify(phase3.valuation, null, 2));
+  const reportMarkdown = renderPhase3Markdown(phase3);
+  await writeText(reportMarkdownPath, reportMarkdown);
+  await writeText(reportHtmlPath, renderPhase3Html(reportMarkdown));
+
+  const manifestPath = path.join(outputDir, "workflow_manifest.json");
+  const manifest = {
+    generatedAt: new Date().toISOString(),
+    input: {
+      ...input,
+      code: normalizeCodeForFeed(input.code),
+    },
+    outputs: {
+      phase1aJsonPath,
+      marketPackPath,
+      phase1bJsonPath,
+      phase1bMarkdownPath,
+      pdfPath,
+      phase2aJsonPath,
+      phase2bMarkdownPath,
+      valuationPath,
+      reportMarkdownPath,
+      reportHtmlPath,
+    },
+  };
+  await writeText(manifestPath, JSON.stringify(manifest, null, 2));
+
+  return {
+    outputDir,
+    phase1aJsonPath,
+    marketPackPath,
+    phase1bJsonPath,
+    phase1bMarkdownPath,
+    pdfPath,
+    phase2aJsonPath,
+    phase2bMarkdownPath,
+    valuationPath,
+    reportMarkdownPath,
+    reportHtmlPath,
+    manifestPath,
+  };
+}

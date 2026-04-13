@@ -152,6 +152,21 @@ pnpm --filter @trade-signal/research-strategies run phase3:run -- \
 - `output/analysis_report.md`
 - `output/analysis_report.html`
 
+### Workflow：Phase1A/1B/2A/2B/3 一键编排
+
+```bash
+pnpm run workflow:run -- \
+  --code 600887 \
+  --year 2024 \
+  --pdf "./references/tmp/1216664083.pdf" \
+  --output-dir "./output/workflow/600887"
+```
+
+说明：
+- 默认会走 `Phase1A -> Phase1B -> (可选 Phase2A/2B) -> Phase3`
+- 传 `--pdf` 或 `--report-url` 时会启用 Phase2A/2B；两者都不传则跳过 PDF 支路
+- 输出目录包含 `workflow_manifest.json`，用于追踪各阶段产物路径
+
 ### Screener：独立 + 组合模式
 
 Screener 支持两种运行模式：
@@ -190,6 +205,18 @@ pnpm --filter @trade-signal/screener-web run dev
 ```
 
 默认页面提供市场与模式切换，并通过 `/api/screener/run` 在线触发筛选。
+
+### Quality Gate：Phase3 Golden 校验
+
+```bash
+pnpm run quality:phase3-golden
+```
+
+完整质量门禁：
+
+```bash
+pnpm run quality:all
+```
 
 ### 环境变量配置（packages 统一口径）
 
