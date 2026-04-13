@@ -3,14 +3,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { runPhase3Analysis } from "./analyzer.js";
+import { runPhase3Strict } from "./analyzer.js";
 import { renderPhase3Html, renderPhase3Markdown } from "./report-renderer.js";
-import type { Phase3MarketInput } from "./types.js";
 
 type CliArgs = {
-  code?: string;
-  marketJsonPath?: string;
+  marketMdPath?: string;
   reportMdPath?: string;
+  interimReportMdPath?: string;
   outputDir: string;
 };
 
@@ -26,35 +25,17 @@ function parseArgs(argv: string[]): CliArgs {
     values[name] = value;
     i += 1;
   }
-
   return {
-    code: values["code"],
-    marketJsonPath: values["market-json"],
+    marketMdPath: values["market-md"],
     reportMdPath: values["report-md"],
+    interimReportMdPath: values["interim-report-md"],
     outputDir: values["output-dir"] ?? "output",
   };
 }
 
-async function readOptionalText(filePath?: string): Promise<string | undefined> {
+async function readOptional(filePath?: string): Promise<string | undefined> {
   if (!filePath) return undefined;
   return readFile(filePath, "utf-8");
-}
-
-async function loadMarketInput(args: CliArgs): Promise<Phase3MarketInput> {
-  if (args.marketJsonPath) {
-    const raw = await readFile(args.marketJsonPath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<Phase3MarketInput>;
-    return {
-      code: parsed.code ?? args.code ?? "UNKNOWN",
-      ...parsed,
-    } as Phase3MarketInput;
-  }
-  if (!args.code) {
-    throw new Error("Missing input: provide --market-json <path> or --code <stock-code>");
-  }
-  return {
-    code: args.code,
-  };
 }
 
 async function writeText(filePath: string, content: string): Promise<void> {
@@ -64,18 +45,31 @@ async function writeText(filePath: string, content: string): Promise<void> {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const market = await loadMarketInput(args);
-  const reportMarkdown = await readOptionalText(args.reportMdPath);
+  if (!args.marketMdPath) {
+    throw new Error("Missing required argument --market-md <data_pack_market.md>");
+  }
 
-  const result = runPhase3Analysis({ market, reportMarkdown });
+  const marketMarkdown = await readFile(args.marketMdPath, "utf-8");
+  const reportMarkdown = await readOptional(args.reportMdPath);
+  const interimReportMarkdown = await readOptional(args.interimReportMdPath);
+
+  const result = runPhase3Strict({
+    marketMarkdown,
+    reportMarkdown,
+    interimReportMarkdown,
+  });
+
+  const markdown = renderPhase3Markdown(result);
+  const html = renderPhase3Html(markdown);
+
   const outDir = path.resolve(args.outputDir);
   const valuationPath = path.join(outDir, "valuation_computed.json");
   const reportMdPath = path.join(outDir, "analysis_report.md");
   const reportHtmlPath = path.join(outDir, "analysis_report.html");
 
   await writeText(valuationPath, JSON.stringify(result.valuation, null, 2));
-  await writeText(reportMdPath, renderPhase3Markdown(result.report));
-  await writeText(reportHtmlPath, renderPhase3Html(result.report));
+  await writeText(reportMdPath, markdown);
+  await writeText(reportHtmlPath, html);
 
   console.log(`[phase3] valuation -> ${valuationPath}`);
   console.log(`[phase3] report(md) -> ${reportMdPath}`);

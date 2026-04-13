@@ -140,10 +140,12 @@ pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
 
 ```bash
 pnpm --filter @trade-signal/research-strategies run phase3:run -- \
-  --market-json "./output/phase3_market_input.json" \
+  --market-md "./output/phase3_golden/data_pack_market.md" \
   --report-md "./output/data_pack_report.md" \
   --output-dir "./output"
 ```
+
+说明：Phase3 严格模式已切换为 `data_pack_market.md` 输入契约（A 股优先），不再默认走简化 JSON。
 
 产出文件：
 - `output/valuation_computed.json`

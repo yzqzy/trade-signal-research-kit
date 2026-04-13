@@ -105,10 +105,12 @@ Phase3 CLI（research-strategies，输入市场数据 + 可选附注包，输出
 
 ```bash
 pnpm --filter @trade-signal/research-strategies run phase3:run -- \
-  --market-json "./output/phase3_market_input.json" \
+  --market-md "./output/phase3_golden/data_pack_market.md" \
   --report-md "./output/data_pack_report.md" \
   --output-dir "./output"
 ```
+
+> 严格 1:1 模式下，Phase3 以 `data_pack_market.md` 为必选输入，`data_pack_report.md`/`data_pack_report_interim.md` 为可选增强输入。
 
 输出：
 - `output/valuation_computed.json`
