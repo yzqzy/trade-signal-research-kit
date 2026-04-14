@@ -174,6 +174,7 @@ export async function getUniverseFromFeedOrMock(
   const endpoints = [
     `${base}/api/v1/stock/screener/universe?market=${encodeURIComponent(market)}`,
     `${base}/api/v1/stock/screener?market=${encodeURIComponent(market)}`,
+    `${base}/api/v1/stock/selection/universe?market=${encodeURIComponent(market)}`,
   ];
   const headers: Record<string, string> = {};
   if (resolvedEnv.FEED_API_KEY) headers["x-api-key"] = resolvedEnv.FEED_API_KEY;

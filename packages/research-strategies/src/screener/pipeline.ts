@@ -7,6 +7,8 @@ import type {
   ScreenerCandidate,
   ScreenerComposedResolver,
   ScreenerConfig,
+  ScreenerConfigOverrides,
+  ScreenerFactorSummary,
   ScreenerRunInput,
   ScreenerRunOutput,
   ScreenerScoredResult,
@@ -17,41 +19,120 @@ function num(v: unknown, fallback = 0): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
-function clamp01(v: number): number {
-  if (v < 0) return 0;
-  if (v > 1) return 1;
-  return v;
+function checkHardVetoes(
+  row: ScreenerUniverseRow,
+  cfg: ScreenerConfig,
+): { ok: boolean; reason?: string } {
+  const pledge = row.pledgeRatio;
+  if (typeof pledge === "number" && Number.isFinite(pledge) && pledge > cfg.maxPledgePct) {
+    return { ok: false, reason: `pledge_ratio=${pledge.toFixed(1)}% > ${cfg.maxPledgePct}%` };
+  }
+  const audit = row.auditResult;
+  if (audit !== undefined && audit.length > 0 && !audit.includes("标准无保留")) {
+    return { ok: false, reason: `non_standard_audit: ${audit}` };
+  }
+  return { ok: true };
 }
 
-function validateQuality(row: ScreenerUniverseRow, cfg: ScreenerConfig): { passed: boolean; reason?: string } {
-  if (num(row.debtRatio, 0) > cfg.hardVetoDebtRatio) return { passed: false, reason: "hard_veto_debt_ratio" };
+function validateMainQuality(row: ScreenerUniverseRow, cfg: ScreenerConfig): { passed: boolean; reason?: string } {
   if (num(row.roe, 0) < cfg.minRoe) return { passed: false, reason: "low_roe" };
   if (num(row.grossMargin, 0) < cfg.minGrossMargin) return { passed: false, reason: "low_gross_margin" };
   if (num(row.debtRatio, 0) > cfg.maxDebtRatio) return { passed: false, reason: "high_debt_ratio" };
   return { passed: true };
 }
 
-function computeFactorSummary(row: ScreenerUniverseRow): {
-  penetrationR: number;
-  thresholdII: number;
-  rf: number;
-  evEbitda: number;
-  floorPremium: number;
-} {
-  const rf = 2.5;
-  const thresholdII = Math.max(3.5, rf + 2);
-  const aa = Math.max(0, num(row.ocf, 0) - Math.abs(num(row.capex, 0)));
-  const m = clamp01((num(row.dv, 0) / 100) || 0.2);
-  const marketCap = Math.max(1e-6, num(row.marketCap, 0));
-  const penetrationR = (aa * m / marketCap) * 100;
+function validateObservationQuality(
+  row: ScreenerUniverseRow,
+  cfg: ScreenerConfig,
+): { passed: boolean; reason?: string } {
+  if (num(row.roe, 0) < cfg.minRoeObs) return { passed: false, reason: "low_roe_obs" };
+  if (num(row.grossMargin, 0) < cfg.minGrossMargin) return { passed: false, reason: "low_gross_margin" };
+  if (num(row.debtRatio, 0) > cfg.maxDebtRatio) return { passed: false, reason: "high_debt_ratio" };
 
-  const debt = Math.max(0, num(row.totalLiabilities, 0));
-  const cash = Math.max(0, num(row.totalAssets, 0) * 0.15);
-  const ebitda = Math.max(1e-6, num(row.netProfit, 0) + Math.max(0, num(row.ocf, 0) - num(row.netProfit, 0)));
-  const evEbitda = (marketCap + debt - cash) / ebitda;
-  const floorPremium = num(row.floorPremium, num(row.pe, 0) > 0 ? num(row.pe, 0) / 3 : 0);
+  const ocf = num(row.ocf, NaN);
+  if (cfg.obsRequireOcfPositive) {
+    if (!Number.isFinite(ocf) || ocf <= 0) return { passed: false, reason: "ocf_non_positive" };
+  }
 
-  return { penetrationR, thresholdII, rf, evEbitda, floorPremium };
+  const rev = num(row.revenue, NaN);
+  const capex = num(row.capex, 0);
+  const ocfVal = Number.isFinite(ocf) ? ocf : 0;
+  const fcf = ocfVal - Math.abs(capex);
+  if (Number.isFinite(rev) && rev > 0) {
+    const fcfMargin = (fcf / rev) * 100;
+    if (fcfMargin < cfg.minFcfMarginObs) return { passed: false, reason: "low_fcf_margin_obs" };
+  } else {
+    return { passed: false, reason: "missing_revenue" };
+  }
+
+  const py = row.fcfPositiveYears;
+  if (typeof py !== "number" || !Number.isFinite(py) || py < cfg.minFcfPositiveYearsObs) {
+    return { passed: false, reason: "fcf_positive_years_obs" };
+  }
+  return { passed: true };
+}
+
+function validateQuality(
+  row: ScreenerUniverseRow,
+  cfg: ScreenerConfig,
+  channel: "main" | "observation",
+): { passed: boolean; reason?: string } {
+  return channel === "observation" ? validateObservationQuality(row, cfg) : validateMainQuality(row, cfg);
+}
+
+export function computeFactorSummary(row: ScreenerUniverseRow, _cfg: ScreenerConfig): ScreenerFactorSummary {
+  const rf = num(row.riskFreeRatePct, 2.5);
+  const thresholdII = Number.isFinite(rf) ? Math.max(3.5, rf + 2) : undefined;
+
+  const ocf = num(row.ocf, 0);
+  const capex = num(row.capex, 0);
+  const v1 = num(row.assetDispIncome, 0);
+  const vDeduct = num(row.nonOperIncome, 0) + num(row.othIncome, 0);
+  const aa = ocf + v1 - vDeduct - Math.abs(capex);
+
+  let M = num(row.payoutRatio, NaN);
+  if (!Number.isFinite(M) || M <= 0) {
+    const dv = num(row.dv, 0);
+    M = Math.min(100, dv * 5);
+  }
+  const mktCap = Math.max(1e-6, num(row.marketCap, 0));
+  const penetrationR = mktCap > 0 && Number.isFinite(M) ? (aa * (M / 100) / mktCap) * 100 : 0;
+
+  let evEbitda = num(row.evEbitda, NaN);
+  if (!Number.isFinite(evEbitda)) {
+    const debt = Math.max(0, num(row.totalLiabilities, 0));
+    const cash = Math.max(0, num(row.totalAssets, 0) * 0.15);
+    const ebitdaRaw = num(row.ebitda, NaN);
+    const ebitda =
+      Number.isFinite(ebitdaRaw) && ebitdaRaw > 0 ? ebitdaRaw : Math.max(1e-6, num(row.netProfit, 0));
+    evEbitda = (mktCap + debt - cash) / ebitda;
+  }
+
+  const pe = num(row.pe, 0);
+  const floorPremium = Number.isFinite(num(row.floorPremium, NaN))
+    ? num(row.floorPremium, 0)
+    : pe > 0
+      ? pe / 3
+      : 0;
+
+  let rVsII: ScreenerFactorSummary["rVsII"];
+  if (Number.isFinite(penetrationR) && thresholdII !== undefined && Number.isFinite(rf)) {
+    if (penetrationR < rf) rVsII = "below_rf";
+    else if (penetrationR < thresholdII * 0.5) rVsII = "fail";
+    else if (penetrationR < thresholdII) rVsII = "marginal";
+    else rVsII = "pass";
+  }
+
+  return {
+    penetrationR,
+    thresholdII,
+    rf,
+    evEbitda,
+    floorPremium,
+    rVsII,
+    payoutM: M,
+    aa,
+  };
 }
 
 function percentile(values: number[], current: number, asc: boolean): number {
@@ -63,12 +144,32 @@ function percentile(values: number[], current: number, asc: boolean): number {
 }
 
 function computeStandaloneScore(row: ScreenerUniverseRow, rows: ScreenerUniverseRow[], cfg: ScreenerConfig): number {
-  const roePct = percentile(rows.map((r) => num(r.roe, 0)), num(row.roe, 0), false);
-  const fcfPct = percentile(rows.map((r) => num(r.fcfYield, 0)), num(row.fcfYield, 0), false);
-  const factor = computeFactorSummary(row);
-  const rPct = percentile(rows.map((r) => computeFactorSummary(r).penetrationR), factor.penetrationR, false);
-  const evPct = percentile(rows.map((r) => computeFactorSummary(r).evEbitda), factor.evEbitda, true);
-  const floorPct = percentile(rows.map((r) => computeFactorSummary(r).floorPremium), factor.floorPremium, true);
+  const roePct = percentile(
+    rows.map((r) => num(r.roe, 0)),
+    num(row.roe, 0),
+    false,
+  );
+  const fcfPct = percentile(
+    rows.map((r) => num(r.fcfYield, 0)),
+    num(row.fcfYield, 0),
+    false,
+  );
+  const factor = computeFactorSummary(row, cfg);
+  const rPct = percentile(
+    rows.map((r) => computeFactorSummary(r, cfg).penetrationR ?? 0),
+    factor.penetrationR ?? 0,
+    false,
+  );
+  const evPct = percentile(
+    rows.map((r) => computeFactorSummary(r, cfg).evEbitda ?? 0),
+    factor.evEbitda ?? 0,
+    true,
+  );
+  const floorPct = percentile(
+    rows.map((r) => computeFactorSummary(r, cfg).floorPremium ?? 0),
+    factor.floorPremium ?? 0,
+    true,
+  );
 
   return (
     cfg.weightRoe * roePct +
@@ -110,15 +211,20 @@ function buildMinimalMarketPack(row: ScreenerUniverseRow): string {
 async function composeReportScore(
   candidate: ScreenerCandidate,
   resolver?: ScreenerComposedResolver,
-): Promise<{ reportScore: number; decision: "buy" | "watch" | "avoid"; confidence: "high" | "medium" | "low"; composedReason?: string; composedReport?: ScreenerScoredResult["composedReport"] }> {
-  const resolved =
-    resolver
-      ? await resolver.resolve(candidate)
-      : {
-          marketMarkdown: buildMinimalMarketPack(candidate),
-          reportMarkdown: undefined,
-          interimReportMarkdown: undefined,
-        };
+): Promise<{
+  reportScore: number;
+  decision: "buy" | "watch" | "avoid";
+  confidence: "high" | "medium" | "low";
+  composedReason?: string;
+  composedReport?: ScreenerScoredResult["composedReport"];
+}> {
+  const resolved = resolver
+    ? await resolver.resolve(candidate)
+    : {
+        marketMarkdown: buildMinimalMarketPack(candidate),
+        reportMarkdown: undefined,
+        interimReportMarkdown: undefined,
+      };
 
   const out = runPhase3Strict({
     marketMarkdown: resolved.marketMarkdown,
@@ -132,35 +238,94 @@ async function composeReportScore(
   return { reportScore, decision, confidence, composedReason, composedReport: out.report };
 }
 
+function readLegacyHardVetoDebt(overrides: ScreenerConfigOverrides | undefined): number | undefined {
+  const v = overrides?.hardVetoDebtRatio;
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
 export async function runScreenerPipeline(
   input: ScreenerRunInput,
   resolver?: ScreenerComposedResolver,
 ): Promise<ScreenerRunOutput> {
   const cfg = resolveScreenerConfig(input.market, input.config);
+  const legacyDebtVeto = readLegacyHardVetoDebt(input.config);
+
   const tier1Candidates =
     input.market === "CN_A"
       ? tier1FilterCnA(input.universe, cfg)
       : tier1FilterHk(input.universe, cfg);
 
-  const scored: ScreenerScoredResult[] = [];
-  for (const candidate of tier1Candidates) {
-    const quality = validateQuality(candidate, cfg);
+  if (input.tier1Only) {
+    const sorted = [...tier1Candidates].sort((a, b) => b.tier1Score - a.tier1Score);
+    return {
+      market: input.market,
+      mode: input.mode,
+      generatedAt: new Date().toISOString(),
+      totalUniverse: input.universe.length,
+      tier1Count: tier1Candidates.length,
+      passedCount: sorted.length,
+      tier1Only: true,
+      results: sorted.map((c) => ({
+        ...c,
+        passed: true,
+        qualityPassed: true,
+        screenerScore: c.tier1Score,
+        totalScore: c.tier1Score,
+        decision: "watch",
+        confidence: "medium",
+        factors: {},
+      })),
+    };
+  }
+
+  let candidates: ScreenerCandidate[] = tier1Candidates;
+  if (input.tier2Limit !== undefined && input.tier2Limit >= 0) {
+    candidates = tier1Candidates.slice(0, input.tier2Limit);
+  }
+
+  type Gate = { candidate: ScreenerCandidate; ok: boolean; vetoReason?: string };
+  const gates: Gate[] = [];
+  for (const candidate of candidates) {
+    if (legacyDebtVeto !== undefined && num(candidate.debtRatio, 0) > legacyDebtVeto) {
+      gates.push({ candidate, ok: false, vetoReason: "hard_veto_debt_ratio" });
+      continue;
+    }
+    const hv = checkHardVetoes(candidate, cfg);
+    if (!hv.ok) {
+      gates.push({ candidate, ok: false, vetoReason: hv.reason });
+      continue;
+    }
+    const quality = validateQuality(candidate, cfg, candidate.channel);
     if (!quality.passed) {
+      gates.push({ candidate, ok: false, vetoReason: quality.reason ?? "financial_quality" });
+      continue;
+    }
+    gates.push({ candidate, ok: true });
+  }
+
+  const passedForRanking = gates.filter((g) => g.ok).map((g) => g.candidate);
+
+  const scored: ScreenerScoredResult[] = [];
+  for (const g of gates) {
+    const { candidate } = g;
+    const factors = computeFactorSummary(candidate, cfg);
+
+    if (!g.ok) {
       scored.push({
         ...candidate,
         passed: false,
-        vetoReason: quality.reason,
+        vetoReason: g.vetoReason,
         qualityPassed: false,
         screenerScore: 0,
         totalScore: 0,
         decision: "avoid",
         confidence: "low",
-        factors: computeFactorSummary(candidate),
+        factors,
       });
       continue;
     }
 
-    const standaloneScore = computeStandaloneScore(candidate, tier1Candidates, cfg);
+    const standaloneScore = computeStandaloneScore(candidate, passedForRanking, cfg);
     if (input.mode === "standalone") {
       const decision = standaloneScore >= 0.65 ? "buy" : standaloneScore >= 0.45 ? "watch" : "avoid";
       scored.push({
@@ -171,14 +336,15 @@ export async function runScreenerPipeline(
         totalScore: standaloneScore,
         decision,
         confidence: standaloneScore >= 0.75 ? "high" : standaloneScore >= 0.5 ? "medium" : "low",
-        factors: computeFactorSummary(candidate),
+        factors,
       });
       continue;
     }
 
     const composed = await composeReportScore(candidate, resolver);
     const totalScore = cfg.weightScreenerScore * standaloneScore + cfg.weightReportScore * composed.reportScore;
-    const finalDecision = composed.decision === "avoid" ? "avoid" : totalScore >= 0.65 ? "buy" : totalScore >= 0.45 ? "watch" : "avoid";
+    const finalDecision =
+      composed.decision === "avoid" ? "avoid" : totalScore >= 0.65 ? "buy" : totalScore >= 0.45 ? "watch" : "avoid";
 
     scored.push({
       ...candidate,
@@ -189,7 +355,7 @@ export async function runScreenerPipeline(
       totalScore,
       decision: finalDecision,
       confidence: composed.confidence,
-      factors: computeFactorSummary(candidate),
+      factors,
       vetoReason: composed.composedReason,
       composedReport: composed.composedReport,
     });

@@ -11,12 +11,19 @@ function yearsSinceList(listDate?: string): number {
   return new Date().getFullYear() - y;
 }
 
+function peMissing(row: ScreenerUniverseRow): boolean {
+  const v = row.pe;
+  return v === undefined || v === null || (typeof v === "number" && !Number.isFinite(v));
+}
+
 export function tier1FilterHk(rows: ScreenerUniverseRow[], cfg: ScreenerConfig): ScreenerCandidate[] {
+  const minCapMm = cfg.minMarketCapYi * 100;
+
   const pre = rows.filter((row) => {
     if (row.market !== "HK") return false;
     if (yearsSinceList(row.listDate) < cfg.minListingYears) return false;
-    if ((safe(row.marketCap) ?? 0) < cfg.minMarketCap) return false;
-    if ((safe(row.turnover) ?? 0) < cfg.minTurnover) return false;
+    if ((safe(row.marketCap) ?? 0) < minCapMm) return false;
+    if ((safe(row.turnover) ?? 0) < cfg.minTurnoverPct) return false;
     const pb = safe(row.pb);
     if (pb === undefined || pb <= 0 || pb > cfg.maxPb) return false;
     return true;
@@ -33,7 +40,7 @@ export function tier1FilterHk(rows: ScreenerUniverseRow[], cfg: ScreenerConfig):
   const observation = pre
     .filter((row) => {
       const pe = safe(row.pe);
-      return pe !== undefined && pe < 0;
+      return peMissing(row) || (pe !== undefined && pe < 0);
     })
     .sort((a, b) => (safe(b.marketCap) ?? 0) - (safe(a.marketCap) ?? 0))
     .slice(0, cfg.obsChannelLimit)
@@ -48,7 +55,7 @@ export function tier1FilterHk(rows: ScreenerUniverseRow[], cfg: ScreenerConfig):
       const dvNorm = (safe(row.dv) ?? 0) / dvMax;
       const peNorm = (1 / Math.max(safe(row.pe) ?? Number.POSITIVE_INFINITY, 1e-6)) / peInvMax;
       const pbNorm = (1 / Math.max(safe(row.pb) ?? Number.POSITIVE_INFINITY, 1e-6)) / pbInvMax;
-      const tier1Score = 0.4 * dvNorm + 0.3 * peNorm + 0.3 * pbNorm;
+      const tier1Score = cfg.dvWeight * dvNorm + cfg.peWeight * peNorm + cfg.pbWeight * pbNorm;
       return { ...row, tier1Score };
     })
     .sort((a, b) => b.tier1Score - a.tier1Score)
