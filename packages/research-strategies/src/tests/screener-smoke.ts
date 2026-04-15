@@ -10,8 +10,10 @@ import path from "node:path";
 
 import { ScreenerDiskCache } from "../screener/cache.js";
 import { getDefaultScreenerConfig, resolveScreenerConfig, validateScreenerConfig } from "../screener/config.js";
+import { parseScreenerUniversePayload } from "../screener/http-source.js";
 import { tier1FilterCnA } from "../screener/cn-a.js";
 import { exportScreenerResultsCsv } from "../screener/export-results.js";
+import { buildUniverseCapability } from "../screener/capability.js";
 import { computeFactorSummary, runScreenerPipeline } from "../screener/pipeline.js";
 import type { ScreenerUniverseRow } from "../screener/types.js";
 
@@ -132,6 +134,103 @@ function testFactor2R(): void {
   assert.ok(Math.abs((f.penetrationR ?? 0) - 2.4) < 1e-6, `R expected 2.4, got ${f.penetrationR}`);
 }
 
+async function testUniverseCapabilityHkEmpty(): Promise<void> {
+  const cap = buildUniverseCapability("HK", []);
+  assert.equal(cap.status, "hk_not_ready");
+  assert.ok(cap.reasonCodes.includes("hk_screener_universe_not_implemented"));
+
+  const out = await runScreenerPipeline({
+    market: "HK",
+    mode: "standalone",
+    universe: [],
+    tier1Only: true,
+  });
+  assert.equal(out.capability?.status, "hk_not_ready");
+  assert.equal(out.results.length, 0);
+}
+
+async function testUniverseCapabilityBlockedMissingMarketCap(): Promise<void> {
+  const row: ScreenerUniverseRow = {
+    code: "000001.SZ",
+    name: "T",
+    market: "CN_A",
+    industry: "软件",
+    listDate: "20180101",
+    close: 10,
+    pb: 2,
+    dv: 2,
+    turnover: 1,
+  };
+  const out = await runScreenerPipeline({
+    market: "CN_A",
+    mode: "standalone",
+    universe: [row],
+    tier1Only: true,
+  });
+  assert.equal(out.capability?.status, "blocked_missing_required_fields");
+  assert.equal(out.results.length, 0);
+}
+
+async function testUniverseCapabilityDegradedTier2(): Promise<void> {
+  const row: ScreenerUniverseRow = {
+    code: "000002.SZ",
+    name: "T",
+    market: "CN_A",
+    industry: "软件",
+    listDate: "20180101",
+    close: 10,
+    pb: 2,
+    dv: 2,
+    marketCap: 2000,
+    turnover: 1,
+    pe: 12,
+  };
+  const out = await runScreenerPipeline({
+    market: "CN_A",
+    mode: "standalone",
+    universe: [row],
+    tier1Only: true,
+  });
+  assert.equal(out.capability?.status, "degraded_tier2_fields");
+  assert.ok(out.results.length >= 1);
+}
+
+function testParseScreenerUniversePayload(): void {
+  const url = "http://example/stock/screener/universe";
+  assert.throws(() => parseScreenerUniversePayload([], url), /根须为 JSON 对象/);
+  assert.throws(() => parseScreenerUniversePayload({ success: true, data: [] }, url), /data 须为对象/);
+  assert.throws(
+    () => parseScreenerUniversePayload({ success: true, data: { total: 0, page: 1, pageSize: 10 } }, url),
+    /缺少 data.items/,
+  );
+  assert.throws(
+    () =>
+      parseScreenerUniversePayload(
+        { success: true, data: { items: [], page: 1, pageSize: 10 } },
+        url,
+      ),
+    /data.total/,
+  );
+  const parsed = parseScreenerUniversePayload(
+    {
+      success: true,
+      data: {
+        market: "CN_A",
+        total: 2,
+        page: 1,
+        pageSize: 500,
+        items: [{ code: "1", name: "A" }],
+        capability: "partial",
+        degradeReasons: ["x"],
+        pagination: { mode: "offset_page" },
+      },
+    },
+    url,
+  );
+  assert.equal(parsed.total, 2);
+  assert.equal(parsed.items.length, 1);
+}
+
 async function testTier1OnlyPipeline(): Promise<void> {
   const universe: ScreenerUniverseRow[] = [
     {
@@ -163,6 +262,10 @@ async function main(): Promise<void> {
   testConfig();
   testTier1Filter();
   testFactor2R();
+  testParseScreenerUniversePayload();
+  await testUniverseCapabilityHkEmpty();
+  await testUniverseCapabilityBlockedMissingMarketCap();
+  await testUniverseCapabilityDegradedTier2();
   await testDiskCache();
   await testTier1OnlyPipeline();
   console.log("[test:screener] ok");

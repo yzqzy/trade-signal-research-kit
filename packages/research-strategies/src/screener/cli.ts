@@ -125,6 +125,35 @@ async function main(): Promise<void> {
   };
 
   const result = await runScreenerPipeline(input);
+  const cap = result.capability;
+
+  if (cap?.status === "hk_not_ready") {
+    const msg = cap.messages.join(" ");
+    console.error(`[screener] HK_UNIVERSE_NOT_READY: ${msg}`);
+    console.error(
+      JSON.stringify({
+        screenerExit: { status: cap.status, reasonCodes: cap.reasonCodes },
+      }),
+    );
+    process.exitCode = 2;
+  } else if (cap?.status === "blocked_missing_required_fields") {
+    const msg = cap.messages.join(" ");
+    console.error(`[screener] BLOCKED: ${msg}`);
+    console.error(
+      JSON.stringify({
+        screenerExit: { status: cap.status, reasonCodes: cap.reasonCodes },
+      }),
+    );
+    process.exitCode = 1;
+  } else if (cap?.status === "degraded_tier2_fields") {
+    console.warn(`[screener] DEGRADED_TIER2: ${cap.messages.join(" ")}`);
+    console.warn(
+      JSON.stringify({
+        screenerWarning: { status: cap.status, reasonCodes: cap.reasonCodes },
+      }),
+    );
+  }
+
   const outDir = path.resolve(args.outputDir);
   await writeText(path.join(outDir, "screener_results.json"), JSON.stringify(result, null, 2));
   await writeText(path.join(outDir, "screener_input.csv"), exportScreenerUniverseCsv(universe));

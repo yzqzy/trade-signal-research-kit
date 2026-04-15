@@ -24,17 +24,34 @@
 | 缓存分层 TTL | Parquet + meta；financial/market/global | `ScreenerDiskCache` JSON + `.meta.json`；分层 TTL 配置项 | 已对齐（实现形态不同） |
 | CLI | `--tier1-only`、`--tier2-limit`、阈值覆盖、缓存刷新 | `cli.ts` 同名语义 | 已对齐 |
 | 导出 CSV/HTML | 参考脚本列顺序 | `exportScreenerResultsCsv` / 报告表列 | 已对齐 |
-| 数据源 | 参考脚本内联拉取 | **`fetchScreenerUniverseFromHttp`** 对接 **trade-signal-feed**（或同源）的 universe/selection 端点；CLI 使用 `--input-json`；字段映射由 feed 适配层完成 | 按宿主 API 配置 |
+| 数据源 | 参考脚本内联拉取 | **`fetchScreenerUniverseFromHttp`** 仅请求 **`GET …/stock/screener/universe`**；响应须为 `{ success, data: { total, page, pageSize, items } }`，否则 **抛错**；CLI 使用 `--input-json`；字段映射由 feed 适配层完成 | 按宿主 API 配置 |
 
 ## 数据接入（feed / 自选接口）
 
-- **推荐**：在 feed 或网关暴露返回 `ScreenerUniverseRow[]`（或与之一致的 JSON）的接口；`http-source.ts` 会按顺序尝试若干相对路径，并支持 **`extraUniversePaths`** 指向你的 **selection** 路径，无需改核心筛选逻辑。
+- **推荐**：由 **trade-signal-feed**（或实现同一契约的网关）提供上述 **单一路径、单一 JSON 形状**；不再支持多路径回退或顶层数组/`data` 数组兼容。
 - **离线/批处理**：与现有一致，使用 `--input-json` 传入 universe 数组即可。
 
 ## 单位约定（TS universe）
 
 - `marketCap`：**百万元**（与参考脚本中「万元总市值 → 百万元」换算结果一致）。
 - `minMarketCapYi`：**亿元**，与参考配置 `min_market_cap_yi` 同语义。
+
+## HK 未接入与 CLI 语义
+
+- `trade-signal-feed` 的 `screener/universe` 在 `market=HK` 时返回空 `items`（`capability=not_ready`）。若将 **空数组** 作为 `--input-json` 且 `--market HK`，`runScreenerPipeline` 会写入 `capability.status = hk_not_ready`，**并非**「筛选条件过严」。
+- `screener:run`（`cli.ts`）在 `hk_not_ready` 时向 **stderr** 输出人类可读说明 + 单行 JSON：`{"screenerExit":{"status":"hk_not_ready","reasonCodes":[...]}}`，并设置 **`process.exitCode = 2`**（仍写出 `screener_results.json` 供审计）。
+
+## 字段分层（required_for_run / required_for_tier2 / optional）
+
+运行前由 `buildUniverseCapability` 对全表统计缺失，并写入 `ScreenerRunOutput.capability`：
+
+| 分层 | 含义 | 行为 |
+|------|------|------|
+| `required_for_run` | Tier1 可靠运行所需字段（见 `capability.ts` 常量） | 若 `marketCap`/`turnover`/`pb`/`dv` 等在**全部行**缺失 → `blocked_missing_required_fields`，pipeline **短路**，`results=[]`；CLI `exitCode=1` |
+| `required_for_tier2_main` | Tier2 主通道质量门（`debtRatio`/`grossMargin`/`roe`/`netProfit`） | 若四者在**全部行**缺失 → `degraded_tier2_fields`，**仍跑 Tier1**；CLI **warn** + `screenerWarning` JSON |
+| `optional_enhancement` | 因子/硬否决/观察通道增强字段 | 仅统计 `missingCountByField`，供解释降级，不单独阻断 |
+
+部分行缺失 Tier2 主字段时：`status` 仍为 `ok`，但 `reasonCodes` 含 `required_for_tier2_main_partial_missing` 并在 `messages` 中给出计数。
 
 ## 弃用说明
 

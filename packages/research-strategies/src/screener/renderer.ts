@@ -11,6 +11,18 @@ function fmt(n: number | undefined): string {
 /** 与 Python 控制台 `display_cols` 顺序一致（在报告表中扩展展示）。 */
 export function renderScreenerMarkdown(input: ScreenerRunOutput): string {
   const top = input.results.slice(0, 50);
+  const cap = input.capability;
+  const capLines =
+    cap !== undefined
+      ? [
+          "## Universe capability",
+          "",
+          `- status: ${cap.status}`,
+          `- reason_codes: ${cap.reasonCodes.join(", ") || "(none)"}`,
+          ...cap.messages.map((m) => `- ${m}`),
+          "",
+        ]
+      : [];
   const lines = [
     `# Screener Report (${input.market})`,
     "",
@@ -21,6 +33,7 @@ export function renderScreenerMarkdown(input: ScreenerRunOutput): string {
     `- passed_count: ${input.passedCount}`,
     input.tier1Only ? "- pipeline: tier1_only" : "",
     "",
+    ...capLines,
     "| code | name | industry | channel | decision | composite | roe | fcf_yld | R | ev/ebitda | floor% | tier1 | veto |",
     "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ...top.map((r) => {
@@ -46,6 +59,9 @@ export function renderScreenerHtml(input: ScreenerRunOutput): string {
     "<body>",
     `<h1>Screener Report (${esc(input.market)})</h1>`,
     `<p>mode=${esc(input.mode)} | universe=${input.totalUniverse} | tier1=${input.tier1Count} | passed=${input.passedCount}${input.tier1Only ? " | tier1_only" : ""}</p>`,
+    input.capability
+      ? `<p><strong>capability</strong>: ${esc(input.capability.status)} | ${esc(input.capability.reasonCodes.join(", "))}</p><pre>${esc(input.capability.messages.join("\n"))}</pre>`
+      : "",
     "<table><thead><tr><th>code</th><th>name</th><th>industry</th><th>channel</th><th>decision</th><th>composite</th><th>roe</th><th>fcf_yld</th><th>R</th><th>ev/ebitda</th><th>floor%</th><th>tier1</th><th>veto</th></tr></thead><tbody>",
     rows,
     "</tbody></table></body></html>",

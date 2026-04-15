@@ -1,3 +1,5 @@
+import { fetchScreenerUniverseFromHttp } from "@trade-signal/research-strategies";
+
 export interface WebUniverseRow {
   code: string;
   name: string;
@@ -127,38 +129,22 @@ function asRow(raw: Record<string, unknown>, market: "CN_A" | "HK"): WebUniverse
     market,
     industry: typeof raw.industry === "string" ? raw.industry : undefined,
     listDate: typeof raw.listDate === "string" ? raw.listDate : undefined,
-    close: num(raw.close ?? raw.price),
-    pe: num(raw.pe ?? raw.peTtm),
-    pb: num(raw.pb ?? raw.pbTtm),
-    dv: num(raw.dv ?? raw.dividendYield ?? raw.dvTtm),
-    marketCap: num(raw.marketCap ?? raw.totalMv),
-    turnover: num(raw.turnover ?? raw.turnoverRate),
-    debtRatio: num(raw.debtRatio ?? raw.debtToAssets),
-    grossMargin: num(raw.grossMargin ?? raw.grossprofitMargin),
-    roe: num(raw.roe ?? raw.roeWaa),
+    close: num(raw.close),
+    pe: num(raw.pe),
+    pb: num(raw.pb),
+    dv: num(raw.dv),
+    marketCap: num(raw.marketCap),
+    turnover: num(raw.turnover),
+    debtRatio: num(raw.debtRatio),
+    grossMargin: num(raw.grossMargin),
+    roe: num(raw.roe),
     fcfYield: num(raw.fcfYield),
-    netProfit: num(raw.netProfit ?? raw.parentNetProfit),
-    ocf: num(raw.ocf ?? raw.operatingCashFlow),
+    netProfit: num(raw.netProfit),
+    ocf: num(raw.ocf),
     capex: num(raw.capex),
     totalAssets: num(raw.totalAssets),
     totalLiabilities: num(raw.totalLiabilities),
   };
-}
-
-function extractItems(payload: unknown): Record<string, unknown>[] {
-  if (Array.isArray(payload)) return payload.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
-  if (!payload || typeof payload !== "object") return [];
-  const obj = payload as { data?: unknown; items?: unknown; results?: unknown };
-  const candidate = obj.data ?? obj.items ?? obj.results;
-  if (Array.isArray(candidate)) {
-    return candidate.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
-  }
-  if (candidate && typeof candidate === "object") {
-    const nested = candidate as { items?: unknown; results?: unknown };
-    if (Array.isArray(nested.items)) return nested.items.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
-    if (Array.isArray(nested.results)) return nested.results.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
-  }
-  return [];
 }
 
 export async function getUniverseFromFeedOrMock(
@@ -171,26 +157,24 @@ export async function getUniverseFromFeedOrMock(
     return { rows: getMockUniverse(market), source: "mock_fallback" };
   }
   const base = baseUrl.replace(/\/+$/, "");
-  const endpoints = [
-    `${base}/api/v1/stock/screener/universe?market=${encodeURIComponent(market)}`,
-    `${base}/api/v1/stock/screener?market=${encodeURIComponent(market)}`,
-    `${base}/api/v1/stock/selection/universe?market=${encodeURIComponent(market)}`,
-  ];
-  const headers: Record<string, string> = {};
-  if (resolvedEnv.FEED_API_KEY) headers["x-api-key"] = resolvedEnv.FEED_API_KEY;
-
-  for (const endpoint of endpoints) {
-    try {
-      const resp = await fetch(endpoint, { headers });
-      if (!resp.ok) continue;
-      const payload = (await resp.json()) as unknown;
-      const rows = extractItems(payload).map((x) => asRow(x, market)).filter((x): x is WebUniverseRow => Boolean(x));
-      if (rows.length > 0) {
-        return { rows, source: "feed_http", endpoint };
-      }
-    } catch {
-      // Ignore and fallback to next endpoint.
-    }
+  const endpoint = `${base}/api/v1/stock/screener/universe`;
+  try {
+    const rawItems = await fetchScreenerUniverseFromHttp(
+      {
+        baseUrl,
+        apiKey: resolvedEnv.FEED_API_KEY,
+        mode: "all_pages",
+      },
+      market,
+    );
+    const rows = rawItems
+      .map((x) =>
+        x && typeof x === "object" ? asRow(x as Record<string, unknown>, market) : undefined,
+      )
+      .filter((x): x is WebUniverseRow => Boolean(x));
+    return { rows, source: "feed_http", endpoint };
+  } catch (e) {
+    console.warn("[screener-web] feed universe 契约或网络失败，回退 mock:", e);
+    return { rows: getMockUniverse(market), source: "mock_fallback" };
   }
-  return { rows: getMockUniverse(market), source: "mock_fallback" };
 }

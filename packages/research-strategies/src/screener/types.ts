@@ -135,6 +135,35 @@ export interface ScreenerRunInput {
   tier2Limit?: number;
 }
 
+/** 与 buildUniverseCapability 对齐；供 JSON 输出与脚本解析 */
+export type ScreenerUniverseCapabilityStatus =
+  | "ok"
+  | "hk_not_ready"
+  | "blocked_missing_required_fields"
+  | "degraded_tier2_fields";
+
+export interface ScreenerCapabilityBlock {
+  status: ScreenerUniverseCapabilityStatus;
+  reasonCodes: string[];
+  messages: string[];
+  fieldTiers: {
+    requiredForRun: {
+      keys: string[];
+      missingCountByField: Record<string, number>;
+      allRowsMissingByField: Record<string, boolean>;
+    };
+    requiredForTier2Main: {
+      keys: string[];
+      missingCountByField: Record<string, number>;
+      allRowsMissingByField: Record<string, boolean>;
+    };
+    optionalEnhancement: {
+      keys: string[];
+      missingCountByField: Record<string, number>;
+    };
+  };
+}
+
 export interface ScreenerRunOutput {
   market: ScreenerMarket;
   mode: ScreenerAnalysisMode;
@@ -144,6 +173,8 @@ export interface ScreenerRunOutput {
   passedCount: number;
   /** 为 true 时表示未跑 Tier2 深度逻辑 */
   tier1Only?: boolean;
+  /** universe 能力评估、HK 未接入、字段分层缺口 */
+  capability?: ScreenerCapabilityBlock;
   results: ScreenerScoredResult[];
 }
 

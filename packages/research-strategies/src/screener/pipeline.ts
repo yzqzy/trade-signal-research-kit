@@ -1,5 +1,6 @@
 import { runPhase3Strict } from "../phase3/analyzer.js";
 
+import { buildUniverseCapability } from "./capability.js";
 import { resolveScreenerConfig } from "./config.js";
 import { tier1FilterCnA } from "./cn-a.js";
 import { tier1FilterHk } from "./hk.js";
@@ -247,6 +248,23 @@ export async function runScreenerPipeline(
   input: ScreenerRunInput,
   resolver?: ScreenerComposedResolver,
 ): Promise<ScreenerRunOutput> {
+  const capability = buildUniverseCapability(input.market, input.universe);
+  const now = new Date().toISOString();
+
+  if (capability.status === "hk_not_ready" || capability.status === "blocked_missing_required_fields") {
+    return {
+      market: input.market,
+      mode: input.mode,
+      generatedAt: now,
+      totalUniverse: input.universe.length,
+      tier1Count: 0,
+      passedCount: 0,
+      tier1Only: input.tier1Only,
+      results: [],
+      capability,
+    };
+  }
+
   const cfg = resolveScreenerConfig(input.market, input.config);
   const legacyDebtVeto = readLegacyHardVetoDebt(input.config);
 
@@ -260,11 +278,12 @@ export async function runScreenerPipeline(
     return {
       market: input.market,
       mode: input.mode,
-      generatedAt: new Date().toISOString(),
+      generatedAt: now,
       totalUniverse: input.universe.length,
       tier1Count: tier1Candidates.length,
       passedCount: sorted.length,
       tier1Only: true,
+      capability,
       results: sorted.map((c) => ({
         ...c,
         passed: true,
@@ -365,10 +384,11 @@ export async function runScreenerPipeline(
   return {
     market: input.market,
     mode: input.mode,
-    generatedAt: new Date().toISOString(),
+    generatedAt: now,
     totalUniverse: input.universe.length,
     tier1Count: tier1Candidates.length,
     passedCount: sorted.filter((r) => r.passed && r.decision !== "avoid").length,
+    capability,
     results: sorted,
   };
 }
