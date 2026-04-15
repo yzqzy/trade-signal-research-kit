@@ -2,18 +2,32 @@
 
 [返回项目首页](../README.md)
 
-本目录用于承接 `README` 下沉的细节说明，避免主文档过长。
+本目录按 **architecture / guides / strategy** 分层，避免平铺难找、口径分散。主 README 保持简短；细节请从下表进入。
 
-## 文档导航
+## architecture（结构与编排边界）
 
-- [系统架构说明](./architecture.md)：分层结构、数据流、设计边界
-- [流程说明（Phase 0~3）](./workflows.md)：主流程、独立流程、阶段职责
-- [Phase 0 年报下载器](./phase0-download.md)：白名单、校验、CLI 用法与退出码
-- [数据源与字段契约](./data-source.md)：feed 接入原则、字段范围、约束
-- [路线图](./roadmap.md)：按“先复刻流程，再替换实现”的版本节奏
+| 文档 | 说明 |
+|------|------|
+| [system-architecture.md](./architecture/system-architecture.md) | 三层结构、数据流、设计边界 |
+| [strategy-orchestration-architecture.md](./architecture/strategy-orchestration-architecture.md) | Stage A~E、策略插件、`StrategyPlugin` / `OrchestratorAdapter`、C1/C2 |
+
+## guides（操作与契约）
+
+| 文档 | 说明 |
+|------|------|
+| [workflows.md](./guides/workflows.md) | **流程真源（Stage 主叙事）**、CLI、产物、PDF 分支与实现顺序说明 |
+| [phase0-download.md](./guides/phase0-download.md) | Phase 0 年报下载、校验、CLI 与退出码 |
+| [data-source.md](./guides/data-source.md) | Feed 接入原则、字段范围、质量门禁 |
+
+## strategy（选型与版本节奏）
+
+| 文档 | 说明 |
+|------|------|
+| [agent-framework-comparison.md](./strategy/agent-framework-comparison.md) | LangGraph 选型、PoC 范围、**Deep Agents 与 LangGraph 分层** |
+| [strategy-roadmap.md](./strategy/strategy-roadmap.md) | v0.1~v0.3 节奏与策略插件化跨版本说明 |
 
 ## 阅读建议
 
-1. 先看 `README` 了解项目定位与核心流程
-2. 再看本页选择对应细节文档
-3. 实现时优先对照 `workflows` 与 `roadmap`；**一键编排 `workflow:run` 的实际顺序、产物与约束以 `workflows.md` 与源码为准**（与方法论示意图可能不完全等同）
+1. 先读根目录 `README.md` 了解定位与常用命令  
+2. 实现编排与命令：以 [guides/workflows.md](./guides/workflows.md) **与源码**为准（示意图与目标 Stage 顺序若与当前实现不一致，以文档内「当前实现」小节为准）  
+3. 策略与阶段语义：[strategy-orchestration-architecture.md](./architecture/strategy-orchestration-architecture.md)

@@ -100,6 +100,11 @@ User Input (stock code [+ PDF or report URL])
 - `workflow:run --mode standard` keeps legacy behavior (Phase3 may run without `data_pack_report.md`).
 - Quality: `pnpm run quality:all` runs regression + golden for **cn_a** and **hk** (`output/phase3_golden/<suite>/`). HK suite is snapshot regression; full HK depth is not yet at A-share parity.
 
+## Documentation
+
+- **Index**: `docs/README.md`（`architecture` / `guides` / `strategy`）
+- **Workflows & CLI (Stage)**: `docs/guides/workflows.md`
+
 ## Environment Requirements
 
 - Node.js >= 20

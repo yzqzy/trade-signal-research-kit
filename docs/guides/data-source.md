@@ -1,6 +1,6 @@
 # 数据源与字段契约
 
-[返回 README](../README.md) · [文档索引](./README.md)
+[返回项目首页](../../README.md) · [文档索引](../README.md)
 
 ## 数据接入原则
 
@@ -127,3 +127,8 @@ MCP 场景（AI/Agent）：
 **依赖**：`contract`、`regression`、`phase3-golden` 均要求仓库内已存在 `output/phase3_golden/cn_a/` 与 `output/phase3_golden/hk/`（及其中 `run/` 基线）；缺失会导致检查失败。
 
 **港股说明**：`hk` 黄金样例用于回归一致性；港股侧与 A 股同等深度的业务语义与专项验证 **暂未实现**，后续里程碑会单独补齐。
+
+## 相关文档
+
+- [流程与 CLI](./workflows.md)
+- [系统架构](../architecture/system-architecture.md)

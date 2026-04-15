@@ -16,7 +16,7 @@ pnpm run build
 
 运行任意 `@trade-signal/research-strategies` CLI 前都需要先有 `dist/`（根目录 `pnpm run build` 即可）。
 
-**`apps/screener-web`**：历史实验用 Next 壳层，**已冻结**；默认不参与根目录 `pnpm run build`。选股器请用 **`pnpm run screener:run`**（产物见 [docs/workflows.md](docs/workflows.md) 选股器章节）。若仍要本地启动 `pnpm run web:dev`，请先 `pnpm run build`，并阅读 [`apps/screener-web/README.md`](apps/screener-web/README.md)。
+**`apps/screener-web`**：历史实验用 Next 壳层，**已冻结**；默认不参与根目录 `pnpm run build`。选股器请用 **`pnpm run screener:run`**（产物见 [docs/guides/workflows.md](docs/guides/workflows.md) 选股器章节）。若仍要本地启动 `pnpm run web:dev`，请先 `pnpm run build`，并阅读 [`apps/screener-web/README.md`](apps/screener-web/README.md)。
 
 ## 5 分钟上手（A 股示例）
 
@@ -75,7 +75,7 @@ pnpm run report-to-html:run -- \
 | `business-analysis:run` | `qualitative_report.md`、`qualitative_d1_d6.md`、`data_pack_market.md`、可选 `data_pack_report.md`、`business_analysis_manifest.json` |
 | `workflow:run` | `analysis_report.md/html`、`valuation_computed.json`、`workflow_manifest.json` |
 | `valuation:run` | `valuation_computed.json`、`valuation_summary.md`（可选 `--full-report` 追加完整报告 md/html） |
-| `phase3:run` | 同 workflow 中 Phase3 三件套（见 [docs/workflows.md](docs/workflows.md)） |
+| `phase3:run` | 同 workflow 中 Phase3 三件套（见 [docs/guides/workflows.md](docs/guides/workflows.md)） |
 
 `business_analysis_manifest.json` / `workflow_manifest.json` 内含 `pipeline.valuation.relativePaths`，便于串接 `valuation:run`。
 
@@ -100,7 +100,7 @@ pnpm run quality:all
 pnpm run test:linkage   # build + 链路烟测（市场包/2B/D1D6 结构）
 ```
 
-默认覆盖 `cn_a` 与 `hk` 回归/黄金快照（港股基线用于防回归，不代表深度能力已齐）。详见 [docs/data-source.md](docs/data-source.md)。
+默认覆盖 `cn_a` 与 `hk` 回归/黄金快照（港股基线用于防回归，不代表深度能力已齐）。详见 [docs/guides/data-source.md](docs/guides/data-source.md)。
 
 ## 环境变量（最小集）
 
@@ -113,9 +113,10 @@ pnpm run test:linkage   # build + 链路烟测（市场包/2B/D1D6 结构）
 
 ## 更多文档
 
-- [流程与 CLI 细节](docs/workflows.md)
-- [数据契约与 quality](docs/data-source.md)
-- [路线图](docs/roadmap.md)
+- [流程与 CLI 细节](docs/guides/workflows.md)
+- [数据契约与 quality](docs/guides/data-source.md)
+- [路线图（策略与版本）](docs/strategy/strategy-roadmap.md)
+- [文档总索引](docs/README.md)
 - [Claude Code 指引](CLAUDE.md)
 
 ## 参考
