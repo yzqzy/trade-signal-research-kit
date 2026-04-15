@@ -79,7 +79,9 @@ function parseFinancialRows(text: string): FinancialYearData[] {
 }
 
 export function parseDataPackMarket(markdown: string): DataPackMarketParsed {
-  const code = markdown.match(/(\d{6})/)?.[1] ?? "UNKNOWN";
+  /** 优先从 H1 标题「名称（代码）」取 5~6 位代码，避免正文表格中首个 6 位数字误当股票代码（如港股 00700） */
+  const titleCode = markdown.match(/^#\s*.+?[（(](\d{5,6})[）)]/m)?.[1];
+  const code = titleCode ?? markdown.match(/(\d{6})/)?.[1] ?? "UNKNOWN";
   const name = markdown.match(/#\s*(.+?)(?:\(|（|\n)/)?.[1]?.trim();
   const rf = toNumber(markdown.match(/无风险利率[^\d-]*(-?\d+(?:\.\d+)?)/)?.[1]);
   const price = toNumber(markdown.match(/(?:最新股价|收盘价)[^\d-]*(-?\d+(?:\.\d+)?)/)?.[1]);

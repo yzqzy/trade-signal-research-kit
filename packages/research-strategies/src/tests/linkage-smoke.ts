@@ -5,101 +5,23 @@
  */
 import assert from "node:assert/strict";
 
-import type { DataPackMarket, PdfSections } from "@trade-signal/schema-core";
-
 import { renderQualitativeD1D6Scaffold } from "../app/business-analysis/d1-d6-scaffold.js";
 import { evaluatePhase3Preflight } from "../pipeline/phase3-preflight.js";
 import { projectEvidenceToC2 } from "../stages/phase1b/collector.js";
 import { renderPhase2BDataPackReport } from "../stages/phase2b/renderer.js";
 import { buildMarketPackMarkdown } from "../app/workflow/build-market-pack.js";
 import { refreshMarketPackMarkdown } from "../app/workflow/refresh-market-pack.js";
-
-function sampleDataPack(): DataPackMarket {
-  return {
-    instrument: { code: "600887", market: "CN_A", name: "伊利股份", currency: "CNY" },
-    quote: { code: "600887", price: 28.5, timestamp: new Date().toISOString() },
-    klines: [
-      {
-        code: "600887",
-        period: "day",
-        ts: "2024-12-31",
-        open: 28,
-        high: 29,
-        low: 27.5,
-        close: 28.5,
-        volume: 1e6,
-      },
-    ],
-    financialSnapshot: {
-      code: "600887",
-      period: "2024",
-      revenue: 126_000,
-      netProfit: 11_800,
-      operatingCashFlow: 15_400,
-      totalAssets: 168_000,
-      totalLiabilities: 93_000,
-      capitalExpenditure: 4200,
-      interestBearingDebt: 12_000,
-      cashAndEquivalents: 42_000,
-      minorityInterestPnL: 300,
-      marketCapBaiWan: 180_000,
-      totalSharesOutstandingMm: 6315.2,
-      parentRevenue: 80_000,
-      parentNetProfit: 9000,
-      parentTotalAssets: 120_000,
-      parentTotalLiabilities: 70_000,
-    },
-    financialHistory: [
-      {
-        code: "600887",
-        period: "2023",
-        revenue: 118_000,
-        netProfit: 10_200,
-        operatingCashFlow: 14_000,
-        totalAssets: 162_000,
-        totalLiabilities: 91_000,
-        capitalExpenditure: 4100,
-        interestBearingDebt: 11_500,
-        cashAndEquivalents: 39_000,
-        minorityInterestPnL: 280,
-        earningsPerShare: 1.62,
-        dividendsPerShare: 1.05,
-      },
-    ],
-    corporateActions: [
-      {
-        code: "600887",
-        actionType: "dividend",
-        cashDividendPerShare: 1.1,
-      },
-    ],
-    tradingCalendar: [{ market: "CN_A", date: "2024-01-02", isTradingDay: true }],
-  };
-}
-
-function samplePdfSections(): PdfSections {
-  return {
-    metadata: {
-      pdfFile: "fixture.pdf",
-      totalPages: 10,
-      extractTime: new Date().toISOString(),
-      sectionsFound: 3,
-      sectionsTotal: 7,
-    },
-    P2: { content: "受限资产摘录", pageFrom: 1, pageTo: 2 },
-    MDA: { content: "MD&A 摘录", pageFrom: 5, pageTo: 6 },
-  };
-}
+import { sampleCnADataPack, samplePdfSections } from "./fixtures/phase3-golden-sample.js";
 
 function main(): void {
-  const md = buildMarketPackMarkdown("600887", sampleDataPack());
+  const md = buildMarketPackMarkdown("600887", sampleCnADataPack());
   assert.match(md, /## §13 Warnings/);
   assert.match(md, /\| 指标 \| 2024 \| 2023 \|/);
   assert.match(md, /## §17 衍生指标/);
   assert.match(md, /## §3P 母公司利润表/);
   assert.match(md, /母公司营业收入/);
   const refreshed = refreshMarketPackMarkdown("600887", md, {
-    ...sampleDataPack(),
+    ...sampleCnADataPack(),
     quote: { code: "600887", price: 99, timestamp: new Date().toISOString() },
   });
   assert.match(refreshed, /99\.0000/);

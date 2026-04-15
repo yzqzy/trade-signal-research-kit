@@ -1,0 +1,14 @@
+{
+  "valuation_computed.json": {
+    "sha256": "49c993c4289acece40de761ec8250d48e337b4d3e590887abd6e93008e809baa",
+    "bytes": 1754
+  },
+  "analysis_report.md": {
+    "sha256": "291a4e171a8ca79d20f50a88ae6b0f3b9854cf7c086214d954ba1d33b8126ade",
+    "bytes": 2996
+  },
+  "analysis_report.html": {
+    "sha256": "f8b7dfe2ab06257a4c4d1fe68ae99d9a8052a5a671890300c301e3e96913b357",
+    "bytes": 5767
+  }
+}

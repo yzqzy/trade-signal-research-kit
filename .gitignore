@@ -25,8 +25,10 @@ Thumbs.db
 # reference files
 references/
 
-# output files
-output/
+# output files（本地 workflow 产物）；Phase3 黄金基线单独解除忽略以便 clone 即可跑 quality:contract
+output/*
+!output/phase3_golden/
+!output/phase3_golden/**
 
 # Next.js build artifacts
 .next/
