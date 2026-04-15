@@ -11,33 +11,31 @@ export interface AnalysisResult {
   notes: string[];
 }
 
-export * from "./phase0/downloader.js";
-export * from "./phase0/discover-report-url.js";
-export * from "./phase1a/collector.js";
-export * from "./phase1b/types.js";
-export * from "./phase1b/collector.js";
-export * from "./phase1b/renderer.js";
-export * from "./phase2a/extractor.js";
-export * from "./phase2b/renderer.js";
-export * from "./phase3/types.js";
-export * from "./phase3/valuation-engine.js";
-export * from "./phase3/analyzer.js";
-export * from "./workflow/orchestrator.js";
-export * from "./orchestration/contracts.js";
-export { createTurtleStrategyPlugin } from "./orchestration/turtle-strategy-plugin.js";
-export { createValueV1StrategyPlugin } from "./orchestration/value-v1-strategy-plugin.js";
-export {
-  getDefaultWorkflowStrategyPlugin,
-  resolveWorkflowStrategyPlugin,
-} from "./orchestration/resolve-strategy-plugin.js";
+export * from "./stages/phase0/downloader.js";
+export * from "./stages/phase0/discover-report-url.js";
+export * from "./stages/phase1a/collector.js";
+export * from "./stages/phase1b/types.js";
+export * from "./stages/phase1b/collector.js";
+export * from "./stages/phase1b/renderer.js";
+export * from "./stages/phase2a/extractor.js";
+export * from "./stages/phase2b/renderer.js";
+export * from "./stages/phase3/types.js";
+export * from "./stages/phase3/valuation-engine.js";
+export * from "./stages/phase3/analyzer.js";
+export * from "./app/workflow/orchestrator.js";
+export * from "./contracts/workflow-run-types.js";
+export * from "./strategies/contracts.js";
+export { createTurtleStrategyPlugin } from "./strategies/turtle/plugin.js";
+export { createValueV1StrategyPlugin } from "./strategies/value-v1/plugin.js";
+export { resolveWorkflowStrategyPlugin } from "./strategies/registry.js";
 export {
   createDefaultWorkflowOrchestratorAdapter,
   type OrchestratorAdapter,
-} from "./orchestration/workflow-orchestrator-adapter.js";
-export { buildMarketPackMarkdown } from "./workflow/build-market-pack.js";
+} from "./orchestrator/workflow-orchestrator-adapter.js";
+export { buildMarketPackMarkdown } from "./app/workflow/build-market-pack.js";
 export { runPreflightAfterPhase1A } from "./pipeline/preflight.js";
 export { normalizeCodeForFeed } from "./pipeline/normalize-stock-code.js";
-export * from "./business-analysis/orchestrator.js";
+export * from "./app/business-analysis/orchestrator.js";
 export * from "./screener/index.js";
 
 export async function runBaselineAnalysis(

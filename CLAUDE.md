@@ -25,6 +25,8 @@ pnpm run quality:all
 # Work on specific package
 pnpm --filter @trade-signal/schema-core run typecheck
 pnpm --filter @trade-signal/provider-http run build
+
+# research-strategies：根目录仍提供 workflow:run 等聚合命令；包内直跑请用 run:*（例：pnpm --filter @trade-signal/research-strategies run run:workflow）
 ```
 
 ## Architecture

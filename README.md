@@ -75,7 +75,7 @@ pnpm run report-to-html:run -- \
 | `business-analysis:run` | `qualitative_report.md`、`qualitative_d1_d6.md`、`data_pack_market.md`、可选 `data_pack_report.md`、`business_analysis_manifest.json` |
 | `workflow:run` | `analysis_report.md/html`、`valuation_computed.json`、`workflow_manifest.json` |
 | `valuation:run` | `valuation_computed.json`、`valuation_summary.md`（可选 `--full-report` 追加完整报告 md/html） |
-| `phase3:run` | 同 workflow 中 Phase3 三件套（见 [docs/guides/workflows.md](docs/guides/workflows.md)） |
+| `run:phase3`（包内） / 根目录仍可用 `workflow:run` 内含 Phase3 | 同 workflow 中 Phase3 三件套（见 [docs/guides/workflows.md](docs/guides/workflows.md)） |
 
 `business_analysis_manifest.json` / `workflow_manifest.json` 内含 `pipeline.valuation.relativePaths`，便于串接 `valuation:run`。
 

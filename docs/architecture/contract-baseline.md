@@ -11,10 +11,10 @@
 | Stage / Phase、CLI、产物列表 | [docs/guides/workflows.md](../guides/workflows.md) |
 | Feed、字段、质量门禁 | [docs/guides/data-source.md](../guides/data-source.md) |
 | 策略插件与 Stage 抽象 | [strategy-orchestration-architecture.md](./strategy-orchestration-architecture.md) |
-| Workflow 编排实现 | `packages/research-strategies/src/workflow/orchestrator.ts`（薄入口）+ `packages/research-strategies/src/orchestration/langgraph/`（LangGraph 内核） |
-| Workflow CLI | `packages/research-strategies/src/workflow/cli.ts` |
-| Phase3 独立 CLI | `packages/research-strategies/src/phase3/cli.js`（构建后） |
-| Business analysis | `packages/research-strategies/src/business-analysis/orchestrator.ts` |
+| Workflow 编排实现 | `packages/research-strategies/src/app/workflow/orchestrator.ts`（薄入口）+ `packages/research-strategies/src/orchestrator/langgraph/`（LangGraph 内核） |
+| Workflow CLI | `packages/research-strategies/src/cli/workflow.ts`（构建后 `dist/.../cli/workflow.js`） |
+| Phase3 独立 CLI | `packages/research-strategies/src/cli/phase3-run.ts`（构建后 `dist/.../cli/phase3-run.js`） |
+| Business analysis | `packages/research-strategies/src/app/business-analysis/orchestrator.ts` |
 | 严格模式文案与前缀 | `packages/research-strategies/src/pipeline/strict-messages.ts` |
 
 ## 2. Stage 与 Phase 对应（语义）
@@ -71,7 +71,7 @@ B → C →（无 D）→（Phase3 在 runResearchWorkflow 内）
 - `generatedAt`、`input`（code 归一化后写入）、`outputs` 各路径
 - `pipeline.valuation.relativePaths.marketMd`；若有年报包则含 `reportMd`；中报链可能含 `interimReportMd`
 
-## 6. `phase3:run` CLI 契约
+## 6. Phase3 独立 CLI（`run:phase3`）契约
 
 - **必填**：`--market-md <path>`
 - **可选**：`--report-md`、`--interim-report-md`、`--output-dir`（默认 `output`）

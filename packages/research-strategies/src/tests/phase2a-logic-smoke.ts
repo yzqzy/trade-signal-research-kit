@@ -5,13 +5,13 @@
  */
 import assert from "node:assert/strict";
 
-import { PHASE2A_SECTION_ORDER } from "../phase2a/keywords.js";
+import { PHASE2A_SECTION_ORDER } from "../stages/phase2a/keywords.js";
 import {
   detectPageZones,
   PHASE2A_SECTION_ZONE_PREFERENCES,
   PHASE2A_ZONE_MARKERS,
-} from "../phase2a/zones.js";
-import { sanitizePhase2ExtractedText } from "../phase2b/renderer.js";
+} from "../stages/phase2a/zones.js";
+import { sanitizePhase2ExtractedText } from "../stages/phase2b/renderer.js";
 
 function main(): void {
   for (const id of PHASE2A_SECTION_ORDER) {

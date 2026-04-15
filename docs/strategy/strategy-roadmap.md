@@ -14,7 +14,7 @@
 - **质量回归**：`cn_a` + `hk` 双套件 golden（`quality:regression` / `quality:phase3-golden` 默认 `--suite all`）
 - **独立估值**：`pnpm run valuation:run`（`/valuation`），可与 `business-analysis` manifest 串接
 - **Markdown 转 HTML**：`pnpm run report-to-html:run`（`/report-to-html`）
-- 输出：`phase3:run` 与编排均在指定目录产出 `analysis_report.md` / `analysis_report.html`（文件名固定）
+- 输出：`run:phase3`（包内）与 `workflow:run`（根目录编排）均在指定目录产出 `analysis_report.md` / `analysis_report.html`（文件名固定）
 - **A 股优先**；**港股**：基础数据与 `hk` 黄金样例已具备，与 A 股同等深度 **暂未实现**
 
 ## v0.2（计划中）

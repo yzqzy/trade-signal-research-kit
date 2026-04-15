@@ -5,8 +5,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { strict as assert } from "node:assert";
 
-import { runPhase3Strict } from "../phase3/analyzer.js";
-import { renderPhase3Html, renderPhase3Markdown } from "../phase3/report-renderer.js";
+import { runPhase3Strict } from "../stages/phase3/analyzer.js";
+import { renderPhase3Html, renderPhase3Markdown } from "../stages/phase3/report-renderer.js";
 
 export type QualitySuite = "cn_a" | "hk" | "all";
 

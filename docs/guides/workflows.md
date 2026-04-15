@@ -4,6 +4,8 @@
 
 本文档以 **Stage（通用编排阶段）** 为真源描述流程；**Phase 0~3** 为当前 CLI/代码中的实现命名，二者一一对应。策略（如 **Turtle / 龟龟**）仅作用于 **Stage E** 及证据投影层，不是整条流水线的名字。详见 [策略与流程解耦](../architecture/strategy-orchestration-architecture.md)。
 
+**脚本口径（非兼容收敛后）**：仓库根目录仍保留用户向命令（如 `pnpm run workflow:run`）；在 `@trade-signal/research-strategies` 包内请使用分组脚本 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史 `phase*:run` 等别名）。下文 `pnpm --filter @trade-signal/research-strategies run …` 示例均指向包内 `run:*`。
+
 ## Stage 与 Phase 对照
 
 | Stage | 名称 | 对应 Phase（实现） | 策略无关 |
@@ -96,7 +98,7 @@ Phase1A → Phase1B → Phase3
 - **Stage A / Phase 0**：`workflow` 内仅 `--report-url` 触发下载；**仅 `--pdf` 不经过 Phase0**。独立 `phase0:download` 可无 `--url`，由 Feed `/stock/report/search` 自动发现 PDF（需 `FEED_BASE_URL`）。详见 [Phase 0 下载器](./phase0-download.md)。
 - **依赖**：`FEED_BASE_URL`（Phase1A 固定 HTTP Provider）；编排内合成的 `data_pack_market.md` 与手写 golden 用途不同。
 - **Pre-flight**：`--mode turtle-strict` 时，Phase1A 后会校验行情/财报关键字段及市场包是否含 `## §13 Warnings`；亦可用 `--preflight strict` 在 `standard` 下强制开启。`business-analysis --strict` 等价打开 Pre-flight。
-- **与 `phase3:run` 差异**：编排不传 `--interim-report-md`。
+- **与独立 Phase3（`run:phase3`）差异**：编排不传 `--interim-report-md`。
 
 ## 独立商业分析流程
 
@@ -164,7 +166,7 @@ Claude：`/valuation`、`/report-to-html`（见 `.claude/commands/`）。
 Phase2A CLI（research-strategies）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run phase2a:extract -- \
+pnpm --filter @trade-signal/research-strategies run run:phase2a-extract -- \
   --pdf "./cache/reports/SH600519/600519_2024_年报.pdf" \
   --output "./output/pdf_sections.json"
 ```
@@ -172,7 +174,7 @@ pnpm --filter @trade-signal/research-strategies run phase2a:extract -- \
 Phase2B CLI（research-strategies，输出 5+1 `data_pack_report.md`，不含 MDA）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
+pnpm --filter @trade-signal/research-strategies run run:phase2b-render -- \
   --pdf "./cache/reports/SH600519/600519_2024_年报.pdf" \
   --phase2a-output "./output/pdf_sections.json" \
   --output "./output/data_pack_report.md"
@@ -181,7 +183,7 @@ pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
 如果已经有 `pdf_sections.json`，可直接渲染：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
+pnpm --filter @trade-signal/research-strategies run run:phase2b-render -- \
   --sections "./output/pdf_sections.json" \
   --output "./output/data_pack_report.md"
 ```
@@ -189,7 +191,7 @@ pnpm --filter @trade-signal/research-strategies run phase2b:render -- \
 Phase3 CLI（research-strategies）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run phase3:run -- \
+pnpm --filter @trade-signal/research-strategies run run:phase3 -- \
   --market-md "./output/phase3_golden/cn_a/data_pack_market.md" \
   --report-md "./output/phase3_golden/cn_a/data_pack_report.md" \
   --output-dir "./output"
@@ -206,7 +208,7 @@ pnpm --filter @trade-signal/research-strategies run phase3:run -- \
 Workflow CLI（一键串联）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run workflow:run -- \
+pnpm --filter @trade-signal/research-strategies run run:workflow -- \
   --code 600887 \
   --year 2024 \
   --pdf "./references/tmp/1216664083.pdf" \
@@ -249,7 +251,7 @@ pnpm run business-analysis:run -- \
 Screener CLI（独立策略域，与 Stage E 并行存在）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run screener:run -- \
+pnpm --filter @trade-signal/research-strategies run run:screener -- \
   --market CN_A \
   --mode standalone \
   --input-json "./output/screener_samples/cn_a_universe.json" \
@@ -257,7 +259,7 @@ pnpm --filter @trade-signal/research-strategies run screener:run -- \
 ```
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run screener:run -- \
+pnpm --filter @trade-signal/research-strategies run run:screener -- \
   --market HK \
   --mode composed \
   --input-json "./output/screener_samples/hk_universe.json" \

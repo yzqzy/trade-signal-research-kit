@@ -1,5 +1,5 @@
-import { parseDataPackMarket } from "../phase3/market-pack-parser.js";
-import { parseDataPackReport } from "../phase3/report-pack-parser.js";
+import { parseDataPackMarket } from "../stages/phase3/market-pack-parser.js";
+import { parseDataPackReport } from "../stages/phase3/report-pack-parser.js";
 
 export type Phase3PreflightVerdict = "PROCEED" | "SUPPLEMENT_NEEDED" | "ABORT";
 
