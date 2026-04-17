@@ -19,7 +19,8 @@ export type ResolvedCliInput = {
   stockCode?: string;
   category?: string;
   year?: string;
-  saveDir: string;
+  /** 未设置时由下载器默认落到 `cache/reports/<code>/`（相对当前工作目录） */
+  saveDir?: string;
   maxRetries: number;
   forceRefresh: boolean;
 };
@@ -79,7 +80,7 @@ export function resolvePhase0CliInput(args: CliArgs, env: NodeJS.ProcessEnv = pr
     stockCode: args.stockCode ?? env.PHASE0_STOCK_CODE,
     category: args.category ?? env.PHASE0_CATEGORY ?? "年报",
     year: args.year ?? env.PHASE0_YEAR,
-    saveDir: args.saveDir ?? env.PHASE0_SAVE_DIR ?? ".",
+    saveDir: args.saveDir ?? env.PHASE0_SAVE_DIR,
     maxRetries: args.maxRetries ?? (env.PHASE0_MAX_RETRIES ? Number(env.PHASE0_MAX_RETRIES) : 3),
     forceRefresh: args.forceRefresh || parseEnvBoolean(env.PHASE0_FORCE_REFRESH) || false,
   };

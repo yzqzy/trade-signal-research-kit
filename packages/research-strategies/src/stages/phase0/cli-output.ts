@@ -1,10 +1,14 @@
+import { isPhase0NoDataError } from "./phase0-errors.js";
+
 export const EXIT_SUCCESS = 0;
 export const EXIT_NETWORK_FAILURE = 1;
 export const EXIT_PDF_VALIDATION_FAILURE = 2;
 export const EXIT_BAD_ARGUMENTS = 3;
+/** 自动发现无符合白名单的年报 PDF（常见：该财年尚未披露） */
+export const EXIT_NO_DATA = 4;
 
 export type CliResultInput = {
-  status: "SUCCESS" | "FAILED";
+  status: "SUCCESS" | "FAILED" | "NO_DATA";
   filepath?: string;
   filesize?: number;
   url: string;
@@ -40,8 +44,18 @@ export function mapPhase0ErrorToExitCode(message: string): number {
   if (message.includes("Invalid report URL")) {
     return EXIT_BAD_ARGUMENTS;
   }
-  if (message.includes("[phase0]") && (message.includes("--url") || message.includes("请手动指定"))) {
+  if (
+    message.includes("[phase0]") &&
+    (message.includes("请改用 --url") || message.includes("请手动指定 PDF 直链"))
+  ) {
     return EXIT_BAD_ARGUMENTS;
   }
   return EXIT_NETWORK_FAILURE;
+}
+
+/** 优先识别 `Phase0NoDataError`，再按文案映射退出码 */
+export function mapPhase0ErrorToExitCodeFromError(error: unknown): number {
+  if (isPhase0NoDataError(error)) return EXIT_NO_DATA;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return mapPhase0ErrorToExitCode(message);
 }

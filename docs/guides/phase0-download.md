@@ -4,7 +4,8 @@
 
 ## 支持能力
 
-- **自动发现（可选）**：未传 `--url` 时，通过 Feed `GET /api/v1/stock/report/search`（与 Phase1B 同源）检索年报 PDF，再取白名单内链接下载（需 `FEED_BASE_URL`）。失败时提示手动传 `--url`。
+- **自动发现（可选）**：未传 `--url` 时，通过 Feed `GET /api/v1/stock/report/search`（与 Phase1B 同源）检索年报 PDF，再取白名单内链接下载（需 `FEED_BASE_URL`）。若该财年尚未披露或数据源暂无公告，CLI 会以 `NO_DATA` 状态与退出码 `4` 结束（非系统故障）；配置/参数问题仍为 `FAILED` + 退出码 `3`。
+- **默认落盘目录**：未传 `--save-dir` 且未设置 `PHASE0_SAVE_DIR` 时，PDF 写入 **当前工作目录** 下的 `cache/reports/<stock-code>/`（与显式传 `./cache/reports/...` 一致）。
 - 严格白名单：`stockn.xueqiu.com`、`*.10jqka.com.cn`、`*.cninfo.com.cn`
 - 自动重试与指数退避（默认 3 次）
 - PDF 双重校验（`%PDF-` 魔数 + MIME 检测）
@@ -22,9 +23,10 @@ pnpm run phase0:download -- \
   --stock-code "600519" \
   --category "年报" \
   --year "2024" \
-  --save-dir "./cache/reports/SH600519" \
   --max-retries 3
 ```
+
+（可选）自定义目录：`--save-dir "./cache/reports/SH600519"`。
 
 **显式 PDF 链接**
 
@@ -34,7 +36,6 @@ pnpm run phase0:download -- \
   --stock-code "SH600519" \
   --category "年报" \
   --year "2024" \
-  --save-dir "./cache/reports/SH600519" \
   --max-retries 3
 ```
 
@@ -64,14 +65,15 @@ CLI 会自动尝试加载项目根目录 `.env`，支持以下变量：
 - `PHASE0_MAX_RETRIES`
 - `PHASE0_FORCE_REFRESH`
 
-参数优先级：**命令行参数 > `.env` 变量 > 内置默认值**。
+参数优先级：**命令行参数 > `.env` 变量 > 内置默认值**（`--save-dir` / `PHASE0_SAVE_DIR` 未设置时使用默认 `cache/reports/<code>/`）。
 
 ## 退出码
 
 - `0`：成功
 - `1`：网络或上游失败
 - `2`：PDF 校验失败
-- `3`：参数错误、URL 不在白名单、或 **自动发现失败**（需改传 `--url`）
+- `3`：参数错误、URL 不在白名单、或自动发现 **配置/调用失败**（需检查 `FEED_BASE_URL`、域名白名单或改传 `--url`）
+- `4`：**暂无可用年报 PDF**（常见为该财年尚未披露）；结果块中 `status: NO_DATA`
 
 ## 相关文档
 

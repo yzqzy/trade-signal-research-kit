@@ -10,9 +10,10 @@ import {
 import {
   EXIT_BAD_ARGUMENTS,
   EXIT_SUCCESS,
-  mapPhase0ErrorToExitCode,
+  mapPhase0ErrorToExitCodeFromError,
   printPhase0CliResult,
 } from "../stages/phase0/cli-output.js";
+import { isPhase0NoDataError } from "../stages/phase0/phase0-errors.js";
 
 async function main(): Promise<void> {
   initPhase0CliEnv();
@@ -61,17 +62,18 @@ async function main(): Promise<void> {
         fiscalYear: resolved.year as string,
         category: resolved.category as string,
       });
-    } catch (error: any) {
-      const message = error?.message ?? "Phase0 auto-discovery failed";
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Phase0 auto-discovery failed";
+      const noData = isPhase0NoDataError(error);
       printPhase0CliResult({
-        status: "FAILED",
+        status: noData ? "NO_DATA" : "FAILED",
         url: "",
         stockCode: resolved.stockCode ?? "",
         category: resolved.category ?? "",
         year: resolved.year ?? "",
         message,
       });
-      process.exit(mapPhase0ErrorToExitCode(message));
+      process.exit(mapPhase0ErrorToExitCodeFromError(error));
       return;
     }
   }
@@ -101,11 +103,11 @@ async function main(): Promise<void> {
       message: "Download successful",
     });
     process.exit(EXIT_SUCCESS);
-  } catch (error: any) {
-    const message = error?.message ?? "Download failed";
-    const code = mapPhase0ErrorToExitCode(message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Download failed";
+    const code = mapPhase0ErrorToExitCodeFromError(error);
     printPhase0CliResult({
-      status: "FAILED",
+      status: isPhase0NoDataError(error) ? "NO_DATA" : "FAILED",
       url: reportUrl,
       stockCode: resolved.stockCode as string,
       category: resolved.category as string,

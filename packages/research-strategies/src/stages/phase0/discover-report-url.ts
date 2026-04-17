@@ -1,4 +1,5 @@
 import { isPhase0WhitelistedPdfUrl } from "./downloader.js";
+import { Phase0NoDataError } from "./phase0-errors.js";
 
 type FeedSearchHit = {
   title?: string;
@@ -15,10 +16,13 @@ type FeedSearchHit = {
 
 type FeedSearchResponse = {
   success?: boolean;
-  data?: FeedSearchHit[] | { items?: FeedSearchHit[]; results?: FeedSearchHit[]; list?: FeedSearchHit[] };
+  data?:
+    | FeedSearchHit[]
+    | { items?: FeedSearchHit[]; results?: FeedSearchHit[]; list?: FeedSearchHit[]; candidates?: FeedSearchHit[] };
   items?: FeedSearchHit[];
   results?: FeedSearchHit[];
   list?: FeedSearchHit[];
+  candidates?: FeedSearchHit[];
   message?: string;
 };
 
@@ -27,12 +31,13 @@ const DEFAULT_ENDPOINT_PATH = "/stock/report/search";
 function normalizeHits(payload: FeedSearchResponse): FeedSearchHit[] {
   if (Array.isArray(payload.data)) return payload.data;
   if (payload.data && typeof payload.data === "object") {
-    const nested = payload.data.items ?? payload.data.results ?? payload.data.list;
+    const nested = payload.data.items ?? payload.data.results ?? payload.data.list ?? payload.data.candidates;
     if (Array.isArray(nested)) return nested;
   }
   if (Array.isArray(payload.items)) return payload.items;
   if (Array.isArray(payload.results)) return payload.results;
   if (Array.isArray(payload.list)) return payload.list;
+  if (Array.isArray(payload.candidates)) return payload.candidates;
   return [];
 }
 
@@ -78,7 +83,7 @@ async function fetchSearchHits(params: {
   apiKey?: string;
   stockCode: string;
   fiscalYear: string;
-  q: string;
+  category: string;
   limit: number;
 }): Promise<FeedSearchHit[]> {
   const base = params.baseUrl.replace(/\/+$/, "");
@@ -88,9 +93,7 @@ async function fetchSearchHits(params: {
 
   url.searchParams.set("code", params.stockCode);
   url.searchParams.set("year", params.fiscalYear);
-  url.searchParams.set("q", params.q);
-  url.searchParams.set("query", params.q);
-  url.searchParams.set("keyword", params.q);
+  url.searchParams.set("category", params.category);
   url.searchParams.set("limit", String(params.limit));
 
   const response = await fetch(url, {
@@ -117,7 +120,8 @@ const PHASE0_DISCOVERY_HINT =
 
 /**
  * 通过 Feed `/stock/report/search` 解析年报 PDF URL（仅白名单域名）。
- * 失败时抛出带 `[phase0]` 的 Error，引导使用 `--url`。
+ * 失败时抛出带 `[phase0]` 的 Error，引导使用 `--url`；
+ * 若检索无符合白名单的 PDF（常见为尚未披露），抛出 {@link Phase0NoDataError}。
  */
 export async function discoverPhase0ReportUrlFromFeed(input: {
   stockCode: string;
@@ -137,32 +141,23 @@ export async function discoverPhase0ReportUrlFromFeed(input: {
   const cat = input.category.trim() || "年报";
   const year = input.fiscalYear.trim();
 
-  const queries = [
-    `${normCode} ${year} 年度报告 PDF`,
-    `${normCode} ${year} 年报 PDF`,
-    `${normCode} ${year} annual report pdf cninfo`,
-  ];
-
   const seen = new Set<string>();
   const candidates: FeedSearchHit[] = [];
 
-  for (const q of queries) {
-    const hits = await fetchSearchHits({
-      baseUrl,
-      apiBasePath,
-      apiKey,
-      stockCode: input.stockCode,
-      fiscalYear: year,
-      q,
-      limit: 20,
-    });
-    for (const h of hits) {
-      const u = resolveHitUrl(h)?.trim();
-      if (!u || seen.has(u)) continue;
-      seen.add(u);
-      candidates.push({ ...h, url: u });
-    }
-    if (candidates.length >= 8) break;
+  const hits = await fetchSearchHits({
+    baseUrl,
+    apiBasePath,
+    apiKey,
+    stockCode: input.stockCode,
+    fiscalYear: year,
+    category: cat,
+    limit: 20,
+  });
+  for (const h of hits) {
+    const u = resolveHitUrl(h)?.trim();
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    candidates.push({ ...h, url: u });
   }
 
   const anyPdfLike = candidates.filter((h) => {
@@ -181,8 +176,10 @@ export async function discoverPhase0ReportUrlFromFeed(input: {
         `[phase0] Feed 检索到了 PDF，但域名不在白名单（雪球/同花顺/巨潮）。${PHASE0_DISCOVERY_HINT}`,
       );
     }
-    throw new Error(
-      `[phase0] Feed 检索未找到符合白名单（雪球/同花顺/巨潮）的 PDF 年报链接。${PHASE0_DISCOVERY_HINT}`,
+    throw new Phase0NoDataError(
+      `[phase0] 未检索到符合白名单（雪球/同花顺/巨潮）的年报 PDF。` +
+        `该报告期可能尚未披露，或公告尚未同步至数据源（属于「暂无数据」，不是系统故障）。` +
+        `请更换年份后重试，或使用 --url 手动指定 PDF 直链。`,
     );
   }
 

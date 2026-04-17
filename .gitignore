@@ -25,6 +25,10 @@ Thumbs.db
 # reference files
 references/
 
+# Phase0 本地下载缓存（默认 cache/reports/<code>/）
+cache/reports/
+**/cache/reports/
+
 # output files（本地 workflow 产物）；Phase3 黄金基线单独解除忽略以便 clone 即可跑 quality:contract
 output/*
 !output/phase3_golden/
