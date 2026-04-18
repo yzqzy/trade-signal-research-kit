@@ -90,13 +90,36 @@ const dataPack = await collectPhase1ADataPack(provider, {
 依赖的 feed 配置（HTTP）：
 
 - `FEED_BASE_URL`
+- `FEED_API_BASE_PATH`（可选，默认 `/api/v1`；仅当 Feed 未挂在默认前缀时需要）
 - `FEED_API_KEY`（可选）
 
 说明：
 
-- HTTP API 基础前缀固定为 `/api/v1`（代码内置默认）
-- Phase1B 检索 endpoint 固定为 `/stock/report/search`（代码内置默认）
+- HTTP API 基础前缀默认为 `/api/v1`（与 `trade-signal-feed` 默认全局前缀一致）；可通过 `FEED_API_BASE_PATH` 覆盖（Phase0 / Phase1B 一致读取）。
+- Phase1B 检索 endpoint 固定为 `/stock/report/search`（代码内置默认），参数契约如下：
+  - 必填：`code`
+  - 可选：`year`（YYYY，回显）、`category`、`limit`、`keyword`（标题子串过滤）、`timeRange`（`3m` / `6m` / `1y` / `3y` / `5y`，默认 `3y`）、`stockName`（证券简称）、`item`（条目标签，用于候选排序偏好）
+  - `category` 支持中文单值与中文多值（分号分隔）：例如 `年报`、`公司治理`、`年报;公司治理;风险提示;`
+  - `category` 多值由 feed 侧解析并映射为公告分类组合
+  - 时间窗由 `timeRange` 决定，具体日期区间在 feed 内部换算
+  - 标题子串过滤仅使用查询参数 `keyword`；未在 DTO 契约中列出的查询参数会被拒绝（白名单校验）
+  - 成功响应（A 股命中路径）可含 `requestedCategories`、`requestedCategoryKeys`、`effectiveCategoryParam`、`timeRange`
 - Phase0 在未提供 `--url` 时复用同一检索端点做年报 PDF 自动发现（需 `FEED_BASE_URL`）；失败需手动传 PDF 直链
+
+### Phase1B category 场景建议
+
+按章节选择不同 `category` 组合（中文多值）可显著提高命中率：
+
+- §7 管理层与治理：`公司治理;董事会;监事会;股东会;股权变动;风险提示;`
+- §8 行业与竞争：`日常经营;风险提示;中介报告;`
+- §10 MD&A：`年报;半年报;一季报;三季报;`
+
+示例（HTTP）：
+
+```text
+GET /api/v1/stock/report/search?code=600887&year=2024&category=公司治理;董事会;风险提示;&limit=20
+GET /api/v1/stock/report/search?code=600887&year=2024&category=年报;半年报;一季报;三季报;&limit=20&timeRange=3y
+```
 
 MCP 场景（AI/Agent）：
 

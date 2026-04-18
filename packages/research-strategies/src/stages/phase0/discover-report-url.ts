@@ -95,6 +95,7 @@ async function fetchSearchHits(params: {
   url.searchParams.set("year", params.fiscalYear);
   url.searchParams.set("category", params.category);
   url.searchParams.set("limit", String(params.limit));
+  url.searchParams.set("timeRange", "3y");
 
   const response = await fetch(url, {
     headers: {

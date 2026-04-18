@@ -13,7 +13,7 @@
 1. **当前工作目录**下的 `.env`
 2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-strategies` 执行时通常对应**仓库根**的 `.env`）
 
-命中第一个存在的文件后即停止加载。**已在 shell 中 `export` 的变量不会被 `.env` 覆盖**（dotenv 默认行为）。仍需在根 `.env` 或环境中配置 `FEED_BASE_URL` 等，详见各子文档（如 [Phase 0 下载器](./phase0-download.md)）。
+命中第一个存在的文件后即停止加载。**已在 shell 中 `export` 的变量不会被 `.env` 覆盖**（dotenv 默认行为）。仍需在根 `.env` 或环境中配置 `FEED_BASE_URL` 等，详见各子文档（如 [Phase 0 下载器](./phase0-download.md)）。Phase1B 调用的 `GET /api/v1/stock/report/search` 传 `code`/`year`/`category`/`limit`/`timeRange`/`stockName`/`item`（`category` 为中文多值分号串；`timeRange` 默认 `3y`）；标题过滤仅用 `keyword`（详见 [数据源与 Phase1B](./data-source.md)）。
 
 ## 产物目录 output v2（非兼容）
 
