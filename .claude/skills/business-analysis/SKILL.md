@@ -22,7 +22,7 @@ description: "PDF-first 独立商业分析：年报自动发现/下载（best-ef
 - `qualitative_report.md`：PDF-first 元信息头 + Phase1B 正文。
 - `qualitative_d1_d6.md`：Turtle **D1~D6** 契约稿（工程骨架 + Phase1B 摘录 + 可选报告包摘录）。
 - `phase1b_evidence_quality.json`：§7/§8 证据结构离线指标。
-- `business_analysis_manifest.json`：`input.mode` / `input.strategy`、`input.runId` / `input.outputDirParent`、按需写入的 `from`/`to`/`category` 等复跑字段、`pipeline.pdfBranch`、`pipeline.valuation`；`suggestedTurtleWorkflowCommand` 含 `--run-id` 等与当次 run 对齐的参数。供 `valuation:run --from-manifest`（未传 `--code` 时用 `outputLayout.code` 分区）与全链路衔接。
+- `business_analysis_manifest.json`：`input.mode` / `input.strategy`、`input.runId` / `input.outputDirParent`、按需写入的 `from`/`to`/`category` 等复跑字段、`pipeline.pdfBranch`、`pipeline.valuation`；`suggestedWorkflowFullCommand` 含 `--run-id` 等与当次 run 对齐的参数。供 `valuation:run --from-manifest`（未传 `--code` 时用 `outputLayout.code` 分区）与全链路衔接。
 
 ## 入口映射
 

@@ -6,6 +6,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `trade-signal-schema-kit` is a TypeScript analysis framework for A-share and Hong Kong stock research. It provides data collection → qualitative analysis → quantitative evaluation → valuation → report output capabilities.
 
+## Core Capability Overview
+
+| Goal | Claude slash | Root command | Key outputs |
+|------|--------------|--------------|-------------|
+| Full workflow (strict branch) | `/workflow-analysis` | `pnpm run workflow:run -- --mode turtle-strict ...` | `analysis_report.md/html`, `valuation_computed.json`, `workflow_manifest.json` |
+| Business analysis (PDF-first) | `/business-analysis` | `pnpm run business-analysis:run -- ...` | `qualitative_report.md`, `qualitative_d1_d6.md`, `business_analysis_manifest.json` |
+| Valuation only | `/valuation` | `pnpm run valuation:run -- ...` | `valuation_computed.json`, `valuation_summary.md` |
+| Download annual report | `/download-annual-report` | `pnpm run phase0:download -- ...` | local PDF |
+| Markdown to HTML | `/report-to-html` | `pnpm run report-to-html:run -- ...` | `.html` |
+
+## Architecture (UML)
+
+```mermaid
+flowchart TD
+  U["User Input (code + options)"] --> P0["Phase0 (optional): report discovery/download"]
+  P0 --> P1A["Phase1A: structured market data"]
+  P1A --> P2["Phase2A/2B (optional): annual PDF extraction"]
+  P2 --> P1B["Phase1B: external evidence"]
+  P1B --> P3["Phase3: strategy + valuation + report"]
+  P3 --> O["analysis_report + valuation + manifests"]
+
+  S["--strategy (turtle | value_v1 | ...)"] --> P3
+```
+
+Execution order for `workflow:run`: Phase 0 (optional) → Phase 1A → (if annual PDF available) Phase 2A/2B → Phase 1B → Phase 3.
+
+## Three Quick Starts (Claude Code)
+
+```text
+/workflow-analysis 600887
+/business-analysis 600887
+/valuation 600887
+```
+
+- Use `/workflow-analysis` for end-to-end output.
+- Use `/business-analysis` for PDF-first qualitative deliverables (no full Phase3).
+- Use `/valuation` when inputs/manifest are already prepared.
+
+## Strategy Switching
+
+- Slash: `/workflow-analysis 600887 --strategy value_v1`
+- CLI: `pnpm run workflow:run -- --code 600887 --mode turtle-strict --strategy value_v1`
+- Keep entrypoint neutral: strategy is a parameter (`--strategy`), not an entry name.
+
 ## Common Commands
 
 ```bash
@@ -30,27 +74,6 @@ pnpm --filter @trade-signal/provider-http run build
 # 产物目录 output v2：默认 `output/workflow/<code>/<runId>/`；`workflow:run` 可选 `--run-id` 固定子目录名（续跑以 checkpoint 为准）；business-analysis 默认 `output/business-analysis/<code>/<runId>/`（PDF 自动发现/下载与 workflow 共用 ensure-annual-pdf）；续跑必须 `--output-dir` 指向 run 根目录。详见 docs/guides/workflows.md
 ```
 
-## Architecture
-
-Three-layer structure:
-
-```
-research-strategies + reporting  ← Top: workflow orchestration
-           │
-       schema-core               ← Middle: standard fields & Provider contracts
-           │
-   ┌───────┴───────┐
-provider-http   provider-mcp    ← Bottom: data adapters
-           │
-    trade-signal-feed            ← Data source
-```
-
-**Key design principles:**
-- Research layer only consumes standard fields, not raw upstream fields
-- Adapters handle data mapping, error translation, semantic alignment
-- HTTP and MCP channels produce consistent output for same queries
-- Strategy rules are swappable; data and report contracts remain stable
-
 ## Package Structure
 
 | Package | Purpose |
@@ -61,45 +84,9 @@ provider-http   provider-mcp    ← Bottom: data adapters
 | `research-strategies` | Strategy & research workflow orchestration |
 | `reporting` | MD + HTML report output |
 
-## Main Workflow (Phase 0-3)
+## Notes
 
-Logical stages (Turtle-aligned). `workflow:run` executes **sequentially**: Phase 0 (optional) → Phase 1A → **when annual PDF is available: Phase 2A/2B before Phase 1B** → Phase 3. Phase 0 in that path only when `--report-url` is used (or auto-discovery in strict mode).
-
-```
-User Input (stock code [+ PDF or report URL])
-         │
-    ┌────▼────┐ Phase 0: Optional fetch/cache (CLI or workflow --report-url)
-    └────┬────┘
-         │
-    ┌────▼──────────┐ Phase 1A: Structured data (MarketDataProvider; workflow uses HTTP)
-    └────┬──────────┘
-         │
-    ┌────▼──────────┐ Phase 2A/2B (optional; runs before 1B when annual PDF path exists)
-    └────┬──────────┘
-         │
-    ┌────▼────┐
-    │ Phase 1B External info
-    └────┬────┘
-         │
-    ┌────▼────────┐
-    │ Phase 3     │
-    │Qual+Quant+Valuation
-    └────┬────────┘
-         │
-   <output-dir>/analysis_report.md + .html
-```
-
-## CLI & Claude entrypoints
-
-| Goal | Root command | Claude slash |
-|------|----------------|--------------|
-| Business analysis (no Phase3 by default) | `pnpm run business-analysis:run -- ...` | `/business-analysis` |
-| Full workflow, strict PDF branch | `pnpm run workflow:run -- --mode turtle-strict ...` | `/turtle-analysis` |
-| Annual report download | `pnpm run phase0:download -- ...` | `/download-annual-report` |
-| Valuation-only (JSON + summary md) | `pnpm run valuation:run -- ...` | `/valuation` |
-| Markdown to HTML | `pnpm run report-to-html:run -- ...` | `/report-to-html` |
-
-- Skills: `.claude/skills/business-analysis/SKILL.md`, `turtle-strict/SKILL.md`, `quality-gates/SKILL.md`.
+- Skills: `.claude/skills/business-analysis/SKILL.md`, `workflow-strict/SKILL.md`, `quality-gates/SKILL.md`.
 - `workflow:run --mode standard` keeps legacy behavior (Phase3 may run without `data_pack_report.md`).
 - Quality: `pnpm run quality:all` runs regression + golden for **cn_a** and **hk** (`output/phase3_golden/<suite>/`). HK suite is snapshot regression; full HK depth is not yet at A-share parity.
 

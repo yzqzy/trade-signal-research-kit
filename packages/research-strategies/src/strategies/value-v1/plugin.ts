@@ -1,5 +1,5 @@
 import { runPhase3Strict } from "../../stages/phase3/analyzer.js";
-import { strictWorkflowTurtleMissingReportPack } from "../../pipeline/strict-messages.js";
+import { strictWorkflowStrictMissingReportPack } from "../../pipeline/strict-messages.js";
 import type {
   StrategyEvaluationContext,
   StrategyPlugin,
@@ -36,7 +36,7 @@ export function createValueV1StrategyPlugin(): StrategyPlugin {
     },
     validateStageEPrerequisites(context: StrategyStageEPrerequisitesContext) {
       if (context.workflowMode === "turtle-strict" && !context.reportMarkdown?.trim()) {
-        throw new Error(strictWorkflowTurtleMissingReportPack());
+        throw new Error(strictWorkflowStrictMissingReportPack());
       }
     },
   };

@@ -10,7 +10,7 @@
 
 - 打通主流程：Phase 0（独立 CLI 支持 Feed 自动发现 PDF + workflow 内 `--report-url`）、Phase 1A/1B/2A/2B/3（独立 CLI）及 **`workflow:run` 串行编排**（当前实现顺序见 [workflows](../guides/workflows.md)）
 - **独立 `business-analysis`**：Claude `/business-analysis`；CLI `pnpm run business-analysis:run`（定性 + 数据包，默认不跑完整 Phase3）
-- **`turtle-strict`**：Claude `/turtle-analysis`；CLI `--mode turtle-strict`（PDF/报告包前置校验 + fail-fast）
+- **`turtle-strict`**：Claude `/workflow-analysis`；CLI `--mode turtle-strict`（PDF/报告包前置校验 + fail-fast）
 - **质量回归**：`cn_a` + `hk` 双套件 golden（`quality:regression` / `quality:phase3-golden` 默认 `--suite all`）
 - **独立估值**：`/valuation`；CLI `pnpm run valuation:run`，可与 `business-analysis` manifest 串接
 - **Markdown 转 HTML**：`/report-to-html`；CLI `pnpm run report-to-html:run`

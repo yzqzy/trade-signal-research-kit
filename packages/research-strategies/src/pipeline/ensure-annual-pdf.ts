@@ -4,7 +4,7 @@ import { discoverPhase0ReportUrlFromFeed } from "../stages/phase0/discover-repor
 import { runPhase0DownloadAndCache } from "../stages/phase0/downloader.js";
 import {
   strictBusinessAnalysisDiscoveryFailed,
-  strictWorkflowTurtleDiscoveryFailed,
+  strictWorkflowStrictDiscoveryFailed,
 } from "./strict-messages.js";
 
 /** 与 `workflow-nodes` initPrep、`runBusinessAnalysis` 前置解析对齐的 PDF 解析策略 */
@@ -20,7 +20,7 @@ export interface EnsureAnnualPdfOnDiskParams {
   reportUrl?: string;
   discoverPolicy: AnnualPdfDiscoverPolicy;
   /** strict 发现失败时的错误文案前缀 */
-  discoveryErrorStyle: "business-analysis" | "workflow-turtle";
+  discoveryErrorStyle: "business-analysis" | "workflow-strict";
 }
 
 export interface EnsureAnnualPdfOnDiskResult {
@@ -34,7 +34,7 @@ function formatDiscoveryError(
 ): string {
   return style === "business-analysis"
     ? strictBusinessAnalysisDiscoveryFailed(detail)
-    : strictWorkflowTurtleDiscoveryFailed(detail);
+    : strictWorkflowStrictDiscoveryFailed(detail);
 }
 
 /**

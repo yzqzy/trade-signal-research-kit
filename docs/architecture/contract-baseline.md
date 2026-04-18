@@ -85,7 +85,7 @@ B → C →（无 D）→（Phase3 在 runResearchWorkflow 内）
 | 前缀 | 用途 |
 |------|------|
 | `[strict:business-analysis]` | `business-analysis --strict` |
-| `[strict:workflow:turtle-strict]` | `workflow --mode turtle-strict` 相关 |
+| `[strict:workflow:strict]` | `workflow --mode turtle-strict` 相关（Slash：`/workflow-analysis`） |
 | `[strict:preflight]` | Phase1A / Phase3 preflight 严格失败 |
 
 具体文案以 `strict-messages.ts` 导出函数为准（含自动发现失败、缺报告包、Phase3 ABORT、SUPPLEMENT_NEEDED 等）。

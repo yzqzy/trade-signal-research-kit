@@ -36,10 +36,10 @@ pnpm run business-analysis:run -- \
 - `qualitative_d1_d6.md`（Turtle **D1~D6** 契约稿；含可选 `data_pack_report` 摘录）
 - `data_pack_market.md`
 - 可选 `data_pack_report.md`（有 PDF 分支时）
-- `business_analysis_manifest.json`（含 `pipeline.valuation`、`pipeline.pdfBranch`；`input` 含 **`runId`/`outputDirParent`** 及有值才写入的复跑字段；`suggestedTurtleWorkflowCommand` 为含 `--run-id` 等参数的可复跑模板）
+- `business_analysis_manifest.json`（含 `pipeline.valuation`、`pipeline.pdfBranch`；`input` 含 **`runId`/`outputDirParent`** 及有值才写入的复跑字段；`suggestedWorkflowFullCommand` 为含 `--run-id` 等参数的可复跑模板）
 - 中间件：`phase1a_data_pack.json`、`phase1b_qualitative.{json,md}` 等
 
 ## 后续衔接
 
 - 仅估值摘要：`pnpm run valuation:run -- --from-manifest "<输出目录>/business_analysis_manifest.json"`（`/valuation`）。
-- 完整估值与终稿报告：manifest 中 `pipeline.valuation.suggestedTurtleWorkflowCommand`，或直接使用 `/turtle-analysis`（`workflow:run -- --mode turtle-strict`）。
+- 完整估值与终稿报告：manifest 中 `pipeline.valuation.suggestedWorkflowFullCommand`，或直接使用 `/workflow-analysis`（`workflow:run -- --mode turtle-strict`）。

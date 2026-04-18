@@ -60,7 +60,7 @@ async function main(): Promise<void> {
         workflowMode: "turtle-strict",
         reportMarkdown: undefined,
       }),
-    /\[strict:workflow:turtle-strict\]/,
+    /\[strict:workflow:strict\]/,
   );
 
   console.log("[quality] strategy plugin smoke passed (turtle + value_v1)");

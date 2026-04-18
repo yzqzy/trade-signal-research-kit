@@ -43,7 +43,7 @@ pnpm run business-analysis:run -- \
 
 ### 第 3 步：全流程或估值
 
-- **Claude Code**：`/turtle-analysis`（终稿）· `/valuation` · `/download-annual-report`（按需）
+- **Claude Code**：`/workflow-analysis`（终稿）· `/valuation` · `/download-annual-report`（按需）
 - **CLI**：
 
 ```bash
@@ -77,7 +77,7 @@ pnpm run valuation:run -- \
 ## 严格模式报错前缀
 
 - `business-analysis --strict`：`[strict:business-analysis]`
-- `workflow --mode turtle-strict`：`[strict:workflow:turtle-strict]`
+- `workflow --mode turtle-strict`：`[strict:workflow:strict]`
 - Phase1A Pre-flight（`turtle-strict` / `business-analysis --strict` / `--preflight strict`）：`[strict:preflight]`
 
 ## 常见故障

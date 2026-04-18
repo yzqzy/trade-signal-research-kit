@@ -215,7 +215,7 @@ export async function nodeInitPrep(state: WorkflowGraphState): Promise<Partial<W
       !pdfPath?.trim() && !reportUrlResolved?.trim() && input.mode === "turtle-strict"
         ? "strict"
         : "never",
-    discoveryErrorStyle: "workflow-turtle",
+    discoveryErrorStyle: "workflow-strict",
   });
   pdfPath = ensuredPdf.pdfPath ?? pdfPath;
   reportUrlResolved = ensuredPdf.reportUrlResolved ?? reportUrlResolved;

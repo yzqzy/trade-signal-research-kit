@@ -2,11 +2,24 @@
 
 [返回项目首页](../../README.md) · [文档索引](../README.md)
 
-**入口层级**：日常在 **Claude Code** 用 Slash（见根目录 `README.md`、`.claude/commands/`）；本文后半以 **CLI / 包内 `run:*`** 写清参数、产物路径与续跑，供脚本与 CI 对照。
+**入口层级**：日常用 **Claude Code Slash**（首屏示例见根目录 `README.md`）；脚本/CI 用本文的 **CLI（含包内 `run:*`）** 作为参数与产物真源。
 
 本文档以 **Stage（通用编排阶段）** 为真源描述流程；**Phase 0~3** 为当前 CLI/代码中的实现命名，二者一一对应。策略（如 **Turtle / 龟龟**）仅作用于 **Stage E** 及证据投影层，不是整条流水线的名字。详见 [策略与流程解耦](../architecture/strategy-orchestration-architecture.md)。
 
-**脚本约定（非兼容收敛后）**：仓库根目录仍保留用户向命令（如 `pnpm run workflow:run`）；在 `@trade-signal/research-strategies` 包内请使用分组脚本 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史 `phase*:run` 等别名）。下文 `pnpm --filter @trade-signal/research-strategies run …` 示例均指向包内 `run:*`。
+**脚本约定**：仓库根保留用户向命令（如 `pnpm run workflow:run`）；`@trade-signal/research-strategies` 包内统一使用 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史别名）。
+
+## 快速导航
+
+- **先跑起来**：看根目录 `README.md` 的「三种上手」
+- **参数和产物真源**：看本文 `output v2`、`Stage 与 Phase 对照`、`CLI 参数`
+- **策略边界**：看 `docs/architecture/strategy-orchestration-architecture.md`
+
+## 术语速记
+
+- **entrypoint**：用户入口命令（如 `/workflow-analysis`）
+- **strategy**：策略参数（如 `--strategy turtle|value_v1`），不是入口名
+- **Stage vs Phase**：Stage A~E 是文档语义层；Phase 0~3 是当前实现命名
+- **顺序语义**：有 PDF 时 `B→D→C→E`，无 PDF 时 `B→C→E`
 
 ## 环境变量与 `.env`（CLI 统一初始化）
 
@@ -171,7 +184,7 @@ Phase1A → Phase1B → Phase3
 
 **回归对比（无 PDF vs 有 PDF）**：同一 `code`/`year` 跑两次——仅 Phase1B+market 的 run 与带 `--pdf` 或 `phase0:download` 后再跑 workflow 的 run——比较两目录下的 `phase1b_evidence_quality.json`、`phase1b_qualitative.json` 与 `phase3_preflight.md`，沉淀条目命中率与是否需 PDF 的结论。
 
-`business_analysis_manifest.json` 内含 `pipeline.valuation.relativePaths`、`pipeline.pdfBranch`（是否具备年报 PDF / 报告包）与建议的 `valuation:run --from-manifest ...`；`input` 含 **`runId`、`outputDirParent`** 及有值才写入的复跑字段（如 `companyName`/`from`/`to`/`category`/`phase1bChannel`/`preflight*`/`interim*` 等）。`pipeline.valuation.suggestedTurtleWorkflowCommand` 为可复跑模板（含 `--year`/`--strategy`/`--pdf`/`--report-url`/`--output-dir`/`--run-id`，路径已解析）。
+`business_analysis_manifest.json` 内含 `pipeline.valuation.relativePaths`、`pipeline.pdfBranch`（是否具备年报 PDF / 报告包）与建议的 `valuation:run --from-manifest ...`；`input` 含 **`runId`、`outputDirParent`** 及有值才写入的复跑字段（如 `companyName`/`from`/`to`/`category`/`phase1bChannel`/`preflight*`/`interim*` 等）。`pipeline.valuation.suggestedWorkflowFullCommand` 为可复跑模板（含 `--year`/`--strategy`/`--pdf`/`--report-url`/`--output-dir`/`--run-id`，路径已解析）。
 
 ## 独立估值与 HTML 转换
 
@@ -284,7 +297,7 @@ pnpm --filter @trade-signal/research-strategies run run:workflow -- \
 
 > 说明：`--output-dir` 为**父目录**；实际产物在 `./output/workflow/600887/<runId>/`（`<runId>` 由运行生成，见控制台 `outputDir` 日志或 `workflow_manifest.json` 的 `outputLayout.runId`）。
 
-严格模式（与 `/turtle-analysis` 对齐）：
+严格模式（与 Slash `/workflow-analysis` 对齐）：
 
 ```bash
 pnpm run workflow:run -- \

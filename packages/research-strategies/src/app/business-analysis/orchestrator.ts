@@ -52,7 +52,7 @@ function excerptDataPackReport(md: string, maxChars: number): string {
   return `${t.slice(0, maxChars)}\n\n…（截断，全文见 data_pack_report.md）`;
 }
 
-function buildSuggestedTurtleWorkflowCommand(input: {
+function buildSuggestedWorkflowFullCommand(input: {
   code: string;
   year?: string;
   strategy: string;
@@ -286,7 +286,7 @@ export async function runBusinessAnalysis(
               : {}),
         },
         suggestedNextCommand: `pnpm run valuation:run -- --from-manifest "${manifestPath}"`,
-        suggestedTurtleWorkflowCommand: buildSuggestedTurtleWorkflowCommand({
+        suggestedWorkflowFullCommand: buildSuggestedWorkflowFullCommand({
           code: pipeline.normalizedCode,
           year: input.year,
           strategy: input.strategy ?? 'turtle',

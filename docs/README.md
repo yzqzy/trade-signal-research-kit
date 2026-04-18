@@ -4,6 +4,12 @@
 
 本目录按 **architecture / guides / strategy** 分层。根目录 [README.md](../README.md) 以 **Claude Code** 为优先入口；流程参数与产物细节以 guides 为准。
 
+## 文档维护原则（建议）
+
+- **入口只放一处**：快速上手与命令入口以根目录 `README.md` 为准
+- **参数只放一处**：CLI 参数、产物路径、续跑规则以 `guides/workflows.md` 为准
+- **架构只放一处**：策略边界与 Stage 语义以 `architecture/strategy-orchestration-architecture.md` 为准
+
 ## architecture（结构与编排边界）
 
 | 文档 | 说明 |
