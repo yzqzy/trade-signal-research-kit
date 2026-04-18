@@ -284,8 +284,9 @@ export class FeedHttpProvider implements MarketDataProvider {
   }
 
   async getQuote(code: string): Promise<Quote> {
-    const payload = await this.request<StockQuotePayload>(
-      `/stock/indicator/realtime/${encodeURIComponent(code)}`,
+    // 与 `getInstrument` 同源：`/stock/indicator/realtime` 为估值/市值类字段，不含最新价。
+    const payload = await this.request<StockDetailPayload & StockQuotePayload>(
+      `/stock/detail/${encodeURIComponent(code)}`,
     );
     return {
       code: payload.code ?? payload.secucode ?? code,

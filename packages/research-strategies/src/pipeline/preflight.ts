@@ -56,6 +56,14 @@ export function runPreflightAfterPhase1A(input: PreflightPhase1AInput): void {
   }
 
   if (failures.length > 0) {
-    throw new Error(strictPreflightPhase1AFailed(failures.join("；")));
+    const fin = dataPack.financialSnapshot;
+    const ctx = [
+      `quote.price=${JSON.stringify(price)}`,
+      `quote.timestamp=${JSON.stringify(dataPack.quote?.timestamp)}`,
+      fin
+        ? `financial.period=${JSON.stringify(fin.period)}; totalAssets=${JSON.stringify(fin.totalAssets)}`
+        : "financialSnapshot=missing",
+    ].join("；");
+    throw new Error(strictPreflightPhase1AFailed(`${failures.join("；")}（${ctx}）`));
   }
 }

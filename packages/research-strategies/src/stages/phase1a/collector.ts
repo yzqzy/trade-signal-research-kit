@@ -8,6 +8,8 @@ export interface CollectPhase1AInput {
   from?: string;
   to?: string;
   adj?: "none" | "forward" | "backward";
+  /** 财报锚定年（YYYY）；与 `financialPeriod` 二选一优先用显式 `financialPeriod` */
+  year?: string;
   includeFinancialSnapshot?: boolean;
   /** A股默认 true：尝试填充 `financialHistory` 供市场包多年列真实回填 */
   includeFinancialHistory?: boolean;
@@ -19,6 +21,22 @@ export interface CollectPhase1AInput {
 }
 
 const DEFAULT_PERIOD: KlinePeriod = "day";
+
+/**
+ * 合并财报快照 `GET /stock/financial/snapshot` 要求 `reportDate` 为年报期末 `YYYY-12-31`，
+ * 不能用运行当日或任意自然日，否则会空结果并回退到旧简表（缺 totalAssets）。
+ */
+export function resolveFinancialSnapshotPeriod(input: CollectPhase1AInput): string {
+  const fp = input.financialPeriod?.trim();
+  if (fp) return fp;
+  const y = input.year?.trim();
+  if (y && /^\d{4}$/.test(y)) return `${y}-12-31`;
+  const fromY = input.from?.match(/^(\d{4})-\d{2}-\d{2}/)?.[1];
+  if (fromY && /^\d{4}$/.test(fromY)) return `${fromY}-12-31`;
+  const toY = input.to?.match(/^(\d{4})-\d{2}-\d{2}/)?.[1];
+  if (toY && /^\d{4}$/.test(toY)) return `${toY}-12-31`;
+  return input.to ?? new Date().toISOString().slice(0, 10);
+}
 
 function anchorFiscalYearFromSnapshot(fallback: number, fin?: { period?: string } | null): number {
   const m = fin?.period?.match(/20\d{2}/)?.[0];
@@ -67,9 +85,11 @@ export async function collectPhase1ADataPack(
   const includeCorporateActions = input.includeCorporateActions ?? true;
   const includeTradingCalendar = input.includeTradingCalendar ?? true;
 
+  const financialSnapshotPeriod = resolveFinancialSnapshotPeriod(input);
+
   const [financialSnapshot, corporateActions, tradingCalendar] = await Promise.all([
     loadOptional(includeFinancialSnapshot, optionalFailure, () =>
-      provider.getFinancialSnapshot(input.code, input.financialPeriod ?? to),
+      provider.getFinancialSnapshot(input.code, financialSnapshotPeriod),
     ),
     loadOptional(includeCorporateActions, optionalFailure, () =>
       provider.getCorporateActions(input.code, from, to),

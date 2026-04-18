@@ -112,8 +112,9 @@ function installHttpFetchMock(): () => void {
     const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const url = new URL(rawUrl);
     const pathname = url.pathname;
-    if (pathname.includes("/stock/detail/")) return jsonResponse(FIXTURE.instrument);
-    if (pathname.endsWith("/stock/indicator/realtime/600887")) return jsonResponse(FIXTURE.quote);
+    if (pathname.includes("/stock/detail/")) {
+      return jsonResponse({ ...FIXTURE.instrument, ...FIXTURE.quote });
+    }
     if (pathname.endsWith("/stock/kline")) return jsonResponse(FIXTURE.klines);
     if (pathname.endsWith("/stock/indicator/financial/600887")) return jsonResponse(FIXTURE.financial);
     if (pathname.includes("/stock/financial/snapshot/600887")) return jsonResponse(FIXTURE.financialSnapshot);

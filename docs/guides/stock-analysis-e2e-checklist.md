@@ -117,6 +117,7 @@ pnpm run workflow:run -- \
 
 - [ ] 全流程不中断完成
 - [ ] 报告内容覆盖定性 + 定量 + 估值
+- [ ] `phase1a_data_pack.json`：`quote.price > 0` 且 `financialSnapshot.totalAssets > 0`（`turtle-strict` 下 Phase1A `[strict:preflight]` 依赖 feed：`GET /stock/detail/:code` 含最新价、`GET /stock/financial/snapshot/:code?reportDate=<年>-12-31` 含合并总资产）
 
 ## 4. 独立估值链路
 

@@ -37,6 +37,7 @@
     "gen:phase3-golden": "node dist/packages/research-strategies/src/quality/generate-phase3-golden-fixtures.js",
     "test:linkage": "node dist/packages/research-strategies/src/tests/linkage-smoke.js",
     "test:phase1b-quality": "node dist/packages/research-strategies/src/tests/phase1b-evidence-quality-smoke.js",
+    "test:phase1a-strict": "node dist/packages/research-strategies/src/tests/phase1a-strict-preflight-smoke.js",
     "test:phase2": "node dist/packages/research-strategies/src/tests/phase2a-logic-smoke.js",
     "test:screener": "node dist/packages/research-strategies/src/tests/screener-smoke.js"
   },
