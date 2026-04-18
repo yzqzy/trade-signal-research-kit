@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { runPhase2AExtractPdfSections } from "../stages/phase2a/extractor.js";
 
 type CliArgs = {
@@ -33,6 +34,7 @@ function parseArgs(argv: string[]): CliArgs {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const args = parseArgs(process.argv.slice(2));
   if (!args.pdfPath) {
     throw new Error("Missing required argument --pdf <path-to-pdf>");

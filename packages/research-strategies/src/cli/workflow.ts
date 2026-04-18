@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { createDefaultWorkflowOrchestratorAdapter } from "../orchestrator/workflow-orchestrator-adapter.js";
 import type { WorkflowMode } from "../contracts/workflow-run-types.js";
 
@@ -107,6 +108,7 @@ function parseArgs(argv: string[]): CliArgs {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const args = parseArgs(process.argv.slice(2));
   if (!args.code) throw new Error("Missing required argument: --code <stock-code>");
 

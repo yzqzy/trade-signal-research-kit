@@ -3,6 +3,7 @@
  * 策略插件注册烟测：同一 golden 输入下 turtle 与 value_v1 均可 evaluate，
  * value_v1 在报告标题打标且估值 JSON 与 turtle 一致（验证「同编排骨架 + 不同插件」）。
  */
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { strict as assert } from "node:assert";
@@ -26,6 +27,7 @@ function resolveRepoRoot(): string {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const root = resolveRepoRoot();
   const base = path.join(root, "output/phase3_golden/cn_a");
   const marketPath = path.join(base, "data_pack_market.md");

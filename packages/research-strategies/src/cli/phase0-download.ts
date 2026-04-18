@@ -1,12 +1,8 @@
 #!/usr/bin/env node
 
 import { runPhase0DownloadAndCache } from "../stages/phase0/downloader.js";
-import {
-  type CliArgs,
-  initPhase0CliEnv,
-  parsePhase0CliArgs,
-  resolvePhase0CliInput,
-} from "../stages/phase0/cli-args.js";
+import { initCliEnv } from "../lib/init-cli-env.js";
+import { type CliArgs, parsePhase0CliArgs, resolvePhase0CliInput } from "../stages/phase0/cli-args.js";
 import {
   EXIT_BAD_ARGUMENTS,
   EXIT_SUCCESS,
@@ -16,7 +12,7 @@ import {
 import { isPhase0NoDataError } from "../stages/phase0/phase0-errors.js";
 
 async function main(): Promise<void> {
-  initPhase0CliEnv();
+  initCliEnv();
 
   let args: CliArgs;
   try {

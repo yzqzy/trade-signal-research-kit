@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -84,6 +85,7 @@ async function runGoldenForSuite(
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const argv = process.argv.slice(2);
   const suite = parseSuite(argv);
   let explicit: string | undefined;

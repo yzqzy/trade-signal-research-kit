@@ -4,6 +4,7 @@
  * 运行：先 `pnpm --filter @trade-signal/research-strategies run build`，再
  * `pnpm --filter @trade-signal/research-strategies run gen:phase3-golden`
  */
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -74,6 +75,7 @@ async function writeSuite(
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const root = resolveRepoRoot();
   await writeSuite(root, "cn_a", "600887", sampleCnADataPack());
   await writeSuite(root, "hk", "00700", sampleHkDataPack());

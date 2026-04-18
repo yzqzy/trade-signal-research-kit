@@ -3,6 +3,7 @@
  * Phase2A 分区/关键词契约烟测（无需真实 PDF）。
  * `pnpm run build && pnpm --filter @trade-signal/research-strategies run test:phase2`
  */
+import { initCliEnv } from "../lib/init-cli-env.js";
 import assert from "node:assert/strict";
 
 import { PHASE2A_SECTION_ORDER } from "../stages/phase2a/keywords.js";
@@ -14,6 +15,7 @@ import {
 import { sanitizePhase2ExtractedText } from "../stages/phase2b/renderer.js";
 
 function main(): void {
+  initCliEnv();
   for (const id of PHASE2A_SECTION_ORDER) {
     assert.ok(
       PHASE2A_SECTION_ZONE_PREFERENCES[id],

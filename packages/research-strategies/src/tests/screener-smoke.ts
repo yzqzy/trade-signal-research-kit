@@ -3,6 +3,7 @@
  * 选股器契约烟测（内存 fixture，不依赖外部 feed）。
  * `pnpm run build && pnpm --filter @trade-signal/research-strategies run test:screener`
  */
+import { initCliEnv } from "../lib/init-cli-env.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
@@ -291,6 +292,7 @@ async function testTier1OnlyPipeline(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   testConfig();
   testTier1Filter();
   testFactor2R();

@@ -1,7 +1,4 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
-
-import { config as loadDotenv } from "dotenv";
+import { initCliEnv } from "../../lib/init-cli-env.js";
 
 export type CliArgs = {
   url?: string;
@@ -25,17 +22,9 @@ export type ResolvedCliInput = {
   forceRefresh: boolean;
 };
 
+/** @deprecated 使用 {@link initCliEnv}；保留别名以兼容既有调用方 */
 export function initPhase0CliEnv(cwd: string = process.cwd()): void {
-  const candidates = [
-    path.resolve(cwd, ".env"),
-    path.resolve(cwd, "../../.env"),
-  ];
-  for (const filePath of candidates) {
-    if (existsSync(filePath)) {
-      loadDotenv({ path: filePath });
-      break;
-    }
-  }
+  initCliEnv(cwd);
 }
 
 export function parsePhase0CliArgs(argv: string[]): CliArgs {

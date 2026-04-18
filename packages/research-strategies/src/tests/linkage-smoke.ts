@@ -3,6 +3,7 @@
  * 链路级烟测（不替代 quality:all）：市场包结构、2B 含 MDA、D1~D6 契约稿。
  * 运行：`pnpm run build && pnpm --filter @trade-signal/research-strategies run test:linkage`
  */
+import { initCliEnv } from "../lib/init-cli-env.js";
 import assert from "node:assert/strict";
 
 import { renderQualitativeD1D6Scaffold } from "../app/business-analysis/d1-d6-scaffold.js";
@@ -14,6 +15,7 @@ import { refreshMarketPackMarkdown } from "../app/workflow/refresh-market-pack.j
 import { sampleCnADataPack, samplePdfSections } from "./fixtures/phase3-golden-sample.js";
 
 function main(): void {
+  initCliEnv();
   const md = buildMarketPackMarkdown("600887", sampleCnADataPack());
   assert.match(md, /## §13 Warnings/);
   assert.match(md, /\| 指标 \| 2024 \| 2023 \|/);

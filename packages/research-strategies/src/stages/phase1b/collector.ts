@@ -1,7 +1,4 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
-
-import { config as loadDotenv } from "dotenv";
+import { initCliEnv } from "../../lib/init-cli-env.js";
 
 import type {
   ExternalEvidenceC1Hit,
@@ -54,19 +51,6 @@ export interface Phase1BCollectOptions extends Partial<FeedSearchClientOptions> 
 
 const NOT_FOUND_TEXT = "⚠️ 未搜索到相关信息";
 const DEFAULT_ENDPOINT_PATH = "/stock/report/search";
-
-function initEnv(cwd: string = process.cwd()): void {
-  const candidates = [
-    path.resolve(cwd, ".env"),
-    path.resolve(cwd, "../../.env"),
-  ];
-  for (const filePath of candidates) {
-    if (existsSync(filePath)) {
-      loadDotenv({ path: filePath });
-      break;
-    }
-  }
-}
 
 function resolveFeedSearchClientOptionsFromEnv(
   overrides: Partial<FeedSearchClientOptions> = {},
@@ -256,7 +240,7 @@ export async function collectExternalEvidenceC1(
   options: Phase1BCollectOptions = {},
 ): Promise<ExternalEvidenceC1Result> {
   const channel: Phase1BChannel = input.channel ?? "http";
-  initEnv();
+  initCliEnv();
   const queries = buildQueries(input);
 
   let results: Array<{ query: FeedSearchQuery; evidences: Phase1BEvidence[] }>;

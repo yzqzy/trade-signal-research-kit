@@ -6,6 +6,15 @@
 
 **脚本口径（非兼容收敛后）**：仓库根目录仍保留用户向命令（如 `pnpm run workflow:run`）；在 `@trade-signal/research-strategies` 包内请使用分组脚本 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史 `phase*:run` 等别名）。下文 `pnpm --filter @trade-signal/research-strategies run …` 示例均指向包内 `run:*`。
 
+## 环境变量与 `.env`（CLI 统一初始化）
+
+`@trade-signal/research-strategies` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `report-to-html` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
+
+1. **当前工作目录**下的 `.env`
+2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-strategies` 执行时通常对应**仓库根**的 `.env`）
+
+命中第一个存在的文件后即停止加载。**已在 shell 中 `export` 的变量不会被 `.env` 覆盖**（dotenv 默认行为）。仍需在根 `.env` 或环境中配置 `FEED_BASE_URL` 等，详见各子文档（如 [Phase 0 下载器](./phase0-download.md)）。
+
 ## 产物目录 output v2（非兼容）
 
 - **根目录**：仍使用仓库根下 `output/`（包内执行时解析到 monorepo 根，见 `resolve-monorepo-path`）。

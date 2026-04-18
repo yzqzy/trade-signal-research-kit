@@ -1,3 +1,4 @@
+import { initCliEnv } from "../../lib/init-cli-env.js";
 import { collectPhase1BQualitative } from "./collector.js";
 import { renderPhase1BMarkdown } from "./renderer.js";
 
@@ -34,6 +35,7 @@ function parseArgs(argv: string[]): DemoArgs {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const args = parseArgs(process.argv.slice(2));
   const mcpCallTool =
     args.channel === "mcp"

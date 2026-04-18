@@ -31,7 +31,7 @@
 pnpm run phase0:download -- \
   --stock-code "600887" \
   --category "年报" \
-  --year "2025"
+  --year "2024"
 ```
 
 验收：
@@ -47,7 +47,7 @@ pnpm run phase0:download -- \
 ```bash
 pnpm run business-analysis:run -- \
   --code 600887 \
-  --year 2025 \
+  --year 2024 \
   --output-dir "./output/business-analysis/600887"
 ```
 
@@ -72,7 +72,7 @@ pnpm run business-analysis:run -- \
 ```bash
 pnpm run workflow:run -- \
   --code 600887 \
-  --year 2025 \
+  --year 2024 \
   --mode turtle-strict \
   --pdf "<annual-report.pdf>" \
   --output-dir "./output/workflow/600887"
@@ -85,7 +85,7 @@ pnpm run workflow:run -- \
 ```bash
 pnpm run workflow:run -- \
   --code 600887 \
-  --year 2025 \
+  --year 2024 \
   --mode turtle-strict \
   --output-dir "./output/workflow/600887"
 ```

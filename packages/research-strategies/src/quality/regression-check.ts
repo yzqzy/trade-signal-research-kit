@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -100,6 +101,7 @@ async function runRegressionForSuite(root: string, name: "cn_a" | "hk"): Promise
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const argv = process.argv.slice(2);
   const suite = parseSuite(argv);
   const root = resolveRepoRoot();

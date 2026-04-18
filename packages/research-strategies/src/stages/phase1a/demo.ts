@@ -1,5 +1,6 @@
 import type { CorporateAction, FinancialSnapshot, Instrument, KlineBar, MarketDataProvider, Quote, TradingCalendar } from "@trade-signal/schema-core";
 
+import { initCliEnv } from "../../lib/init-cli-env.js";
 import { collectPhase1ADataPack } from "./collector.js";
 
 class MockMarketDataProvider implements MarketDataProvider {
@@ -87,6 +88,7 @@ class MockMarketDataProvider implements MarketDataProvider {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const provider = new MockMarketDataProvider();
   const dataPack = await collectPhase1ADataPack(provider, {
     code: "SH600519",

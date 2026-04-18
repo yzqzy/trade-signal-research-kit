@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { strict as assert } from "node:assert";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -139,6 +140,7 @@ async function mockMcpCall(toolName: string): Promise<unknown> {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const root = path.resolve(process.cwd(), "../..");
   const httpProviderModulePath = path.join(
     root,

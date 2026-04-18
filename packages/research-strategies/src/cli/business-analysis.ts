@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { runBusinessAnalysis } from "../app/business-analysis/orchestrator.js";
 
 type CliArgs = {
@@ -76,6 +77,7 @@ function parseArgs(argv: string[]): CliArgs {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const args = parseArgs(process.argv.slice(2));
   if (!args.code) throw new Error("Missing required argument: --code <stock-code>");
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { strict as assert } from "node:assert";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -10,6 +11,7 @@ function resolveRoot(cwd: string): string {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const root = resolveRoot(process.cwd());
   const marketPackPath = path.join(root, "output/phase3_golden/cn_a/data_pack_market.md");
   const valuationPath = path.join(root, "output/phase3_golden/cn_a/run/valuation_computed.json");

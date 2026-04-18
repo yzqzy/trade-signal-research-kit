@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { initCliEnv } from "../lib/init-cli-env.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -68,6 +69,7 @@ async function writeTextFile(filePath: string, content: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  initCliEnv();
   const args = parseArgs(process.argv.slice(2));
   const sections = await loadSectionsByArgs(args);
   const markdown = renderPhase2BDataPackReport({
