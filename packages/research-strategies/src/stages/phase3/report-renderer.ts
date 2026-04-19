@@ -1,7 +1,7 @@
 import type { AnalysisReport } from "@trade-signal/schema-core";
 
 import { renderMarkdownToSemanticHtml } from "./markdown-to-html.js";
-import type { Phase3ExecutionResult } from "./types.js";
+import type { Factor2Result, Factor3Result, Phase3ExecutionResult } from "./types.js";
 
 function escapeHtml(text: string): string {
   return text
@@ -24,6 +24,23 @@ function num(value?: number): string {
 
 function yesNo(hit: boolean): string {
   return hit ? "是→否决" : "否";
+}
+
+/** 执行摘要表「判定」列：粗算穿透回报率 R（因子2） */
+function verdictPenetrationRough(f2: Factor2Result | undefined): string {
+  if (!f2 || f2.R === undefined || Number.isNaN(f2.R)) return "—";
+  if (!f2.passed && f2.reason) return f2.reason.length <= 40 ? f2.reason : `${f2.reason.slice(0, 37)}…`;
+  return "因子2：通过";
+}
+
+/** 执行摘要表「判定」列：精算穿透回报率 GG（因子3） */
+function verdictPenetrationFine(f3: Factor3Result | undefined): string {
+  if (!f3 || f3.GG === undefined || Number.isNaN(f3.GG)) return "—";
+  if (!f3.passed && f3.reason) return f3.reason.length <= 40 ? f3.reason : `${f3.reason.slice(0, 37)}…`;
+  const trust = f3.extrapolationTrust ?? "—";
+  const hh =
+    f3.HH !== undefined && Number.isFinite(f3.HH) ? `；R−GG=${f3.HH.toFixed(1)}pct` : "";
+  return `因子3：通过（外推${trust}${hh}）`;
 }
 
 function renderPhase3RejectMarkdown(result: Phase3ExecutionResult): string {
@@ -74,8 +91,8 @@ export function renderPhase3Markdown(result: Phase3ExecutionResult): string {
     "| 指标 | 数值 | 判定 |",
     "|:-----|:-----|:-----|",
     `| Owner Earnings | ${num(f2?.I)} 百万元 | — |`,
-    `| 粗算穿透回报率 | ${pct(f2?.R)} | — |`,
-    `| 精算穿透回报率 | ${pct(f3?.GG)} | — |`,
+    `| 粗算穿透回报率 | ${pct(f2?.R)} | ${verdictPenetrationRough(f2)} |`,
+    `| 精算穿透回报率 | ${pct(f3?.GG)} | ${verdictPenetrationFine(f3)} |`,
     `| 门槛值 | ${pct(f4?.II)} | — |`,
     `| 安全边际 | ${num(f4?.KK)} pct | — |`,
     `| 价值陷阱风险 | ${f4?.trapRisk ?? "—"} | — |`,

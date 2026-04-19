@@ -164,6 +164,8 @@ export interface PdfSectionDiagnosticEntry {
   runnerUpScore?: number;
   /** Phase2A：除最佳页外保留的 top-k 候选（页码+得分），供重排 / AI 校验 */
   topCandidates?: Array<{ page: number; score: number }>;
+  /** Phase2A：用于生成该诊断得分的文本后端（多解析器融合） */
+  textBackend?: "pdf-parse" | "pdfjs-dist";
 }
 
 /** Phase2A/2B 抽取质量摘要（门禁与报告嵌入用） */
@@ -177,6 +179,15 @@ export interface PdfExtractQualitySummary {
   lowConfidenceCritical: string[];
   sectionsFound: number;
   sectionsTotal: number;
+  /**
+   * 终稿叙事是否允许标 `[终稿状态: 完成]`（仍须满足 skill 硬约束与 PDF 质量声明）。
+   * CRITICAL（关键块缺失）为 false；DEGRADED（仅低置信）为 true。
+   */
+  allowsFinalNarrativeComplete?: boolean;
+  /** 建议人工复核顺序（高优先级在前） */
+  humanReviewPriority?: readonly string[];
+  /** 本 run 曾启用的 PDF 文本后端（去重有序） */
+  pdfTextBackendsUsed?: readonly string[];
   /** 可选：AI 语义校验摘要（不替代原始文本） */
   aiVerifierApplied?: boolean;
   aiVerifierNote?: string;
@@ -194,6 +205,8 @@ export interface PdfSectionsMetadata {
   sectionDiagnostics?: Partial<Record<string, PdfSectionDiagnosticEntry>>;
   /** Phase2A：关键章节缺失 / 低置信度聚合（供 Phase3 preflight 与报告引用） */
   extractQuality?: PdfExtractQualitySummary;
+  /** Phase2A：本 PDF 解析用过的文本后端列表（如 pdf-parse、pdfjs-dist） */
+  pdfTextBackendsUsed?: readonly string[];
 }
 
 export interface PdfSectionBlock {

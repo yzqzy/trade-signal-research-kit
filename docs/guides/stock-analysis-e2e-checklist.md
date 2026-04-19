@@ -89,7 +89,7 @@ pnpm run business-analysis:run -- \
 
 产物：`data_pack_report.md`（及 `pdf_sections.json`）、`phase3_preflight.md`。
 
-- [ ] `data_pack_report.md` 头部含 `<!-- PDF_EXTRACT_QUALITY:{...} -->` 机器可读块；含 **PDF 抽取缺陷摘要** JSON（`gateVerdict` / `missingCritical` / `lowConfidenceCritical`）
+- [ ] `data_pack_report.md` 头部含 `<!-- PDF_EXTRACT_QUALITY:{...} -->` 机器可读块；含 **PDF 抽取缺陷摘要** JSON（`gateVerdict` / `missingCritical` / `lowConfidenceCritical` / `allowsFinalNarrativeComplete` / `humanReviewPriority` / `pdfTextBackendsUsed`）
 - [ ] 各存在章节含 `sourcePageRange`、`confidence`、`warningCodes` 元信息行
 - [ ] `pdf_sections.json` → `metadata.sectionDiagnostics.*.topCandidates` 为 top-k 候选（可解释定位）
 - [ ] **可选门禁**（默认 `PHASE3_PREFLIGHT_PDF_GATE=off`）：`missing` = 关键块缺失 → `SUPPLEMENT_NEEDED`；`strict` = 缺失或关键块低置信 → `SUPPLEMENT_NEEDED`；`sections` + `PHASE3_PREFLIGHT_PDF_MIN_SECTIONS_FOUND` = 章节数下限

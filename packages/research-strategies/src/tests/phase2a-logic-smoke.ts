@@ -13,6 +13,8 @@ import {
   PHASE2A_ZONE_MARKERS,
 } from "../stages/phase2a/zones.js";
 import { sanitizePhase2ExtractedText } from "../stages/phase2b/renderer.js";
+import { computePdfExtractQuality } from "../stages/phase2a/extract-quality.js";
+import type { PdfSections } from "@trade-signal/schema-core";
 
 function main(): void {
   initCliEnv();
@@ -38,6 +40,33 @@ function main(): void {
 
   const cleaned = sanitizePhase2ExtractedText("a\n\n\n\n\n\nb");
   assert.ok(!cleaned.includes("\n\n\n\n\n"), "should collapse excessive newlines");
+
+  const degradedSections = {
+    metadata: {
+      pdfFile: "mock.pdf",
+      totalPages: 100,
+      extractTime: new Date().toISOString(),
+      sectionsFound: 3,
+      sectionsTotal: 7,
+      pdfTextBackendsUsed: ["pdf-parse", "pdfjs-dist"] as const,
+    },
+    MDA: { content: "x", confidence: "high" as const },
+    P4: { content: "x", confidence: "high" as const },
+    P13: { content: "x", confidence: "low" as const },
+  } satisfies PdfSections;
+  const q = computePdfExtractQuality(degradedSections);
+  assert.equal(q.gateVerdict, "DEGRADED");
+  assert.equal(q.allowsFinalNarrativeComplete, true);
+  assert.ok(q.humanReviewPriority?.includes("P13"));
+
+  const criticalSections: PdfSections = {
+    metadata: { ...degradedSections.metadata, sectionsFound: 2 },
+    MDA: degradedSections.MDA,
+    P4: degradedSections.P4,
+  };
+  const q2 = computePdfExtractQuality(criticalSections);
+  assert.equal(q2.gateVerdict, "CRITICAL");
+  assert.equal(q2.allowsFinalNarrativeComplete, false);
 
   console.log("[test:phase2] ok");
 }

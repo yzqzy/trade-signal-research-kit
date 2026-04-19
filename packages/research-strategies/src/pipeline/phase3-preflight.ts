@@ -140,7 +140,7 @@ export function evaluatePhase3Preflight(input: {
     pdfExtractQuality &&
     ((pdfGate === "missing" && pdfExtractQuality.gateVerdict === "CRITICAL") ||
       (pdfGate === "strict" &&
-        (pdfExtractQuality.gateVerdict === "CRITICAL" || pdfExtractQuality.lowConfidenceCritical.length > 0)) ||
+        (pdfExtractQuality.gateVerdict === "CRITICAL" || pdfExtractQuality.missingCritical.length > 0)) ||
       (pdfGate === "sections" &&
         Number.isFinite(minSectionsFound) &&
         pdfExtractQuality.sectionsFound < minSectionsFound));
@@ -173,6 +173,7 @@ export function evaluatePhase3Preflight(input: {
     "- **规则 A（交付级）**：输出 D5（MD&A）**可交付结论**时，必须有 `data_pack_report.md`（需下载并解析年报 PDF：Phase0 + Phase2A/2B）。",
     "- **规则 B（预研级）**：无 `data_pack_report.md` 时仅输出预研草稿；`qualitative_d1_d6.md` 的 D5 会标注「证据不足，待补充 PDF 解析」。",
     "- **规则 C（strict）**：`turtle-strict` 或 `business-analysis --strict` 下，缺少 `data_pack_report.md` 为不合格结果（编排层 fail-fast）。",
+    "- **规则 D（PDF 门禁分级）**：`gateVerdict=CRITICAL`（关键块缺失）视为硬不合格；`DEGRADED`（仅低置信）允许继续交付证据链，但 Claude 终稿须写 **`> PDF 抽取质量声明`** 且明确复核优先级（见 `business-analysis-finalize`）。",
     "",
     "### 补救命令示例",
     "",
@@ -199,7 +200,7 @@ export function evaluatePhase3Preflight(input: {
     `- data_pack_report_interim：${input.interimReportMarkdown ? "已提供" : "未提供"}`,
     ...(pdfExtractQuality
       ? [
-          `- **PDF 抽取质量**：gate=\`${pdfExtractQuality.gateVerdict}\`；缺失关键块=${JSON.stringify(pdfExtractQuality.missingCritical)}；低置信关键块=${JSON.stringify(pdfExtractQuality.lowConfidenceCritical)}；sections=${pdfExtractQuality.sectionsFound}/${pdfExtractQuality.sectionsTotal}`,
+          `- **PDF 抽取质量**：gate=\`${pdfExtractQuality.gateVerdict}\`；缺失关键块=${JSON.stringify(pdfExtractQuality.missingCritical)}；低置信关键块=${JSON.stringify(pdfExtractQuality.lowConfidenceCritical)}；sections=${pdfExtractQuality.sectionsFound}/${pdfExtractQuality.sectionsTotal}；allowsFinalNarrativeComplete=${String(pdfExtractQuality.allowsFinalNarrativeComplete ?? (pdfExtractQuality.gateVerdict !== "CRITICAL"))}`,
           `- **PHASE3_PREFLIGHT_PDF_GATE** 当前=\`${pdfGate}\`（off | missing | strict | sections；默认 off，仅诊断不落盘改 verdict）`,
         ]
       : input.reportMarkdown

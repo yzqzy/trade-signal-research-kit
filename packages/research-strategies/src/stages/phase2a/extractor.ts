@@ -26,6 +26,7 @@ import {
   type PageText,
 } from "./zones.js";
 import { computePdfExtractQuality } from "./extract-quality.js";
+import { extractPageTextsPdfjs } from "./pdf-text-pdfjs.js";
 
 type PageCandidate = { page: number; score: number };
 
@@ -294,6 +295,7 @@ function buildSectionBlock(
   annexStartPage: number,
   confidence: Phase2SectionConfidence,
   runnerUp?: PageCandidate,
+  opts?: { scoreTieApplied?: boolean },
 ): PdfSectionBlock | undefined {
   const bufferPages = PHASE2A_SECTION_BUFFER_PAGES[sectionId];
   let start = Math.max(1, bestPage - bufferPages);
@@ -307,6 +309,11 @@ function buildSectionBlock(
   end = endClamped;
 
   const warnings: string[] = [];
+  if (opts?.scoreTieApplied) {
+    warnings.push(
+      "候选页得分并列：已按启发式缩小分差用于定位置信度计算，边界仍为启发式截断，建议人工核对页码范围。",
+    );
+  }
   if (confidence === "low") {
     warnings.push("定位置信度低：存在相近候选页或关键词上下文弱，建议人工核对页码范围。");
   } else if (confidence === "medium" && runnerUp) {
@@ -357,25 +364,98 @@ function writeSection(
   if (sectionId === "SUB") target.SUB = value;
 }
 
+function readSection(sections: PdfSections, sectionId: Phase2ASectionId): PdfSectionBlock | undefined {
+  if (sectionId === "P2") return sections.P2;
+  if (sectionId === "P3") return sections.P3;
+  if (sectionId === "P4") return sections.P4;
+  if (sectionId === "P6") return sections.P6;
+  if (sectionId === "P13") return sections.P13;
+  if (sectionId === "MDA") return sections.MDA;
+  if (sectionId === "SUB") return sections.SUB;
+  return undefined;
+}
+
+function confidenceRank(c: Phase2SectionConfidence | undefined): number {
+  if (c === "high") return 3;
+  if (c === "medium") return 2;
+  if (c === "low") return 1;
+  return 0;
+}
+
 function diagnosticEntry(
   best: PageCandidate,
   runnerUp: PageCandidate | undefined,
   ranked: PageCandidate[],
-): PdfSectionDiagnosticEntry {
-  const confidence = confidenceFromScores(best.score, runnerUp?.score);
+  textBackend: "pdf-parse" | "pdfjs-dist",
+): { entry: PdfSectionDiagnosticEntry; scoreTieApplied: boolean } {
+  const scoreTie = Boolean(runnerUp && runnerUp.score === best.score);
+  const runnerScoreForConfidence = scoreTie ? runnerUp!.score - 8 : runnerUp?.score;
+  const rawConfidence = confidenceFromScores(best.score, runnerUp?.score);
+  const confidence = confidenceFromScores(best.score, runnerScoreForConfidence);
+  const scoreTieApplied = scoreTie && rawConfidence === "low" && confidence !== rawConfidence;
   const topCandidates = ranked.slice(0, 5).map((c) => ({ page: c.page, score: c.score }));
-  return {
+  const entry: PdfSectionDiagnosticEntry = {
     bestPage: best.page,
     score: best.score,
     confidence,
     runnerUpPage: runnerUp?.page,
     runnerUpScore: runnerUp?.score,
     topCandidates: topCandidates.length > 0 ? topCandidates : undefined,
+    textBackend,
   };
+  return { entry, scoreTieApplied };
 }
 
-export async function runPhase2AExtractPdfSections(input: Phase2AExtractInput): Promise<PdfSections> {
-  const pages = await extractPageTexts(input.pdfPath);
+function recountSectionsFound(sections: PdfSections): void {
+  let n = 0;
+  for (const sectionId of PHASE2A_SECTION_ORDER) {
+    if (readSection(sections, sectionId)) n += 1;
+  }
+  sections.metadata.sectionsFound = n;
+}
+
+const PDFJS_FALLBACK_SECTIONS: Phase2ASectionId[] = ["P3", "P13"];
+
+function shouldAttemptPdfjsFallback(sections: PdfSections): boolean {
+  for (const id of PDFJS_FALLBACK_SECTIONS) {
+    const block = readSection(sections, id);
+    const diag = sections.metadata.sectionDiagnostics?.[id];
+    if (!block) return true;
+    if (diag?.confidence === "low") return true;
+  }
+  return false;
+}
+
+function mergePdfjsFallbackSections(primary: PdfSections, alt: PdfSections, ids: readonly Phase2ASectionId[]): void {
+  for (const id of ids) {
+    const primaryBlock = readSection(primary, id);
+    const altBlock = readSection(alt, id);
+    const altDiag = alt.metadata.sectionDiagnostics?.[id];
+    if (!altBlock || !altDiag) continue;
+
+    const useAlt =
+      !primaryBlock ||
+      confidenceRank(altBlock.confidence) > confidenceRank(primaryBlock.confidence) ||
+      (primaryBlock.confidence === "low" && altBlock.confidence !== "low");
+
+    if (!useAlt) continue;
+
+    altBlock.extractionWarnings = [
+      ...(altBlock.extractionWarnings ?? []),
+      !primaryBlock
+        ? "本块文本由 pdfjs-dist 二次抽取融合得到（主路径未命中该块），仍建议对照原 PDF 复核。"
+        : "本块经 pdfjs-dist 二次抽取融合相对主路径提升定位置信度，仍建议对照原 PDF 复核。",
+    ];
+    writeSection(primary, id, altBlock);
+    primary.metadata.sectionDiagnostics![id] = { ...altDiag, textBackend: "pdfjs-dist" };
+  }
+}
+
+function buildPdfSectionsFromPages(
+  pages: PageText[],
+  input: Pick<Phase2AExtractInput, "pdfPath" | "verbose">,
+  textBackend: "pdf-parse" | "pdfjs-dist",
+): PdfSections {
   const annexStartPage = detectAnnexStartPage(pages);
   const pageZones = detectPageZones(pages);
 
@@ -395,7 +475,7 @@ export async function runPhase2AExtractPdfSections(input: Phase2AExtractInput): 
     const best = ranked[0];
     if (!best) continue;
     const runnerUp = ranked[1];
-    const diag = diagnosticEntry(best, runnerUp, ranked);
+    const { entry: diag, scoreTieApplied } = diagnosticEntry(best, runnerUp, ranked, textBackend);
     metadata.sectionDiagnostics![sectionId] = diag;
 
     const block = buildSectionBlock(
@@ -405,17 +485,43 @@ export async function runPhase2AExtractPdfSections(input: Phase2AExtractInput): 
       annexStartPage,
       diag.confidence,
       runnerUp,
+      { scoreTieApplied },
     );
     if (!block) continue;
     writeSection(sections, sectionId, block);
     sections.metadata.sectionsFound += 1;
     if (input.verbose) {
       console.log(
-        `[phase2a] ${sectionId} -> pages ${block.pageFrom}-${block.pageTo} (score=${best.score.toFixed(1)}, conf=${diag.confidence}, annex≈${annexStartPage})`,
+        `[phase2a] ${sectionId} [${textBackend}] -> pages ${block.pageFrom}-${block.pageTo} (score=${best.score.toFixed(1)}, conf=${diag.confidence}, annex≈${annexStartPage})`,
       );
     }
   }
 
+  return sections;
+}
+
+export async function runPhase2AExtractPdfSections(input: Phase2AExtractInput): Promise<PdfSections> {
+  const pagesPrimary = await extractPageTexts(input.pdfPath);
+  const sections = buildPdfSectionsFromPages(pagesPrimary, input, "pdf-parse");
+
+  let usedPdfjs = false;
+  if (shouldAttemptPdfjsFallback(sections)) {
+    try {
+      const pagesPdfjs = await extractPageTextsPdfjs(input.pdfPath);
+      if (pagesPdfjs.length > 0) {
+        const alt = buildPdfSectionsFromPages(pagesPdfjs, input, "pdfjs-dist");
+        mergePdfjsFallbackSections(sections, alt, PDFJS_FALLBACK_SECTIONS);
+        usedPdfjs = true;
+      }
+    } catch (err) {
+      if (input.verbose) {
+        console.warn("[phase2a] pdfjs-dist fallback failed:", err);
+      }
+    }
+  }
+
+  sections.metadata.pdfTextBackendsUsed = usedPdfjs ? (["pdf-parse", "pdfjs-dist"] as const) : (["pdf-parse"] as const);
+  recountSectionsFound(sections);
   sections.metadata.extractQuality = computePdfExtractQuality(sections);
 
   if (input.outputPath) {

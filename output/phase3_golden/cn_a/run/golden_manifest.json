@@ -1,14 +1,14 @@
 {
   "valuation_computed.json": {
-    "sha256": "1f6b4ce5a8feca0f6b17b7683b898ac2ec9f69f4e0d5d8948622a3c9b8e2524b",
+    "sha256": "df361928628abc616abbfa475787d74da353e00adce8c0710829a183e59359ec",
     "bytes": 1754
   },
   "analysis_report.md": {
-    "sha256": "4291b7e897acbe7c8bc1e6fc0b1064cbe048584e7130a9ff396b8b711d711356",
-    "bytes": 2996
+    "sha256": "8f5cfdea6645ee61e8436ab7c82cef5deae32ab90d1c4f58db6612db8b40db52",
+    "bytes": 3054
   },
   "analysis_report.html": {
-    "sha256": "599984207ecbd31f895bfe48d3275e0760a30bdc45f331e21baf01810b48b833",
-    "bytes": 5848
+    "sha256": "d2223f76e2f84e3f150a970240fb4e297966565ea3da0ced9ea1a2ebdee37482",
+    "bytes": 5906
   }
 }

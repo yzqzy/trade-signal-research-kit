@@ -391,7 +391,7 @@ pnpm --filter @trade-signal/research-strategies run quality:phase3-golden -- --s
   - **正文**：用 **`[E1]`…`[En]`**（及可选 **`[M:§x]`** 指 `data_pack_market.md` 章节）承载引用；**禁止正文出现裸 URL**；完整 URL / PDF 页码集中在 **`## 附录：证据索引`** 表格。
   - 须有独立小节 **`## 监管与合规要点`**（处罚/诉讼/内控审计/关联交易/治理变更等，**以证据包已有内容为准**；无证据则写入缺口，不得静默省略）。
   - 若 `phase1b_qualitative.md` 出现 **`⚠️ 未搜索到相关信息`**：终稿须附 **`## 证据缺口清单（Phase1B）`**。
-  - **PDF**：若无 `data_pack_report.md`，或 `gateVerdict` 为 **`DEGRADED`** / **`CRITICAL`**：须写 **`> …` 声明**（未解析 / 低置信），且 **不得**标 **`[终稿状态: 完成]`**（须 **`[终稿状态: 阻断]`**）。编排层默认仍 **best-effort** 拉 PDF；强制交付级用 **`--strict`** 或显式 `--pdf`。
+  - **PDF**：若无 `data_pack_report.md`，或 `gateVerdict` 为 **`CRITICAL`**：须写 **`> …` 声明**，且 **不得**标 **`[终稿状态: 完成]`**（须 **`[终稿状态: 阻断]`**）。若 `gateVerdict` 为 **`DEGRADED`**（仅关键块低置信）：须写 **`> PDF 抽取质量声明`**，但在满足 skill 其它硬约束时 **允许** **`[终稿状态: 完成]`**（须明确置信边界与人工复核优先级，见 `data_pack_report` 头部 JSON）。编排层默认仍 **best-effort** 拉 PDF；强制交付级用 **`--strict`** 或显式 `--pdf`。
   - 「终稿完成」语义以 [entrypoint-narrative-contract.md](./entrypoint-narrative-contract.md) 硬验收清单为准。
 
 ### `valuation_computed`（Stage E / Phase 3 中间产物）

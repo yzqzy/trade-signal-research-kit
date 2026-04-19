@@ -20,7 +20,7 @@
 
 | 类型 | 风险 | 缓解 |
 |------|------|------|
-| 漏召回 | OCR/扫描件无文本、`pdf-parse` 与 pdfplumber 版式差异 | 依赖上游 PDF 质量；可考虑未来接表格感知管道 |
+| 漏召回 | OCR/扫描件无文本、`pdf-parse` 与 pdfplumber 版式差异 | 主路径 `pdf-parse`；**`P3`/`P13` 缺失或低置信**时自动 **`pdfjs-dist`（legacy）** 二次整页文本重建后再打分融合；仍依赖上游 PDF 文本层 |
 | 误召回 | 目录页、索引页关键词 | TOC 惩罚 + 分区 avoid |
 | 页码边界 | 章节极长或跨节粘连 | `findSectionEndPage` + 最大跨度钳制 |
 | Interim | 中报章节标题与年报不一致 | `reportKind: interim` 文案提示 + 仍用同一套关键词 |

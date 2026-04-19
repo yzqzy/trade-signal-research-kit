@@ -1,4 +1,9 @@
-import type { PdfExtractQualitySummary, PdfSectionBlock, PdfSections } from "@trade-signal/schema-core";
+import type {
+  PdfExtractQualitySummary,
+  PdfSectionBlock,
+  PdfSectionDiagnosticEntry,
+  PdfSections,
+} from "@trade-signal/schema-core";
 
 import { runPhase2AExtractPdfSections } from "../phase2a/extractor.js";
 import { computePdfExtractQuality } from "../phase2a/extract-quality.js";
@@ -44,13 +49,15 @@ export function sanitizePhase2ExtractedText(raw: string): string {
     .trim();
 }
 
-function sectionMetaLines(section: PdfSectionBlock): string[] {
+function sectionMetaLines(section: PdfSectionBlock, diag?: PdfSectionDiagnosticEntry): string[] {
   const codes: string[] = [];
   if (section.confidence === "low") codes.push("LOW_CONFIDENCE");
   if (section.extractionWarnings?.length) codes.push("EXTRACTION_WARNINGS");
   const codeStr = codes.length > 0 ? codes.join(",") : "none";
+  const backend =
+    diag?.textBackend != null ? `；**textBackend**: \`${diag.textBackend}\`` : "";
   return [
-    `> **sourcePageRange**: p.${section.pageFrom}–p.${section.pageTo}；**confidence**: \`${section.confidence ?? "n/a"}\`；**warningCodes**: \`${codeStr}\``,
+    `> **sourcePageRange**: p.${section.pageFrom}–p.${section.pageTo}；**confidence**: \`${section.confidence ?? "n/a"}\`；**warningCodes**: \`${codeStr}\`${backend}`,
     "",
   ];
 }
@@ -81,13 +88,54 @@ function renderPdfExtractQualityMachineComment(q: PdfExtractQualitySummary): str
     lowConfidenceCritical: q.lowConfidenceCritical,
     sectionsFound: q.sectionsFound,
     sectionsTotal: q.sectionsTotal,
+    allowsFinalNarrativeComplete: q.allowsFinalNarrativeComplete ?? (q.gateVerdict !== "CRITICAL"),
+    humanReviewPriority: q.humanReviewPriority ?? [],
+    pdfTextBackendsUsed: q.pdfTextBackendsUsed ?? [],
     aiVerifierApplied: q.aiVerifierApplied ?? false,
     aiVerifierNote: q.aiVerifierNote ?? null,
   });
   return `<!-- PDF_EXTRACT_QUALITY:${payload} -->`;
 }
 
-function renderOneSection(id: Phase2BSectionId, section: PdfSectionBlock | undefined): string {
+function missingSectionDiagnosticsLines(id: Phase2BSectionId, diag?: PdfSectionDiagnosticEntry): string[] {
+  const lines: string[] = [
+    "> **可能原因（启发式）**：",
+  ];
+  if (id === "P3") {
+    lines.push(
+      "> - 附注标题与关键词不一致（如「应收款项融资」「合同资产」分流，或账龄表并入「应收账款及应收票据」组合披露）；",
+      "> - 目录页/交叉引用（详见/参见）触发惩罚导致得分偏低；",
+      "> - 文本层表格列顺序被打乱，`pdf-parse` 与 `pdfjs-dist` 仍可能无法稳定拼出行。",
+    );
+  } else if (id === "P13") {
+    lines.push(
+      "> - 「补充资料」与附注多处出现相似词，候选页得分接近或并列；",
+      "> - 表格数字与文字碎片导致关键词命中分散；",
+      "> - 若主路径未命中，已尝试 `pdfjs-dist` 回退（见头部 `pdfTextBackendsUsed`）。",
+    );
+  } else {
+    lines.push("> - 关键词未命中、目录干扰、或章节跨页边界被截断。");
+  }
+  if (diag?.bestPage != null) {
+    const scoreStr =
+      typeof diag.score === "number" && Number.isFinite(diag.score) ? diag.score.toFixed(1) : String(diag.score ?? "?");
+    lines.push(
+      `> - Phase2A 曾记录候选最佳页 **p.${diag.bestPage}**（score≈${scoreStr}，conf=\`${diag.confidence}\`），但未形成可落块正文。`,
+    );
+  }
+  lines.push(
+    "",
+    "> **建议人工动作**：在 PDF 内全文检索该章核心词；核对是否为扫描件无文本层；必要时手工摘录表格再并入证据包。",
+    "",
+  );
+  return lines;
+}
+
+function renderOneSection(
+  id: Phase2BSectionId,
+  section: PdfSectionBlock | undefined,
+  diag?: PdfSectionDiagnosticEntry,
+): string {
   const title = PHASE2B_TITLES[id];
   if (!section) {
     return [
@@ -97,10 +145,11 @@ function renderOneSection(id: Phase2BSectionId, section: PdfSectionBlock | undef
       "",
       "> ⚠️ [PHASE2B|high] **章节缺失**：Phase2A 未定位到可靠命中，未静默占位正文。",
       "",
+      ...missingSectionDiagnosticsLines(id, diag),
       "（空缺 — 请检查 PDF 是否含对应附注/章节标题，或启用更清晰的文本层 PDF。）",
     ].join("\n");
   }
-  return [`## ${id} ${title}`, "", ...sectionMetaLines(section), toEvidenceBlock(section)].join("\n");
+  return [`## ${id} ${title}`, "", ...sectionMetaLines(section, diag), toEvidenceBlock(section)].join("\n");
 }
 
 export function renderPhase2BDataPackReport(input: Phase2BRenderInput): string {
@@ -124,6 +173,10 @@ export function renderPhase2BDataPackReport(input: Phase2BRenderInput): string {
         sectionsFound: extractQ.sectionsFound,
         sectionsTotal: extractQ.sectionsTotal,
         criticalSectionIds: extractQ.criticalSectionIds,
+        allowsFinalNarrativeComplete: extractQ.allowsFinalNarrativeComplete ?? (extractQ.gateVerdict !== "CRITICAL"),
+        humanReviewPriority: extractQ.humanReviewPriority ?? [],
+        pdfTextBackendsUsed:
+          extractQ.pdfTextBackendsUsed ?? input.sections.metadata.pdfTextBackendsUsed ?? [],
         aiVerifierApplied: extractQ.aiVerifierApplied ?? false,
         aiVerifierNote: extractQ.aiVerifierNote ?? null,
       },
@@ -148,9 +201,19 @@ export function renderPhase2BDataPackReport(input: Phase2BRenderInput): string {
     `- sectionsFound: ${input.sections.metadata.sectionsFound}/${input.sections.metadata.sectionsTotal}`,
     `- annexStartPageEstimate: ${input.sections.metadata.annexStartPageEstimate ?? "（未估计）"}`,
     `- extractTime: ${input.sections.metadata.extractTime}`,
-    `- **extractQuality.gateVerdict**: \`${extractQ.gateVerdict}\`（关键块缺失→CRITICAL；关键块低置信→DEGRADED）`,
+    `- **pdfTextBackendsUsed**: ${(extractQ.pdfTextBackendsUsed ?? input.sections.metadata.pdfTextBackendsUsed ?? []).map((s) => `\`${s}\``).join(", ") || "—"}`,
+    `- **extractQuality.gateVerdict**: \`${extractQ.gateVerdict}\`（关键块缺失→**CRITICAL**（编排/终稿硬阻断）；关键块仅低置信→**DEGRADED**（允许在强制 PDF 声明下终稿标「完成」））`,
+    `- **allowsFinalNarrativeComplete**: \`${String(extractQ.allowsFinalNarrativeComplete ?? (extractQ.gateVerdict !== "CRITICAL"))}\``,
     "",
     defectLines,
+    ...(extractQ.humanReviewPriority && extractQ.humanReviewPriority.length > 0
+      ? [
+          "## 人工复核优先级（建议顺序）",
+          "",
+          ...extractQ.humanReviewPriority.map((id, i) => `> ${i + 1}. \`${id}\`（缺失或低置信关键块优先）`),
+          "",
+        ]
+      : []),
     ...(lowConf.length > 0
       ? [
           "> ⚠️ [PHASE2B|high] **低置信度章节**（建议人工复核）：",
@@ -160,7 +223,8 @@ export function renderPhase2BDataPackReport(input: Phase2BRenderInput): string {
             const tops =
               d?.topCandidates?.slice(0, 3).map((c) => `p.${c.page}(${c.score.toFixed(0)})`) ?? [];
             const topStr = tops.length > 0 ? `；候选 ${tops.join(", ")}` : "";
-            return `> - \`${id}\`（最佳页 p.${d?.bestPage ?? "?"}，score≈${scoreStr}${topStr}）`;
+            const backend = d?.textBackend ? `；parser=\`${d.textBackend}\`` : "";
+            return `> - \`${id}\`（最佳页 p.${d?.bestPage ?? "?"}，score≈${scoreStr}${topStr}${backend}）`;
           }),
           "",
         ]
@@ -176,7 +240,7 @@ export function renderPhase2BDataPackReport(input: Phase2BRenderInput): string {
     MDA: input.sections.MDA,
     SUB: input.sections.SUB,
   };
-  const body = order.map((id) => renderOneSection(id, sectionMap[id])).join("\n\n");
+  const body = order.map((id) => renderOneSection(id, sectionMap[id], diag?.[id])).join("\n\n");
   return `${header}${body}\n`;
 }
 
