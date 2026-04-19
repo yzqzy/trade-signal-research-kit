@@ -554,7 +554,14 @@ export class FeedHttpProvider implements MarketDataProvider {
 
   async getGovernanceEvents(
     code: string,
-    input?: { year?: string; limit?: number; timeRange?: "3m" | "6m" | "1y" | "3y" | "5y" },
+    input?: {
+      year?: string;
+      limit?: number;
+      timeRange?: "3m" | "6m" | "1y" | "3y" | "5y";
+      dedupe?: boolean;
+      dropPlaceholders?: boolean;
+      preferSeverity?: boolean;
+    },
   ): Promise<GovernanceEventCollection> {
     const payload = await this.request<FeedGovernanceEventsPayload>(
       `/stock/governance/events/${encodeURIComponent(code)}`,
@@ -562,6 +569,11 @@ export class FeedHttpProvider implements MarketDataProvider {
         year: input?.year,
         limit: input?.limit !== undefined ? String(input.limit) : undefined,
         timeRange: input?.timeRange,
+        dedupe: input?.dedupe !== undefined ? String(input.dedupe) : undefined,
+        dropPlaceholders:
+          input?.dropPlaceholders !== undefined ? String(input.dropPlaceholders) : undefined,
+        preferSeverity:
+          input?.preferSeverity !== undefined ? String(input.preferSeverity) : undefined,
       },
     );
     const events = (payload.events ?? []).map<GovernanceNegativeEvent>((e) => ({

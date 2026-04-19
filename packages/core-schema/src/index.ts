@@ -127,7 +127,14 @@ export interface MarketDataProvider {
   /** P4：治理负面事件（feed 优先，可选能力） */
   getGovernanceEvents?(
     code: string,
-    input?: { year?: string; limit?: number; timeRange?: "3m" | "6m" | "1y" | "3y" | "5y" },
+    input?: {
+      year?: string;
+      limit?: number;
+      timeRange?: "3m" | "6m" | "1y" | "3y" | "5y";
+      dedupe?: boolean;
+      dropPlaceholders?: boolean;
+      preferSeverity?: boolean;
+    },
   ): Promise<GovernanceEventCollection>;
 }
 

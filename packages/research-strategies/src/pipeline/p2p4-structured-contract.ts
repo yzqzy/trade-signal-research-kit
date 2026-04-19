@@ -103,6 +103,59 @@ function buildGovernanceEvents(section7: Phase1BItem[]): GovernanceNegativeEvent
   return events.slice(0, 12);
 }
 
+function isGovernancePlaceholder(event: GovernanceNegativeEvent): boolean {
+  const summary = normalizeText(event.summary).toLowerCase();
+  const hasNoSignal =
+    summary === "" ||
+    summary.includes("未搜索到相关信息") ||
+    summary.includes("无相关信息") ||
+    summary === "（无摘要）";
+  const hasNoEvidence = !event.evidenceUrl && !event.happenedAt;
+  return hasNoSignal && hasNoEvidence;
+}
+
+function severityRank(severity: GovernanceNegativeEvent["severity"]): number {
+  if (severity === "high") return 3;
+  if (severity === "medium") return 2;
+  return 1;
+}
+
+function dedupeGovernanceEvents(events: GovernanceNegativeEvent[]): GovernanceNegativeEvent[] {
+  const byKey = new Map<string, GovernanceNegativeEvent>();
+  for (const event of events) {
+    const key = [
+      normalizeText(event.summary).toLowerCase(),
+      event.evidenceUrl?.trim() ?? "",
+      event.happenedAt?.trim() ?? "",
+    ].join("|");
+    const existed = byKey.get(key);
+    if (!existed) {
+      byKey.set(key, event);
+      continue;
+    }
+    const preferCurrent = severityRank(event.severity) > severityRank(existed.severity);
+    byKey.set(
+      key,
+      preferCurrent
+        ? {
+            ...existed,
+            ...event,
+            sourceLabel: event.sourceLabel || existed.sourceLabel,
+          }
+        : existed,
+    );
+  }
+  return Array.from(byKey.values());
+}
+
+function sanitizeGovernanceEvents(events: GovernanceNegativeEvent[]): GovernanceNegativeEvent[] {
+  const deduped = dedupeGovernanceEvents(events);
+  const realEvents = deduped.filter((event) => !isGovernancePlaceholder(event));
+  // Keep placeholder only when no real events exist, preserving explicit gap semantics.
+  const normalized = realEvents.length > 0 ? realEvents : deduped;
+  return normalized.slice(0, 12);
+}
+
 export function buildP2P4StructuredSnapshot(input: {
   phase1b: Phase1BQualitativeSupplement;
   marketMarkdown: string;
@@ -161,22 +214,25 @@ export function buildP2P4StructuredSnapshot(input: {
             : "未从 Phase1B §8 解析出竞品代码，需补同业池上游供给。",
       };
 
+  const rawGovernanceEvents = feedGovernance
+    ? feedGovernance.events.length > 0
+      ? feedGovernance.events
+      : fallbackGovernanceEvents
+    : fallbackGovernanceEvents;
+  const governanceEvents = sanitizeGovernanceEvents(rawGovernanceEvents);
+
   const governance: GovernanceEventCollection = feedGovernance
     ? {
         ...feedGovernance,
         source: feedGovernance.source || "feed_governance",
-        events:
-          feedGovernance.events.length > 0
-            ? feedGovernance.events
-            : fallbackGovernanceEvents,
+        events: governanceEvents,
         highSeverityCount:
-          feedGovernance.highSeverityCount ??
-          feedGovernance.events.filter((e) => e.severity === "high").length,
+          governanceEvents.filter((e) => e.severity === "high").length,
       }
     : {
         source: "phase1b_section7_fallback",
-        events: fallbackGovernanceEvents,
-        highSeverityCount: fallbackGovernanceEvents.filter((e) => e.severity === "high").length,
+        events: governanceEvents,
+        highSeverityCount: governanceEvents.filter((e) => e.severity === "high").length,
       };
 
   const hasFeed =
