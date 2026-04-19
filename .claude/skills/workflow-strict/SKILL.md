@@ -1,14 +1,17 @@
 ---
 name: workflow-strict
-description: "`workflow:run --mode turtle-strict` 严格编排：全流程，关键输入与 data_pack_report 缺失时 fail-fast；与 Slash `/workflow-analysis` 语义对齐。"
+description: "`workflow:run --mode turtle-strict`：TS 跑严格证据链与 Phase3；深度定性终稿默认在 Claude 会话对照本 skill 收口。"
 ---
 
 # workflow-strict 执行规范
+
+> 由入口 `/workflow-analysis` 默认调用；该 skill 只定义严格执行与终稿补强规范，不替代入口参数说明。
 
 ## 目标
 
 - 与仓库根 **`/workflow-analysis`**（等价 `pnpm run workflow:run -- --mode turtle-strict ...`）一致：**PDF 链 + 报告包 + Pre-flight + Phase3**。
 - **策略可切换**：Stage E 由 `--strategy turtle|value_v1` 决定；入口名不含策略名。
+- **叙事分层**：编排层 **不**调用 Anthropic/OpenAI 做自动叙事；**final-narrative**（六维定性终稿）默认由 **Claude** 在证据产物齐备后执行（与 [entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md) 一致）。
 
 ## 顺序与检查
 
@@ -16,6 +19,7 @@ description: "`workflow:run --mode turtle-strict` 严格编排：全流程，关
 2. 在 **`turtle-strict`** 下：
    - Phase1A 后跑 **Pre-flight**（`[strict:preflight]`）。
    - 缺 `data_pack_report.md` 时 **fail-fast**（`[strict:workflow:strict]`）。
+3. **（默认）Claude 收口**：在 `data_pack_market.md`、（若有）`data_pack_report.md`、Phase1B 与 Phase3 报告就绪后，于会话内完成与策略一致的定性终稿补强；证据不足时 **明确阻断**，不宣称已完成终稿。
 
 ## 关键差异（`standard` vs `turtle-strict`）
 

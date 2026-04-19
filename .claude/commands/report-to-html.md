@@ -1,9 +1,11 @@
 ---
-description: 将 Markdown 转为语义化 HTML（可选目录/旧版 pre 包装）
+description: 将 Markdown 转为语义化 HTML（版式渲染；不生成或改写叙事正文）
 argument-hint: [--input-md] [--output-html] [--toc] [--legacy-pre]
 ---
 
 在 **monorepo 根目录**执行（需已 `pnpm run build`）。
+
+> **职责边界**：仅 **MD→HTML**；不执行证据采集、估值或 **final-narrative**。输入 `.md` 须已由编排或 Claude 事先写好。
 
 ## Slash → CLI（脚本 / CI）
 

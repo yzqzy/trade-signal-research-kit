@@ -1,13 +1,26 @@
 ---
-description: PDF-first 独立商业分析（Phase1A + 可选年报 PDF→2A/2B + Phase1B），产出定性稿、D1~D6 契约与 manifest
+description: PDF-first 独立商业分析（Phase1A + 可选年报 PDF→2A/2B + Phase1B），产出证据包与定性草稿；六维终稿叙事默认在 Claude 会话收口
 argument-hint: [--code <股票代码>] [--year YYYY] [--pdf <path> | --report-url <url>] [--strict] [--mode standard|turtle-strict] [--strategy turtle|value_v1]
 ---
 
 在 **monorepo 根目录**执行（需已 `pnpm install` 且 `pnpm run build`）。
 
+## 入口与执行映射
+
+- **入口（command）**：`/business-analysis`（参数、产物与 CLI 映射）
+- **默认执行 skill**：`business-analysis-finalize`（文件：`.claude/skills/business-analysis-finalize/SKILL.md`，负责 final-narrative 写回与失败阻断语义）
+
+## 单一路径（必读）
+
+1. **证据管线（TS/CLI）**：可重复、可门禁；产出 **evidence-pack**（`data_pack_*`、`phase1b_qualitative.*` 等）及工程合并的 `qualitative_report.md` / `qualitative_d1_d6.md` 草稿（**cli-evidence-only**，不宣称 AI 六维终稿）。
+2. **终稿叙事（Claude，默认步骤）**：在同一会话执行 skill `business-analysis-finalize`（`.claude/skills/business-analysis-finalize/SKILL.md`），基于证据包完成 **final-narrative**，写回 `qualitative_report.md`（终稿）与 `qualitative_d1_d6.md`（填充稿）。
+3. **失败语义**：若证据不足或无法负责任生成终稿，**禁止**对用户宣称「已完成终稿」；应列出缺口。纯 CLI/CI 跑通只表示证据链状态，**不等于**终稿完成。
+
+契约全文：[docs/guides/entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)。
+
 ## Slash → CLI（脚本 / CI）
 
-**优先**：在 Claude Code 用本 Slash；CLI 为等价自动化入口。
+**优先**：在 Claude Code 用本 Slash，并在编排完成后执行上节第 2 步；CLI 单独运行时仅为 **cli-evidence-only**。
 
 ```bash
 pnpm run business-analysis:run -- \
@@ -32,8 +45,8 @@ pnpm run business-analysis:run -- \
 
 ## 主要产物（`--output-dir` 或默认 `output/business-analysis/<code>/`）
 
-- `qualitative_report.md`（PDF-first 定性主文 + Phase1B 渲染）
-- `qualitative_d1_d6.md`（Turtle **D1~D6** 契约稿；含可选 `data_pack_report` 摘录）
+- `qualitative_report.md`（CLI：**Phase1B 合并 / 草稿**；终稿以 Claude 写回为准）
+- `qualitative_d1_d6.md`（CLI：**契约骨架 + 摘录**；填充正文以 Claude 写回为准）
 - `data_pack_market.md`
 - 可选 `data_pack_report.md`（有 PDF 分支时）
 - `business_analysis_manifest.json`（含 `pipeline.valuation`、`pipeline.pdfBranch`；`input` 含 **`runId`/`outputDirParent`** 及有值才写入的复跑字段；`suggestedWorkflowFullCommand` 为含 `--run-id` 等参数的可复跑模板）

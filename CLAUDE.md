@@ -6,12 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `trade-signal-schema-kit` is a TypeScript analysis framework for A-share and Hong Kong stock research. It provides data collection → qualitative analysis → quantitative evaluation → valuation → report output capabilities.
 
+**Narrative split (single path):** TypeScript orchestration is **cli-evidence-only** for narrative—no in-repo LLM vendor HTTP/SDK for “auto narrative.” **final-narrative** (Turtle-style six-dimension qualitative) is completed in **Claude Code** (slash commands / skills / session) and written back to `qualitative_report.md` / `qualitative_d1_d6.md`. See `docs/guides/entrypoint-narrative-contract.md`.
+
 ## Core Capability Overview
 
 | Goal | Claude slash | Root command | Key outputs |
 |------|--------------|--------------|-------------|
 | Full workflow (strict branch) | `/workflow-analysis` | `pnpm run workflow:run -- --mode turtle-strict ...` | `analysis_report.md/html`, `valuation_computed.json`, `workflow_manifest.json` |
-| Business analysis (PDF-first) | `/business-analysis` | `pnpm run business-analysis:run -- ...` | `qualitative_report.md`, `qualitative_d1_d6.md`, `business_analysis_manifest.json` |
+| Business analysis (PDF-first) | `/business-analysis` | `pnpm run business-analysis:run -- ...` | evidence-pack + `business_analysis_manifest.json`（CLI 的 `qualitative_report.md`/`qualitative_d1_d6.md` 可为草稿；终稿由 Claude 会话写回） |
 | Valuation only | `/valuation` | `pnpm run valuation:run -- ...` | `valuation_computed.json`, `valuation_summary.md` |
 | Download annual report | `/download-annual-report` | `pnpm run phase0:download -- ...` | local PDF |
 | Markdown to HTML | `/report-to-html` | `pnpm run report-to-html:run -- ...` | `.html` |
@@ -41,7 +43,7 @@ Execution order for `workflow:run`: Phase 0 (optional) → Phase 1A → (if annu
 ```
 
 - Use `/workflow-analysis` for end-to-end output.
-- Use `/business-analysis` for PDF-first qualitative deliverables (no full Phase3).
+- Use `/business-analysis` for PDF-first evidence pipeline and draft qualitative artifacts; finalize six-dimension narrative in the same Claude session.
 - Use `/valuation` when inputs/manifest are already prepared.
 
 ## Strategy Switching
@@ -86,7 +88,7 @@ pnpm --filter @trade-signal/provider-http run build
 
 ## Notes
 
-- Skills: `.claude/skills/business-analysis/SKILL.md`, `workflow-strict/SKILL.md`, `quality-gates/SKILL.md`.
+- Skills: `business-analysis-finalize`（`.claude/skills/business-analysis-finalize/SKILL.md`）, `workflow-strict/SKILL.md`, `quality-gates/SKILL.md`.
 - `workflow:run --mode standard` keeps legacy behavior (Phase3 may run without `data_pack_report.md`).
 - Quality: `pnpm run quality:all` runs regression + golden for **cn_a** and **hk** (`output/phase3_golden/<suite>/`). HK suite is snapshot regression; full HK depth is not yet at A-share parity.
 

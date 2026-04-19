@@ -132,7 +132,7 @@ Phase1A → Phase1B → Phase3
 - **LangGraph**：主链外层流程（阶段、分支、checkpoint、重试、审计）。
 - **Claude Code**：深度定性、PDF 对照与六维契约写作（Skills / slash commands）。
 
-组合方式：图编排跑采集与规则 Phase3；定性 narrative 在 IDE 侧完成。选型见 [Agent 编排框架选型](../strategy/agent-framework-comparison.md)。
+组合方式：图编排跑采集与规则 Phase3；**final-narrative（六维终稿）**在 **Claude 会话**完成；纯 CLI 跑通表示 **evidence-pack / 规则报告**状态，**cli-evidence-only** 不宣称已完成 AI 终稿叙事。单一路径契约见 [entrypoint-narrative-contract.md](./entrypoint-narrative-contract.md)。选型见 [Agent 编排框架选型](../strategy/agent-framework-comparison.md)。
 
 ## 逻辑总览（方法论）
 
@@ -172,9 +172,9 @@ Phase1A → Phase1B → Phase3
 
 ## 独立商业分析流程
 
-**Claude Code**：`/business-analysis`（见 `.claude/commands/business-analysis.md`）。**CLI**：`pnpm run business-analysis:run`（根目录）或包内 filter。规范：`.claude/skills/business-analysis/SKILL.md`。
+**Claude Code**：`/business-analysis`（见 `.claude/commands/business-analysis.md`）。**CLI**：`pnpm run business-analysis:run`（根目录）或包内 filter。默认收口 skill：`business-analysis-finalize`（文件：`.claude/skills/business-analysis-finalize/SKILL.md`）。
 
-产出：`qualitative_report.md`、**`qualitative_d1_d6.md`**、`data_pack_market.md`、`phase1b_evidence_quality.json`（§7/§8 证据结构离线指标）、可选 `data_pack_report.md`、`business_analysis_manifest.json`。
+产出：`qualitative_report.md`、**`qualitative_d1_d6.md`**、`data_pack_market.md`、`phase1b_evidence_quality.json`（§7/§8 证据结构离线指标）、可选 `data_pack_report.md`、`business_analysis_manifest.json`。其中纯 CLI 路径下 `qualitative_*` 可为草稿；六维终稿以 Claude 会话写回为准。
 
 **PDF 与交付语义（MVP）**（与 `phase3_preflight.md` 中「PDF 与交付语义」一节一致）：
 
@@ -386,6 +386,7 @@ pnpm --filter @trade-signal/research-strategies run quality:phase3-golden -- --s
 - 用途：为 Stage E / Phase 3 的定性与估值假设提供依据
 - 最小内容：结论、证据引用、参数化因子表
 - Phase1B 当前补充范围：§7 管理层与治理、§8 行业与竞争、§10 MD&A 摘要（每项保留来源 URL）
+- 语义边界：该文件在纯 CLI 中不承诺等同 `final-narrative`；若需六维终稿，请在 Claude 会话执行收口流程（见 `entrypoint-narrative-contract.md`）。
 
 ### `valuation_computed`（Stage E / Phase 3 中间产物）
 

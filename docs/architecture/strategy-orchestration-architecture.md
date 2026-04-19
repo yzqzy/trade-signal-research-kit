@@ -21,7 +21,7 @@
 - **Claude Code**：IDE 侧深度定性、六维契约与 PDF 对照（Skills / slash commands）。
 - **LangGraph**：TS 主链全流程状态编排（阶段、分支、checkpoint、重试、审计）。
 
-外层用 LangGraph 跑 Stage；定性 narrative 在 **Claude Code** 完成。选型见 [Agent 编排框架选型](../strategy/agent-framework-comparison.md)。
+外层用 LangGraph 跑 Stage；定性 narrative 在 **Claude Code** 完成（入口/产物契约见 [entrypoint-narrative-contract.md](../guides/entrypoint-narrative-contract.md)）。选型见 [Agent 编排框架选型](../strategy/agent-framework-comparison.md)。
 
 ## 阶段映射（Phase ↔ Stage）
 

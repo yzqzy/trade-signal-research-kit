@@ -1,9 +1,21 @@
 ---
-description: 全流程研究编排（严格 PDF 链 + Phase3 估值与终稿报告；编排入口，策略由 --strategy 指定）
+description: 全流程研究编排（严格 PDF 链 + Phase3 估值与规则报告）；深度六维定性终稿在 Claude 会话收口，TS 不调模型叙事 API
 argument-hint: [--code] [--mode standard|turtle-strict] [--pdf|--report-url] [--run-id] [--strategy turtle|value_v1]
 ---
 
 在 **monorepo 根目录**执行。
+
+## 入口与执行映射
+
+- **入口（command）**：`/workflow-analysis`
+- **默认执行 skill**：`workflow-strict`（文件：`.claude/skills/workflow-strict/SKILL.md`；名称与入口不同是为了区分“用户入口名”与“严格执行规范名”）
+
+## 与「终稿叙事」的关系
+
+- **CLI / LangGraph**：确定性阶段、估值与 `analysis_report.*`（**cli-evidence-only** 语义延伸至「不含模型厂商叙事 HTTP」；见架构红线）。
+- **Claude**：若要对齐 Turtle 六维叙事深度，在编排完成后于会话内对照 **evidence-pack** 与 `.claude/skills/workflow-strict/SKILL.md` 做 **final-narrative** 补强；失败时不得宣称终稿已完成。
+
+契约：[docs/guides/entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)。
 
 ## Slash → CLI（脚本 / CI，严格主链）
 

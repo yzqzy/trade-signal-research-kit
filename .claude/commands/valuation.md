@@ -1,9 +1,11 @@
 ---
-description: 独立估值（Phase3 估值引擎）：输入市场包与可选报告包，输出 valuation_computed.json 与 valuation_summary.md
+description: 独立估值（Phase3 估值引擎）：输入市场包与可选报告包，输出 valuation_computed.json 与 valuation_summary.md（非叙事/非六维终稿入口）
 argument-hint: [--market-md] [--report-md] [--from-manifest]
 ---
 
 在 **monorepo 根目录**执行（需已 `pnpm run build`）。
+
+> **职责边界**：本入口只做估值数值与摘要（可选 full report），**不是** `qualitative_report` / D1–D6 **final-narrative** 入口；定性终稿请用 `/business-analysis` 或编排完成后的 Claude 收口（见 [entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)）。
 
 ## Slash → CLI（脚本 / CI）
 

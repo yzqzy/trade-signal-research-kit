@@ -2,7 +2,7 @@
 
 面向 A 股与港股的 **TypeScript 研究编排框架**：以 `schema-core` 标准字段与 Provider 契约为轴，串联采集、（可选）年报 PDF 精提取、外部证据、策略评估、估值与报告输出，并配套 **质量门禁**。**A 股优先**；港股具备门禁基线，与 A 股同等深度能力仍在补齐。**版本**：v0.1-alpha。
 
-日常推荐在 **Claude Code** 里用 Slash 命令驱动；CLI 用于脚本化、CI 与无 IDE 环境。Stage / Phase、续跑与 output v2 见 [docs/guides/workflows.md](docs/guides/workflows.md)；数据契约见 [docs/guides/data-source.md](docs/guides/data-source.md)。
+日常推荐在 **Claude Code** 里用 Slash 命令驱动；CLI 用于脚本化、CI 与无 IDE 环境。Stage / Phase、续跑与 output v2 见 [docs/guides/workflows.md](docs/guides/workflows.md)；数据契约见 [docs/guides/data-source.md](docs/guides/data-source.md)。**证据包（CLI）与六维终稿叙事（Claude）**的职责划分见 [docs/guides/entrypoint-narrative-contract.md](docs/guides/entrypoint-narrative-contract.md)。
 
 ## 术语速记
 
@@ -10,16 +10,18 @@
 - **策略（strategy）**：`turtle`、`value_v1`（通过 `--strategy` 切换）
 - **阶段命名**：文档主叙事用 Stage A~E，代码实现名用 Phase 0~3（语义一一对应）
 - **顺序规则**：有 PDF 时走 `Phase1A → Phase2A/2B → Phase1B → Phase3`；无 PDF 时走 `Phase1A → Phase1B → Phase3`
+- **evidence-pack**：`data_pack_*` 与 Phase1B 等确定性编排产物（**cli-evidence-only** 时 CLI 不宣称已完成 AI 终稿）
+- **final-narrative**：六维定性终稿，**默认在 Claude Code**（Slash / Skills / 会话）写回 `qualitative_report.md` / `qualitative_d1_d6.md`；TS 编排层不调模型厂商叙事 API
 
 ## 核心功能总览
 
 | 模块 | Slash（推荐） | 关键产物 |
 |------|----------------|----------|
-| 全流程研究 | `/workflow-analysis` | `analysis_report.md` / `analysis_report.html`、`valuation_computed.json`、`workflow_manifest.json` |
-| 商业分析（PDF-first） | `/business-analysis` | `qualitative_report.md`、`qualitative_d1_d6.md`、`data_pack_market.md`、可选 `data_pack_report.md`、`business_analysis_manifest.json` |
-| 独立估值 | `/valuation` | `valuation_computed.json`、`valuation_summary.md`（可选 `--full-report`） |
-| 年报下载 | `/download-annual-report` | 本地缓存 PDF（见 [Phase 0](docs/guides/phase0-download.md)） |
-| MD → HTML | `/report-to-html` | 与输入同名的 `.html` |
+| 全流程研究 | `/workflow-analysis` | `analysis_report.md` / `analysis_report.html`、`valuation_computed.json`、`workflow_manifest.json`（定性深度补强见契约文档） |
+| 商业分析（PDF-first） | `/business-analysis` | **证据包** `data_pack_*` + **草稿** `qualitative_*`；**终稿叙事**于 Claude 会话写回（见 [entrypoint-narrative-contract](docs/guides/entrypoint-narrative-contract.md)） |
+| 独立估值 | `/valuation` | `valuation_computed.json`、`valuation_summary.md`（可选 `--full-report`；**非**叙事入口） |
+| 年报下载 | `/download-annual-report` | 本地缓存 PDF（见 [Phase 0](docs/guides/phase0-download.md)；**非**叙事入口） |
+| MD → HTML | `/report-to-html` | 与输入同名的 `.html`（**仅**版式，不生成叙事） |
 | 选股器 | —（CLI） | 见 [workflows](docs/guides/workflows.md) 中 `screener` |
 
 ## 架构图（UML）
@@ -54,7 +56,7 @@ flowchart TD
 /business-analysis 600887
 ```
 
-跑定性主链（不跑完整 Phase3）。先看 `qualitative_report.md`、`qualitative_d1_d6.md`、`data_pack_*`、`business_analysis_manifest.json`。
+跑定性主链（不跑完整 Phase3）。先看 **证据包** `data_pack_*` 与 manifest；`qualitative_*` 在纯 CLI 下为草稿，**终稿**需在 Claude 会话按 skill 收口（见 [entrypoint-narrative-contract](docs/guides/entrypoint-narrative-contract.md)）。
 
 ### 3) 独立估值
 
@@ -117,6 +119,7 @@ pnpm run test:linkage   # build + 链路烟测
 
 ## 更多文档
 
+- [入口与 AI 叙事契约（单一路径）](docs/guides/entrypoint-narrative-contract.md)
 - [流程与 CLI 细节](docs/guides/workflows.md)
 - [数据契约与 quality](docs/guides/data-source.md)
 - [环境配置与实操](docs/guides/agent-llm-and-env.md)

@@ -4,7 +4,7 @@
 
 本文按「先跑通，再细化」给出步骤：先配置 Feed，再优先用 **Claude Code** Slash（与根目录 [README.md](../../README.md) 一致），需要脚本化或续跑时再对照下方 CLI。续跑与排障见后文。
 
-> Slash 与根目录 `pnpm` 命令触发同一套编排；IDE 内可多轮追问与改稿，CLI 适合 CI 与无界面环境。
+> Slash 与根目录 `pnpm` 命令触发同一套编排；**终稿叙事**默认在 IDE 内完成（见 [entrypoint-narrative-contract.md](./entrypoint-narrative-contract.md)）。CLI 适合 CI 与无界面环境，语义为 **cli-evidence-only**，不等同于终稿完成。
 
 ## 三步法（推荐）
 
@@ -37,13 +37,13 @@ pnpm run business-analysis:run -- \
 无 `--pdf`/`--report-url` 时会对年报 URL **best-effort 自动发现**（需 `FEED_BASE_URL`）；交付级报告包可加 `--strict`（强制 PDF 链 + Pre-flight，前缀 `[strict:business-analysis]`）。
 
 完成后重点看：
-- `qualitative_report.md`
-- `qualitative_d1_d6.md`
-- `business_analysis_manifest.json`
+- **证据包**：`data_pack_market.md`、（若有）`data_pack_report.md`、`phase1b_qualitative.md`
+- **manifest**：`business_analysis_manifest.json`
+- **草稿**：`qualitative_report.md`、`qualitative_d1_d6.md`（纯 CLI 为合并稿/骨架；**六维终稿**须在会话内按 skill 写回，见 [entrypoint-narrative-contract.md](./entrypoint-narrative-contract.md)）
 
 ### 第 3 步：全流程或估值
 
-- **Claude Code**：`/workflow-analysis`（终稿）· `/valuation` · `/download-annual-report`（按需）
+- **Claude Code**：`/workflow-analysis`（全链路规则报告 + 可会话补强叙事）· `/valuation` · `/download-annual-report`（按需）
 - **CLI**：
 
 ```bash

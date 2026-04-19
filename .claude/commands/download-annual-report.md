@@ -1,9 +1,11 @@
 ---
-description: Phase0 年报下载与缓存（独立 CLI）
+description: Phase0 年报下载与缓存（独立 CLI；仅获取 PDF，不做定性叙事）
 argument-hint: [--stock-code] [--year] [--category] [--url 可选]
 ---
 
 在 **monorepo 根目录**执行。
+
+> **职责边界**：只解决 **年报 PDF 落盘**；不包含 Phase1A/1B 或任何 **final-narrative**。后续请 `/business-analysis` 或 `/workflow-analysis`（见 [entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)）。
 
 ## Slash → CLI（脚本 / CI）
 
