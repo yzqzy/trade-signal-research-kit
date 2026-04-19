@@ -16,6 +16,23 @@ argument-hint: [--code <股票代码>] [--year YYYY] [--pdf <path> | --report-ur
 2. **终稿叙事（Claude，默认步骤）**：在同一会话执行 skill `business-analysis-finalize`（`.claude/skills/business-analysis-finalize/SKILL.md`），基于证据包完成 **final-narrative**，写回 `qualitative_report.md`（终稿）与 `qualitative_d1_d6.md`（填充稿）。
 3. **失败语义**：若证据不足或无法负责任生成终稿，**禁止**对用户宣称「已完成终稿」；应列出缺口。纯 CLI/CI 跑通只表示证据链状态，**不等于**终稿完成。
 
+## 「终稿完成」判定（收紧）
+
+仅当 skill **终稿硬约束 + 呈现规范 + PDF 语义**全部满足时，方可对用户宣称 **「终稿已写回」** 并使用 **`[终稿状态: 完成]`**。最低限度包括：
+
+- **呈现**：`qualitative_report.md` 与 `qualitative_d1_d6.md` **正文无裸 URL**；均有 **`## 附录：证据索引`**（`[E*]` / `[M:§x]` 映射表）。
+- `qualitative_d1_d6.md`：每个 **D1~D6** 证据链条至少 **1 条 `[E*]`** 或 **`[M:§x]`**（映射附录）。
+- `qualitative_report.md`：含 **`## 监管与合规要点`**，且小节内主要结论均有 **`[E*]`**（或 `[M:§x]`）。
+- 若 Phase1B 存在 **「未搜索到相关信息」**：须含 **`## 证据缺口清单（Phase1B）`**。
+- **PDF**：若无 `data_pack_report.md`，或 `gateVerdict` 为 **DEGRADED/CRITICAL**，须按 skill **「PDF 与终稿完成语义」**写 **`> …` 声明**，且 **不得**标 **`[终稿状态: 完成]`**（须 **阻断**）。
+
+未满足时：使用 skill 中的 **阻断模板**，文件末尾 **`[终稿状态: 阻断]`**，**不得**宣称终稿完成。细则见 `.claude/skills/business-analysis-finalize/SKILL.md` 与 [entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)。
+
+## PDF 默认尝试（编排层）
+
+- **默认**：无 `--pdf`/`--report-url` 时仍 **best-effort** 自动发现年报并走 Phase0→2B（需 `FEED_BASE_URL`）；失败则本 run 可能无 `data_pack_report.md`。
+- **强制交付级 PDF**：使用 **`--strict`**（或先 `phase0:download` 再传 `--pdf`）。终稿若依赖年报 MD&A，**强烈建议**在收口前确保 `data_pack_report.md` 存在且人工复核抽取质量。
+
 契约全文：[docs/guides/entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)。
 
 ## Slash → CLI（脚本 / CI）

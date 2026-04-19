@@ -82,6 +82,7 @@ async function fetchSearchHits(params: {
   apiBasePath: string;
   apiKey?: string;
   stockCode: string;
+  stockName?: string;
   fiscalYear: string;
   category: string;
   limit: number;
@@ -96,6 +97,9 @@ async function fetchSearchHits(params: {
   url.searchParams.set("category", params.category);
   url.searchParams.set("limit", String(params.limit));
   url.searchParams.set("timeRange", "3y");
+  if (params.stockName?.trim()) {
+    url.searchParams.set("stockName", params.stockName.trim());
+  }
 
   const response = await fetch(url, {
     headers: {
@@ -114,6 +118,45 @@ async function fetchSearchHits(params: {
     );
   }
   return normalizeHits(payload);
+}
+
+type FeedStockDetailResponse = {
+  success?: boolean;
+  data?: {
+    name?: string;
+    stockName?: string;
+  };
+  name?: string;
+  stockName?: string;
+};
+
+async function tryFetchStockName(params: {
+  baseUrl: string;
+  apiBasePath: string;
+  apiKey?: string;
+  stockCode: string;
+}): Promise<string | undefined> {
+  const base = params.baseUrl.replace(/\/+$/, "");
+  const apiBasePath = params.apiBasePath.replace(/\/+$/, "");
+  const endpointPath = `/stock/detail/${encodeURIComponent(params.stockCode)}`;
+  const url = new URL(`${base}${apiBasePath}${endpointPath}`);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        ...(params.apiKey ? { "x-api-key": params.apiKey } : {}),
+      },
+    });
+    if (!response.ok) return undefined;
+    const payload = (await response.json()) as FeedStockDetailResponse;
+    const stockName =
+      payload.data?.name?.trim() ||
+      payload.data?.stockName?.trim() ||
+      payload.name?.trim() ||
+      payload.stockName?.trim();
+    return stockName || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const PHASE0_DISCOVERY_HINT =
@@ -141,6 +184,12 @@ export async function discoverPhase0ReportUrlFromFeed(input: {
   const normCode = stripExchangePrefix(input.stockCode);
   const cat = input.category.trim() || "年报";
   const year = input.fiscalYear.trim();
+  const stockName = await tryFetchStockName({
+    baseUrl,
+    apiBasePath,
+    apiKey,
+    stockCode: input.stockCode,
+  });
 
   const seen = new Set<string>();
   const candidates: FeedSearchHit[] = [];
@@ -150,6 +199,7 @@ export async function discoverPhase0ReportUrlFromFeed(input: {
     apiBasePath,
     apiKey,
     stockCode: input.stockCode,
+    stockName,
     fiscalYear: year,
     category: cat,
     limit: 20,

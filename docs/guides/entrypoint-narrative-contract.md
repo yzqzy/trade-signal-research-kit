@@ -10,7 +10,7 @@
 |------|------|
 | **evidence-pack（证据包）** | `data_pack_market.md`、可选 `data_pack_report.md`、`phase1b_qualitative.*` 等可重复、可门禁的产物 |
 | **cli-evidence-only** | 仅通过 `pnpm run …` 跑编排时的语义：产出证据与工程合并稿，**不宣称**已完成「AI 六维终稿」 |
-| **final-narrative（终稿叙事）** | 基于证据包，由 **Claude** 写回的 `qualitative_report.md`（六维叙事终稿）与已填充的 `qualitative_d1_d6.md`（无「待补全正文」类占位） |
+| **final-narrative（终稿叙事）** | 基于证据包，由 **Claude** 写回的 `qualitative_report.md` / `qualitative_d1_d6.md`：**正文仅 `[E*]`/`[M:§x]`**，**裸 URL 只在附录**；含 **监管与合规要点**、**附录：证据索引**、按需缺口与 PDF 声明；终稿完成态受 **PDF 是否存在 / gateVerdict** 约束（见下文） |
 
 ## 入口矩阵
 
@@ -43,8 +43,8 @@
 |------|----------------|-------------------|
 | `data_pack_market.md` | 结构化市场证据 | 保持为证据源，一般不覆盖叙事 |
 | `data_pack_report.md` | 年报提取证据（若有） | 同上 |
-| `qualitative_report.md` | Phase1B 合并与模板段落（**非**终稿叙事承诺） | 六维叙事终稿，**不再**仅为 Phase1B 表格占位 |
-| `qualitative_d1_d6.md` | 契约骨架 + 摘录 | 各维正文已填充，无「待补全」类占位 |
+| `qualitative_report.md` | Phase1B 合并与模板段落（**非**终稿叙事承诺） | 六维叙事终稿 + **监管与合规要点** + **`## 附录：证据索引`**（`[E*]` 全表）+ 按需 **证据缺口清单** / **PDF 声明**；**正文不出现 `https://`** |
+| `qualitative_d1_d6.md` | 契约骨架 + 摘录 | 各维正文已填充；**每维 ≥1 条 `[E*]` 或 `[M:§x]`**；**附录证据索引**；无大面积「待补全」类占位 |
 
 ## 失败语义
 
@@ -53,13 +53,38 @@
 | **Claude 路径**：证据不足或无法负责任写终稿 | **不得**宣称「已完成终稿」；应明确列出缺失证据或需用户补充的输入 |
 | **CLI 路径**：编排 fail-fast（strict、preflight 等） | 按既有前缀报错（`[strict:business-analysis]`、`[strict:workflow:strict]` 等），产物可能不完整；**不**将 CLI 成功等同于终稿叙事完成 |
 
+## 「终稿完成」硬验收清单（business-analysis）
+
+以下**全部满足**才可对外称 **final-narrative 已完成**并使用 **`[终稿状态: 完成]`**；否则须 **`[终稿状态: 阻断]`**（见 `.claude/skills/business-analysis-finalize/SKILL.md`）。
+
+1. **呈现**：`qualitative_report.md` 与 `qualitative_d1_d6.md` **正文无裸 URL**；均有 **`## 附录：证据索引`**（`[E*]` / `[M:§x]` 映射完整）。
+2. **`qualitative_d1_d6.md`**：`D1`~`D6` 每节至少 **1** 条 **`[E*]`** 或 **`[M:§x]`**。
+3. **`qualitative_report.md`**：存在 **`## 监管与合规要点`**，且小节内关键结论均有 **`[E*]`**（或 `[M:§x]`）。
+4. **缺口**：`phase1b_qualitative.md` 中凡 **`⚠️ 未搜索到相关信息`**，终稿须有 **`## 证据缺口清单（Phase1B）`**。
+5. **PDF 与完成态**：若无 `data_pack_report.md`，或 `gateVerdict` 为 **`DEGRADED`** / **`CRITICAL`**，须按 skill 写 **`> …` 声明`，且 **不得**标 **`[终稿状态: 完成]`**（须阻断）。
+
+### 失败示例（不应宣称终稿完成）
+
+- 正文出现 `https://...` 链接列表，或仅有叙述而无 **`## 附录：证据索引`**。
+- 宣称「完成」但 **无 `data_pack_report.md`** 却未写 **`> 年报 PDF 未解析…`**。
+- `data_pack_report` 为 **DEGRADED/CRITICAL** 却未写 PDF 质量声明，或仍标 **`[终稿状态: 完成]`**。
+
 ## 000021 验收示例（人工核对）
 
 在任意一次以 `000021` 为标的的 run 目录下（如 `output/business-analysis/000021/<runId>/`）：
 
 1. **保留证据**：存在 `data_pack_market.md`；若 PDF 链成功则存在 `data_pack_report.md`。
-2. **终稿形态**（须经过 Claude 收口，非仅 CLI）：打开 `qualitative_report.md`，确认主体为 **六维叙事终稿**，而非大面积 Phase1B 原始表格占位。
-3. **D1–D6**：打开 `qualitative_d1_d6.md`，确认各维 **有实质正文**，无大面积「待补全正文」类提示。
+2. **终稿形态**（须经过 Claude 收口，非仅 CLI）：打开 `qualitative_report.md`，确认主体为 **六维叙事终稿**，而非大面积 Phase1B 原始表格占位；并核对上文 **「终稿完成」硬验收清单**（监管与合规小节、缺口清单、PDF 质量声明）。
+3. **D1–D6**：打开 `qualitative_d1_d6.md`，确认各维 **有实质正文**，无大面积「待补全正文」类提示；**每维至少一条 `[E*]` 或 `[M:§x]`**，且附录索引可回溯。
+4. **与 Phase1B 对齐**：若 `phase1b_qualitative.md` 含监管/内控/关联交易等表格条目，终稿「监管与合规要点」应能映射到相应结论或明确列入证据缺口（不得静默消失）。
+
+### 样例目录 `457122b1-8987-409c-86e9-b697bccdb81c`（对齐说明）
+
+仓库内该 run 的终稿文件会随契约迭代**重写为**：正文 **`[E*]`**、文末 **`## 附录：证据索引`**、**`## 监管与合规要点`**、按需 **缺口清单** 与 **PDF 声明**；因 `data_pack_report` 常为 **DEGRADED**，**`[终稿状态: 完成]` 不适用**，应为 **`[终稿状态: 阻断]`**。
+
+### 样例目录 `300770/c53b6fff-...`（无年报包）
+
+该 run **无 `data_pack_report.md`**（见 `phase3_preflight.md`），终稿须 **`> 年报 PDF 未解析…`**，且 **`[终稿状态: 阻断]`**；D5 仅允许预研级结论。
 
 > CI 门禁无法代替上述人工终稿验收；门禁负责证据结构与链路回归。
 
