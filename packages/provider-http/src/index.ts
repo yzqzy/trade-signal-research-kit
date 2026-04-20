@@ -8,6 +8,7 @@ import type {
   KlineBar,
   Market,
   MarketDataProvider,
+  OperationsInsightSnapshot,
   PeerComparableCollection,
   Quote,
   TradingCalendar,
@@ -189,6 +190,20 @@ type FeedGovernanceEventsPayload = {
     url?: string;
   }>;
   highSeverityCount?: number;
+};
+
+type FeedOperationsInsightPayload = {
+  source?: string;
+  status?: "pass" | "degraded";
+  missingFields?: string[];
+  degradeReasons?: string[];
+  data?: {
+    industryCycle?: FeedIndustryCyclePayload;
+    governanceTimeline?: FeedGovernanceEventsPayload["events"];
+    earningsGuidance?: Array<Record<string, unknown>>;
+    businessHighlights?: Array<Record<string, unknown>>;
+    themeSignals?: Array<Record<string, unknown>>;
+  };
 };
 
 const PERIOD_TO_FQT: Record<"none" | "forward" | "backward", "none" | "pre" | "after"> = {
@@ -627,6 +642,75 @@ export class FeedHttpProvider implements MarketDataProvider {
       highSeverityCount:
         payload.highSeverityCount ??
         events.filter((event) => event.severity === "high").length,
+    };
+  }
+
+  async getOperationsInsight(
+    code: string,
+    input?: {
+      year?: string;
+      reportDate?: string;
+      governanceLimit?: number;
+      forecastPageSize?: number;
+      timeRange?: "3m" | "6m" | "1y" | "3y" | "5y";
+    },
+  ): Promise<OperationsInsightSnapshot> {
+    const payload = await this.request<FeedOperationsInsightPayload>(
+      `/stock/topic/operations-insight/${encodeURIComponent(code)}`,
+      {
+        year: input?.year,
+        reportDate: input?.reportDate,
+        governanceLimit:
+          input?.governanceLimit !== undefined ? String(input.governanceLimit) : undefined,
+        forecastPageSize:
+          input?.forecastPageSize !== undefined ? String(input.forecastPageSize) : undefined,
+        timeRange: input?.timeRange,
+      },
+    );
+    const governanceEvents = (payload.data?.governanceTimeline ?? []).map<GovernanceNegativeEvent>((e) => ({
+      category: e.category === "regulatory" ? "regulatory" : "governance_negative",
+      summary: e.summary ?? e.title ?? "（无摘要）",
+      severity: toGovSeverity(e.severity),
+      happenedAt: e.happenedAt ?? e.publishedAt,
+      evidenceUrl: e.url,
+      sourceLabel: payload.source ?? "feed_operations_insight",
+    }));
+    return {
+      source: payload.source ?? "feed_operations_insight",
+      status: payload.status === "degraded" ? "degraded" : "pass",
+      missingFields: Array.isArray(payload.missingFields) ? payload.missingFields : [],
+      degradeReasons: Array.isArray(payload.degradeReasons) ? payload.degradeReasons : [],
+      industryCycle: payload.data?.industryCycle
+        ? {
+            industryName: payload.data.industryCycle.industryName ?? "未知行业",
+            classification: payload.data.industryCycle.source ?? "feed_industry_cycle",
+            cyclicality: toCyclicality(payload.data.industryCycle.cyclicality),
+            position: toCyclePosition(payload.data.industryCycle.position),
+            confidence: toConfidence(payload.data.industryCycle.confidence),
+            signals: [
+              {
+                indicator: "sample_size_current",
+                summary: String(payload.data.industryCycle.metrics?.sampleSizeCurrent ?? "—"),
+              },
+              {
+                indicator: "revenue_all_year_yoy",
+                summary: String(payload.data.industryCycle.metrics?.revenueAllYearYoY ?? "—"),
+              },
+              {
+                indicator: "parent_ni_all_year_yoy",
+                summary: String(payload.data.industryCycle.metrics?.parentNiAllYearYoY ?? "—"),
+              },
+            ],
+          }
+        : undefined,
+      governanceEvents: {
+        source: payload.source ?? "feed_operations_insight",
+        events: governanceEvents,
+        highSeverityCount: governanceEvents.filter((event) => event.severity === "high").length,
+      },
+      earningsGuidance: payload.data?.earningsGuidance ?? [],
+      businessHighlights: payload.data?.businessHighlights ?? [],
+      themeSignals: payload.data?.themeSignals ?? [],
     };
   }
 

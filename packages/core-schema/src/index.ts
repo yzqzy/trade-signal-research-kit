@@ -152,6 +152,17 @@ export interface MarketDataProvider {
       preferSeverity?: boolean;
     },
   ): Promise<GovernanceEventCollection>;
+  /** P2-Lite：运营与管理洞察聚合（可选能力） */
+  getOperationsInsight?(
+    code: string,
+    input?: {
+      year?: string;
+      reportDate?: string;
+      governanceLimit?: number;
+      forecastPageSize?: number;
+      timeRange?: "3m" | "6m" | "1y" | "3y" | "5y";
+    },
+  ): Promise<OperationsInsightSnapshot>;
 }
 
 export type CapabilityStatus = "supported" | "partial" | "unsupported";
@@ -193,6 +204,8 @@ export interface DataPackMarket {
   peerComparablePool?: PeerComparableCollection;
   /** P4：治理负面事件（若 provider 支持） */
   governanceEventCollection?: GovernanceEventCollection;
+  /** P2-Lite：运营与管理洞察聚合（若 provider 支持） */
+  operationsInsightSnapshot?: OperationsInsightSnapshot;
 }
 
 export type Phase2SectionConfidence = "high" | "medium" | "low";
@@ -391,4 +404,16 @@ export interface GovernanceEventCollection {
   source: string;
   events: GovernanceNegativeEvent[];
   highSeverityCount: number;
+}
+
+export interface OperationsInsightSnapshot {
+  source: string;
+  status: "pass" | "degraded";
+  missingFields: string[];
+  degradeReasons: string[];
+  industryCycle?: IndustryCycleSnapshot;
+  governanceEvents?: GovernanceEventCollection;
+  earningsGuidance?: Array<Record<string, unknown>>;
+  businessHighlights?: Array<Record<string, unknown>>;
+  themeSignals?: Array<Record<string, unknown>>;
 }

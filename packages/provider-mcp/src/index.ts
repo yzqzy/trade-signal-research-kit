@@ -1,10 +1,13 @@
 import type {
   CorporateAction,
   FinancialSnapshot,
+  GovernanceEventCollection,
+  GovernanceNegativeEvent,
   Instrument,
   KlineBar,
   Market,
   MarketDataProvider,
+  OperationsInsightSnapshot,
   Quote,
   TradingCalendar,
 } from "@trade-signal/schema-core";
@@ -140,6 +143,39 @@ type StockFinancialPayload = {
   };
 };
 
+type StockOperationsInsightPayload = {
+  source?: string;
+  status?: "pass" | "degraded";
+  missingFields?: string[];
+  degradeReasons?: string[];
+  data?: {
+    industryCycle?: {
+      industryName?: string;
+      source?: string;
+      cyclicality?: string;
+      position?: string;
+      confidence?: string;
+      metrics?: {
+        sampleSizeCurrent?: number;
+        revenueAllYearYoY?: number;
+        parentNiAllYearYoY?: number;
+      };
+    };
+    governanceTimeline?: Array<{
+      category?: string;
+      summary?: string;
+      title?: string;
+      severity?: string;
+      happenedAt?: string;
+      publishedAt?: string;
+      url?: string;
+    }>;
+    earningsGuidance?: Array<Record<string, unknown>>;
+    businessHighlights?: Array<Record<string, unknown>>;
+    themeSignals?: Array<Record<string, unknown>>;
+  };
+};
+
 function fiscalYearToken(input: string): string {
   const m = input.match(/(20\d{2})/);
   return (m?.[1] ?? input.slice(0, 4)).trim();
@@ -226,6 +262,13 @@ const inferMarket = (input: string): Market => {
   const code = input.trim().toUpperCase();
   if (code.endsWith(".HK") || /^\d{5}$/.test(code)) return "HK";
   return "CN_A";
+};
+
+const toGovSeverity = (value: unknown): GovernanceNegativeEvent["severity"] => {
+  const v = typeof value === "string" ? value.toLowerCase() : "";
+  if (v === "high") return "high";
+  if (v === "medium") return "medium";
+  return "low";
 };
 
 const parseKline = (
@@ -428,6 +471,52 @@ export class FeedMcpProvider implements MarketDataProvider {
       isTradingDay: Boolean(item.isTradingDay),
       sessionType: item.sessionType ?? (item.isTradingDay ? "full" : "closed"),
     }));
+  }
+
+  async getOperationsInsight(
+    code: string,
+    input?: {
+      year?: string;
+      reportDate?: string;
+      governanceLimit?: number;
+      forecastPageSize?: number;
+      timeRange?: "3m" | "6m" | "1y" | "3y" | "5y";
+    },
+  ): Promise<OperationsInsightSnapshot> {
+    const payload = await this.callTool<StockOperationsInsightPayload>(
+      "get_stock_operations_insight",
+      {
+        code,
+        year: input?.year,
+        reportDate: input?.reportDate,
+        governanceLimit: input?.governanceLimit,
+        forecastPageSize: input?.forecastPageSize,
+        timeRange: input?.timeRange,
+      },
+    );
+    const governanceEvents = (payload.data?.governanceTimeline ?? []).map<GovernanceNegativeEvent>((e) => ({
+      category: e.category === "regulatory" ? "regulatory" : "governance_negative",
+      summary: e.summary ?? e.title ?? "（无摘要）",
+      severity: toGovSeverity(e.severity),
+      happenedAt: e.happenedAt ?? e.publishedAt,
+      evidenceUrl: e.url,
+      sourceLabel: payload.source ?? "mcp_operations_insight",
+    }));
+    const governanceCollection: GovernanceEventCollection = {
+      source: payload.source ?? "mcp_operations_insight",
+      events: governanceEvents,
+      highSeverityCount: governanceEvents.filter((event) => event.severity === "high").length,
+    };
+    return {
+      source: payload.source ?? "mcp_operations_insight",
+      status: payload.status === "degraded" ? "degraded" : "pass",
+      missingFields: Array.isArray(payload.missingFields) ? payload.missingFields : [],
+      degradeReasons: Array.isArray(payload.degradeReasons) ? payload.degradeReasons : [],
+      governanceEvents: governanceCollection,
+      earningsGuidance: payload.data?.earningsGuidance ?? [],
+      businessHighlights: payload.data?.businessHighlights ?? [],
+      themeSignals: payload.data?.themeSignals ?? [],
+    };
   }
 
   getConfig(): McpProviderOptions {

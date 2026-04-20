@@ -14,6 +14,14 @@ export const P1_CASH_QUALITY_FIELDS = [
   "ebitda",
 ] as const;
 
+export const P2_LITE_FIELD_BLOCKS = [
+  "industryCycle",
+  "governanceEvents",
+  "earningsGuidance",
+  "businessHighlights",
+  "themeSignals",
+] as const;
+
 export interface TopicFieldContract {
   requiredFields: string[];
   optionalFields: string[];
@@ -45,7 +53,13 @@ export const TOPIC_INPUT_CONTRACTS: Record<ReportTopicType, TopicInputContract> 
         "evidenceSummary",
         "confidenceBoundary",
       ],
-      optionalFields: ["governanceHighlights", "missingDataNotice"],
+      optionalFields: [
+        "governanceHighlights",
+        "missingDataNotice",
+        "operationsInsight.industryCycle",
+        "operationsInsight.governanceEvents.events",
+        "operationsInsight.earningsGuidance",
+      ],
       degradedFallback: [
         "missingDataNotice",
         "confidenceBoundary",
@@ -110,7 +124,12 @@ export const TOPIC_INPUT_CONTRACTS: Record<ReportTopicType, TopicInputContract> 
         "riskSummary",
         "confidenceBoundary",
       ],
-      optionalFields: ["positionSuggestion", "watchlistSignals"],
+      optionalFields: [
+        "positionSuggestion",
+        "watchlistSignals",
+        "operationsInsight.industryCycle",
+        "operationsInsight.governanceEvents.events",
+      ],
       degradedFallback: ["missingDataNotice", "confidenceBoundary"],
     },
   },
@@ -128,6 +147,14 @@ export interface P1GateResult {
   missingFields: string[];
 }
 
+export interface P2LiteGateResult {
+  status: "pass" | "degraded";
+  availableBlocks: string[];
+  missingBlocks: string[];
+  coverageCount: number;
+  requiredMinBlocks: number;
+}
+
 export function evaluateP1CashQualityGate(data: Record<string, unknown>): P1GateResult {
   const missingFields = P1_CASH_QUALITY_FIELDS.filter((field) => {
     const value = data[field];
@@ -142,6 +169,35 @@ export function evaluateP1CashQualityGate(data: Record<string, unknown>): P1Gate
   return {
     status: "pass",
     missingFields: [],
+  };
+}
+
+export function evaluateP2LiteCoverageGate(
+  data: Record<string, unknown>,
+  requiredMinBlocks = 3,
+): P2LiteGateResult {
+  const hasMeaningfulValue = (value: unknown): boolean => {
+    if (value === undefined || value === null || value === "") return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") {
+      const entries = Object.values(value as Record<string, unknown>);
+      if (entries.length === 0) return false;
+      return entries.some((entry) => hasMeaningfulValue(entry));
+    }
+    return true;
+  };
+
+  const availableBlocks = P2_LITE_FIELD_BLOCKS.filter((field) =>
+    hasMeaningfulValue(data[field]),
+  );
+  const missingBlocks = P2_LITE_FIELD_BLOCKS.filter((field) => !availableBlocks.includes(field));
+  const coverageCount = availableBlocks.length;
+  return {
+    status: coverageCount >= requiredMinBlocks ? "pass" : "degraded",
+    availableBlocks: [...availableBlocks],
+    missingBlocks: [...missingBlocks],
+    coverageCount,
+    requiredMinBlocks,
   };
 }
 
