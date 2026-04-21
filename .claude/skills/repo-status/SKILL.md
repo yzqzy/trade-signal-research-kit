@@ -7,7 +7,7 @@ description: "Use when user asks to check git status, current branch, and recent
 
 查看当前 git 仓库状态。
 
-## Instructions
+## Instructions 
 
 1. 运行 `git status` 查看状态
 2. 运行 `git branch` 查看当前分支

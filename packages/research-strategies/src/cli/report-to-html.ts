@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/** 单文件 HTML 调试/兼容用；研报中心主链路见 `reports-site:emit` + `sync:reports-to-app`（`apps/research-hub`）。 */
 
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";

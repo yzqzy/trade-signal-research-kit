@@ -1,0 +1,317 @@
+@import "tailwindcss";
+
+/* 与 next-themes（html 上 `class="dark"`）一致；不要用纯媒体查询否则按钮切换无效 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 壳层：字体 + flex（颜色由 layout / Tailwind 控制） */
+.rh-body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+
+/* —— 研报列表 / 详情（最小 rh-*） —— */
+.rh-container {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.rh-container--narrow {
+  max-width: 48rem;
+}
+
+.rh-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.rh-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.rh-page-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #525252;
+  line-height: 1.6;
+}
+
+.rh-page-meta {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.rh-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.rh-filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #737373;
+  margin-right: 0.25rem;
+}
+
+.rh-chip {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  border: 1px solid #e5e5e5;
+  color: #404040;
+  text-decoration: none;
+  background: transparent;
+}
+
+.rh-chip:hover {
+  border-color: #059669;
+  color: #059669;
+}
+
+.rh-chip--active {
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #047857;
+  font-weight: 600;
+}
+
+.rh-card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rh-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: transparent;
+}
+
+.rh-card-title {
+  font-weight: 600;
+  color: #059669;
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.rh-card-title:hover {
+  text-decoration: underline;
+}
+
+.rh-card-meta {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.rh-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #737373;
+  border: 1px dashed #d4d4d4;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.rh-kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
+}
+
+.rh-pill {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: #f5f5f5;
+  color: #404040;
+}
+
+.rh-pill--mono {
+  font-family: ui-monospace, monospace;
+}
+
+.rh-pill--success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.rh-pill--warn {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.rh-pill--danger {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.rh-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.rh-status--complete {
+  color: #047857;
+}
+
+.rh-status--degraded {
+  color: #b45309;
+}
+
+.rh-status--missing {
+  color: #b91c1c;
+}
+
+.rh-back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #059669;
+  text-decoration: none;
+}
+
+.rh-back-link:hover {
+  text-decoration: underline;
+}
+
+.rh-report-header {
+  margin-bottom: 1.5rem;
+}
+
+.rh-report-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  line-height: 1.35;
+}
+
+.rh-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.rh-report-meta-primary {
+  font-size: 0.875rem;
+  color: #737373;
+}
+
+.rh-report-hero {
+  margin-bottom: 0.5rem;
+}
+
+.rh-suspense-fallback {
+  padding: 2rem;
+  text-align: center;
+  color: #737373;
+}
+
+/* 嵌入的报告 HTML */
+.report-entry-body {
+  line-height: 1.65;
+  font-size: 0.9375rem;
+}
+
+.report-entry-body :where(h1, h2, h3) {
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+.report-entry-body :where(p, ul, ol) {
+  margin: 0.75em 0;
+}
+
+.report-entry-body :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.report-entry-body :where(th, td) {
+  border: 1px solid #e5e5e5;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.dark .rh-page-desc {
+  color: #a3a3a3;
+}
+
+.dark .rh-chip {
+  border-color: #404040;
+  color: #d4d4d4;
+  background: transparent;
+}
+
+.dark .rh-chip--active {
+  border-color: #34d399;
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+.dark .rh-card {
+  border-color: #404040;
+  background: transparent;
+}
+
+.dark .rh-kbd {
+  background: #262626;
+  border-color: #404040;
+}
+
+.dark .rh-pill {
+  background: #262626;
+  color: #d4d4d4;
+}
+
+.dark .rh-pill--success {
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+.dark .rh-pill--warn {
+  background: #422006;
+  color: #fcd34d;
+}
+
+.dark .rh-pill--danger {
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.dark .report-entry-body :where(th, td) {
+  border-color: #404040;
+}

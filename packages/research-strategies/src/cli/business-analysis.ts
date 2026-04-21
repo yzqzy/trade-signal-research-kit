@@ -3,6 +3,7 @@
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { runBusinessAnalysis } from "../runtime/business-analysis/orchestrator.js";
 import type { WorkflowMode, WorkflowStrategyId } from "../contracts/workflow-run-types.js";
+import { emitSiteReportsFromRun } from "../reports-site/emit-site-reports.js";
 
 type CliArgs = {
   code?: string;
@@ -22,6 +23,8 @@ type CliArgs = {
   interimPdfPath?: string;
   refreshMarket?: boolean;
   preflightRemedyPass?: number;
+  /** 可选：聚合写入 `site/reports`（entries/views/index），供文档站同步 */
+  reportsSiteDir?: string;
 };
 
 function parseArgs(argv: string[]): CliArgs {
@@ -70,6 +73,8 @@ function parseArgs(argv: string[]): CliArgs {
     preflightRemedyPass = n;
   }
 
+  const reportsSiteDir = values["reports-site-dir"]?.trim();
+
   return {
     code: values.code,
     year: values.year,
@@ -88,6 +93,7 @@ function parseArgs(argv: string[]): CliArgs {
     interimPdfPath: values["interim-pdf"],
     refreshMarket: flags.has("refresh-market"),
     preflightRemedyPass,
+    reportsSiteDir: reportsSiteDir || undefined,
   };
 }
 
@@ -125,6 +131,14 @@ async function main(): Promise<void> {
     console.log(`[business-analysis] data_pack_report_interim -> ${result.dataPackReportInterimPath}`);
   }
   console.log(`[business-analysis] manifest -> ${result.manifestPath}`);
+
+  if (args.reportsSiteDir) {
+    const { siteDir } = await emitSiteReportsFromRun({
+      runDir: result.outputDir,
+      siteDir: args.reportsSiteDir,
+    });
+    console.log(`[business-analysis] reports-site -> ${siteDir}`);
+  }
 }
 
 void main();

@@ -1,0 +1,30 @@
+{
+  "name": "@trade-signal/research-hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TradeSignal 研报静态站：仅 /reports 与静态数据 public/reports",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev -p 3040",
+    "postbuild": "pagefind --site .next/server/app --output-path out/_pagefind",
+    "build": "next build",
+    "start": "next start -p 3040",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@icons-pack/react-simple-icons": "^13.7.0",
+    "@tailwindcss/postcss": "^4.1.11",
+    "next": "^15.4.8",
+    "next-themes": "^0.4.6",
+    "postcss": "^8.5.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.1.9",
+    "pagefind": "^1.3.0",
+    "typescript": "^6.0.2"
+  }
+}

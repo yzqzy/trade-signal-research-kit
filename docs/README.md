@@ -21,6 +21,7 @@
 | 文档 | 说明 |
 |------|------|
 | [workflows.md](./guides/workflows.md) | **流程真源（Stage 主叙事）**、Slash 与 CLI 参数、产物、PDF 分支与实现顺序 |
+| [reports-site-publish.md](./guides/reports-site-publish.md) | **研报中心**：`site/reports` 协议、`sync:reports-to-app`、与 `apps/research-hub` 的衔接 |
 | [entrypoint-narrative-contract.md](./guides/entrypoint-narrative-contract.md) | **证据包 vs 终稿叙事**、入口矩阵、CLI/Claude 失败语义、000021 验收示例（终稿证据索引：本地路径优先） |
 | [phase0-download.md](./guides/phase0-download.md) | Phase 0 年报下载、校验、CLI 与退出码 |
 | [data-source.md](./guides/data-source.md) | Feed 接入原则、字段范围、质量门禁 |

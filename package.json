@@ -22,7 +22,10 @@
     "quality:all": "pnpm --filter @trade-signal/research-strategies run quality:all",
     "test:linkage": "pnpm run build && pnpm --filter @trade-signal/research-strategies run test:linkage",
     "test:screener": "pnpm run build && pnpm --filter @trade-signal/research-strategies run test:screener",
-    "screener:run": "pnpm --filter @trade-signal/research-strategies run run:screener"
+    "screener:run": "pnpm --filter @trade-signal/research-strategies run run:screener",
+    "reports-site:emit": "pnpm run build && pnpm --filter @trade-signal/research-strategies run run:reports-site-emit",
+    "sync:reports-to-app": "pnpm run build && pnpm --filter @trade-signal/research-strategies run run:reports-site-sync",
+    "sync:reports-to-docs": "pnpm run build && pnpm --filter @trade-signal/research-strategies run run:reports-site-sync -- --legacy-docs"
   },
   "engines": {
     "node": ">=20"

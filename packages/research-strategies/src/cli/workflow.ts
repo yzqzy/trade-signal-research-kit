@@ -3,6 +3,7 @@
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { createDefaultWorkflowOrchestratorAdapter } from "../runtime/graph/workflow-orchestrator-adapter.js";
 import type { WorkflowMode } from "../contracts/workflow-run-types.js";
+import { emitSiteReportsFromRun } from "../reports-site/emit-site-reports.js";
 
 type ResumeFromStage = "B" | "D";
 
@@ -29,6 +30,8 @@ type CliArgs = {
   resumeFromStage?: ResumeFromStage;
   /** 显式 run 目录名（与 LangGraph `thread_id` 对齐）；续跑时以 checkpoint 为准，本参数会被忽略 */
   runId?: string;
+  /** 可选：聚合写入 `site/reports`（entries/views/index），供文档站同步 */
+  reportsSiteDir?: string;
 };
 
 function parseArgs(argv: string[]): CliArgs {
@@ -92,6 +95,8 @@ function parseArgs(argv: string[]): CliArgs {
     throw new Error("[workflow] --run-id 不能为空");
   }
 
+  const reportsSiteDir = values["reports-site-dir"]?.trim();
+
   return {
     code: values.code,
     year: values.year,
@@ -112,6 +117,7 @@ function parseArgs(argv: string[]): CliArgs {
     preflightRemedyPass,
     resumeFromStage,
     runId: runId || undefined,
+    reportsSiteDir: reportsSiteDir || undefined,
   };
 }
 
@@ -157,6 +163,14 @@ async function main(): Promise<void> {
   console.log(`[workflow] phase3 report(md) -> ${result.reportMarkdownPath}`);
   console.log(`[workflow] phase3 report(html) -> ${result.reportHtmlPath}`);
   console.log(`[workflow] manifest -> ${result.manifestPath}`);
+
+  if (args.reportsSiteDir) {
+    const { siteDir } = await emitSiteReportsFromRun({
+      runDir: result.outputDir,
+      siteDir: args.reportsSiteDir,
+    });
+    console.log(`[workflow] reports-site -> ${siteDir}`);
+  }
 }
 
 void main();

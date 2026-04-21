@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>艾迪精密 (603638.SH) · 穿透回报率定量分析</title>
+<style>
+  :root {
+    --ts-accent: #059669;
+    --ts-accent-2: #0d9488;
+    --ts-bg: #fafafa;
+    --ts-fg: #111827;
+    --ts-muted: #6b7280;
+    --ts-border: #e5e7eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ts-bg: #030712;
+      --ts-fg: #f9fafb;
+      --ts-muted: #9ca3af;
+      --ts-border: #1f2937;
+    }
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--ts-bg);
+    color: var(--ts-fg);
+    line-height: 1.6;
+  }
+  header {
+    border-bottom: 1px solid var(--ts-border);
+    padding: 16px 20px;
+    background: linear-gradient(90deg, var(--ts-accent), var(--ts-accent-2));
+    color: #fff;
+  }
+  header h1 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+  .meta { font-size: 0.85rem; color: var(--ts-muted); margin-top: 8px; }
+  article { font-size: 0.95rem; }
+  article pre { white-space: pre-wrap; background: rgba(5, 150, 105, 0.06); border: 1px solid var(--ts-border); border-radius: 8px; padding: 12px; }
+  article table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9rem; }
+  article th, article td { border: 1px solid var(--ts-border); padding: 6px 8px; text-align: left; }
+</style>
+</head>
+<body>
+<header><h1>艾迪精密 (603638.SH) · 穿透回报率定量分析</h1></header>
+<main><article><h1 id="龟龟投资策略-选股分析报告-艾迪精密-603638">龟龟投资策略 · 选股分析报告：艾迪精密（603638）</h1>
+
+<blockquote><p><strong>报告类型：REJECT（早停）</strong> — 仅输出否决因子、阈值对比与补救指引；不包含完整因子 3/4 定量展开，避免无意义 <code>—</code> 占位。</p></blockquote>
+
+<h3 id="否决摘要-早停">否决摘要（早停）</h3>
+
+<p>因子2-S4否决：R=0.59% 低于阈值</p>
+
+<h3 id="关键阈值对比">关键阈值对比</h3>
+
+<ul><li><strong>粗算穿透回报率 R</strong>：0.59%</li><li><strong>门槛 II</strong>（max(3.5%, Rf+2%)）：4.50%</li><li><strong>Rf（无风险）</strong>：2.50%（用于 R 与 Rf 比较）</li><li><strong>否决类型</strong>：S4</li></ul>
+
+<h3 id="checkpoint-轨迹">Checkpoint 轨迹</h3>
+
+<p>Step1: 已完成 data_pack 读取与关键字段校验。</p>
+
+<p>因子1A: 通过</p>
+
+<p>因子1B: 通过</p>
+
+<p>因子2: 因子2-S4否决：R=0.59% 低于阈值</p>
+
+<h3 id="证据与数据缺口-补救建议">证据与数据缺口 / 补救建议</h3>
+
+<ul><li>核对 <code>data_pack_market.md</code>：财务口径（合并/母公司）、OCF/Capex/净利润等关键行是否可解析。</li><li>若已进入 PDF 分支：查看 <code>data_pack_report.md</code> 顶部 <strong>PDF 抽取缺陷摘要</strong> 与 <code>phase3_preflight.md</code> 的 PDF 门禁提示。</li><li>Phase1B 外部证据：查看 <code>phase1b_evidence_quality.json</code>（§8 <code>topicHitRatio</code> / <code>crossItemDuplicateUrlRatio</code>）与 <code>phase1b_qualitative.json</code> 的 <code>retrievalDiagnostics</code>（宽召回 / AI 重排标记）。</li><li>解决否决原因后使用同一 <code>--output-dir</code> 续跑或重新发起 workflow。</li></ul>
+
+<hr />
+
+<p>*本模板由 <code>reportMode=reject</code> 触发；完整分析请解决否决项后重跑。*</p>
+
+<h2 id="数据缺口与补齐建议">数据缺口与补齐建议</h2>
+
+<blockquote><p><strong>Feed-first</strong>：下列项表示当前数据包或工程占位无法满足发布级/深度分析之处；<strong>禁止</strong>用虚构数值静默填平。</p></blockquote>
+
+<table class="md-table"><thead><tr><th>级别</th><th>缺口目标</th><th>影响</th><th>补齐建议</th></tr></thead><tbody><tr><td>阻断级</td><td>§1/§9 行业标签</td><td>同业对标可比池与行业周期定位 <strong>无法自动绑定</strong>（Feed-first 下禁止猜测行业）。</td><td>在 feed instrument 提供可靠 <code>industry</code> / 申万（或等价）分类后再刷新市场包；Phase1B 可检索「艾迪精密 行业分类」辅助会话定性（不得当作结构化 feed）。</td></tr><tr><td>降级级</td><td>§8 重大事件与公告</td><td>事件驱动与治理突发风险难以量化进 Phase3/定性叙事。</td><td>在 feed 增加公告/大事接口并由编排写入 §8；或依赖 Phase1B 检索在会话中手工补齐并引用 URL。 <code>pnpm run workflow:run -- --code &lt;CODE&gt; --mode turtle-strict</code></td></tr><tr><td>降级级</td><td>§4P 母公司资产负债表</td><td>表内表外杠杆与母公司偿债路径分析不完整。</td><td>在 instrument/financialHistory 中补齐 <code>parentTotalAssets</code> / <code>parentTotalLiabilities</code> 等字段后刷新 <code>data_pack_market.md</code>。</td></tr><tr><td>降级级</td><td>financialHistory 多年序列</td><td>多年表可能由单期复制，趋势与 CAGR 类指标不可靠。</td><td>在 Phase1A 数据包提供真实 <code>financialHistory</code> 多年快照后重新生成市场包。</td></tr><tr><td>提示级</td><td>§14 管理层与治理</td><td>D4 治理维度缺少结构化行情侧输入。</td><td>会话侧结合年报「公司治理」章与 Phase1B 证据撰写；feed 侧可扩展治理字段。</td></tr><tr><td>提示级</td><td>§15 风险提示汇总</td><td>风险汇总依赖人工整合 §2/§13 与 MD&amp;A。</td><td>在终稿中汇总；或扩展 feed 风险标签写入 §15。</td></tr><tr><td>提示级</td><td>§7 前十大股东明细</td><td>股权集中度与筹码结构分析缺少结构化序列。</td><td>扩展 feed 股东持股接口并接入 <code>build-market-pack</code> §7。</td></tr><tr><td>提示级</td><td>无风险利率 rf</td><td>DCF/要求回报率敏感性分析基准可能偏离市场。</td><td>设置环境变量（见 <code>build-market-pack</code> 注释）或在上游数据包提供无风险利率。</td></tr><tr><td>提示级</td><td>同业竞争格局（结构化可比池）</td><td>发布级「同业对标」段落缺少统一可比公司与指标映射。</td><td>在 feed 增加「同业可比池 + 指标宽表」契约前，仅在会话中定性描述并保留本缺口提示；禁止编造对标数值。</td></tr></tbody></table><hr style="margin:2rem 0" /><h2>市场数据包（data_pack_market.md）</h2><h1 id="艾迪精密-603638">艾迪精密（603638）</h1>
+
+<h2 id="1-基础信息">§1 基础信息</h2>
+<ul><li>股票代码：603638</li><li>市场：CN_A</li><li>币种：-</li><li>行业：未知（待 feed 行业字段或 Phase1B 补充）</li><li>最新股价：22.2000</li><li>最新市值：18450.17 百万元</li><li>总股本：831.09 百万股</li><li>无风险利率：2.50%（默认占位）</li></ul>
+
+<h2 id="2-风险提示">§2 风险提示</h2>
+
+<h2 id="3-利润表-百万元">§3 利润表（百万元）</h2>
+<table class="md-table"><thead><tr><th>指标</th><th>2025</th><th>2024</th><th>2023</th><th>2022</th><th>2021</th></tr></thead><tbody><tr><td>营业收入</td><td>3196.06</td><td>2724.86</td><td>2235.40</td><td>2024.99</td><td>2683.96</td></tr><tr><td>归母净利润</td><td>405.85</td><td>343.72</td><td>278.65</td><td>249.30</td><td>469.76</td></tr><tr><td>每股收益EPS</td><td>0.4700</td><td>0.4100</td><td>0.3300</td><td>0.3000</td><td>0.5600</td></tr><tr><td>每股分红DPS</td><td>0.1000</td><td>0.1000</td><td>0.1000</td><td>0.1000</td><td>0.1000</td></tr></tbody></table>
+
+<h2 id="3p-母公司利润表-百万元">§3P 母公司利润表（百万元）</h2>
+
+<table class="md-table"><thead><tr><th>指标</th><th>2025</th><th>2024</th><th>2023</th><th>2022</th><th>2021</th></tr></thead><tbody><tr><td>母公司营业收入</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td></tr><tr><td>母公司净利润</td><td>393.68</td><td>344.13</td><td>278.65</td><td>249.30</td><td>469.76</td></tr><tr><td>母公司经营活动现金流</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td></tr></tbody></table>
+
+<h2 id="4-资产负债表-百万元">§4 资产负债表（百万元）</h2>
+<table class="md-table"><thead><tr><th>指标</th><th>2025</th><th>2024</th><th>2023</th><th>2022</th><th>2021</th></tr></thead><tbody><tr><td>总资产</td><td>6914.12</td><td>6859.81</td><td>5890.21</td><td>5547.90</td><td>4482.70</td></tr><tr><td>总负债</td><td>3067.28</td><td>3301.21</td><td>2559.91</td><td>2417.49</td><td>1661.82</td></tr><tr><td>有息负债</td><td>1806.35</td><td>1734.36</td><td>1433.59</td><td>1224.64</td><td>387.02</td></tr><tr><td>货币资金</td><td>549.47</td><td>981.12</td><td>503.52</td><td>551.42</td><td>258.28</td></tr></tbody></table>
+
+<h2 id="4p-母公司资产负债表-百万元">§4P 母公司资产负债表（百万元）</h2>
+
+<blockquote><p>上游 feed 未返回母公司资产负债表科目；待接口对齐后填充。</p></blockquote>
+
+<h2 id="5-现金流量表-百万元">§5 现金流量表（百万元）</h2>
+<table class="md-table"><thead><tr><th>指标</th><th>2025</th><th>2024</th><th>2023</th><th>2022</th><th>2021</th></tr></thead><tbody><tr><td>经营活动现金流OCF</td><td>513.67</td><td>155.50</td><td>11.61</td><td>159.92</td><td>207.44</td></tr><tr><td>资本开支Capex</td><td>437.24</td><td>154.91</td><td>126.39</td><td>139.79</td><td>535.29</td></tr><tr><td>少数股东损益</td><td>12.18</td><td>-0.42</td><td>-0.00</td><td>0.00</td><td>0.00</td></tr></tbody></table>
+
+<h2 id="6-估值与交易摘要">§6 估值与交易摘要</h2>
+<ul><li>区间 K 线根数：313</li><li>最近一根 K 线：2026-04-21 开21.82 高22.86 低21.32 收22.2</li></ul>
+
+<h2 id="7-股东与股本">§7 股东与股本</h2>
+<ul><li>采样窗口内企业行动条数：2（分红/送转等；前十大股东明细待 feed 股东接口接入）</li></ul>
+
+<h2 id="8-重大事件与公告-占位">§8 重大事件与公告（占位）</h2>
+<blockquote><p>可由后续 Phase1B / 新闻接口填充。</p></blockquote>
+
+<h2 id="9-行业与竞争">§9 行业与竞争</h2>
+<ul><li>行业标签：未知（待 feed 行业字段或 Phase1B 补充）</li></ul>
+<blockquote><p>竞争格局摘要建议由 Phase1B §8 或研报检索补齐。</p></blockquote>
+
+<h2 id="10-分红融资与资本运作">§10 分红融资与资本运作</h2>
+<ul><li>采样期内企业行动条数：2</li></ul>
+
+<h2 id="11-交易日历摘要">§11 交易日历摘要</h2>
+<ul><li>采样窗口内交易日计数（来自日历接口）：313</li></ul>
+
+<h2 id="12-数据质量与来源">§12 数据质量与来源</h2>
+<ul><li>Phase1A JSON：instrument / quote / klines / financialSnapshot / <strong>financialHistory（可选）</strong>（+ 可选 corporateActions、tradingCalendar）</li></ul>
+
+<h2 id="13-warnings">§13 Warnings</h2>
+<ul><li>[数据完整性|低] 多年列优先使用 Phase1A financialHistory（5 个财年）；仍请核对 feed 报告期与合并口径。</li><li>[数据完整性|中] §4P 母公司资产负债表缺失：feed 未提供母公司资产负债字段。</li></ul>
+
+<h2 id="14-管理层与治理-占位">§14 管理层与治理（占位）</h2>
+
+<h2 id="15-风险提示汇总-占位">§15 风险提示汇总（占位）</h2>
+
+<h2 id="16-附录-原始行情窗口">§16 附录：原始行情窗口</h2>
+<ul><li>OHLC：21.82 / 22.86 / 21.32 / 22.20（2026-04-21）</li></ul>
+
+<h2 id="17-衍生指标-预计算-供因子-phase3-引用">§17 衍生指标（预计算，供因子/Phase3 引用）</h2>
+
+<blockquote><p>本节由编排层根据 §3~§5 同源数值 <strong>确定性计算</strong>；若某年为单期回退复制，与 §13 警告一致。</p><p><strong>数据血缘</strong>：Capex / 有息负债 / 货币资金若上游缺失，与本节及 §4、§5 表内同行使用 <strong>相同兜底公式</strong>；详见 §13 中带 <code>规则=</code> 的条目。</p><p><strong>FCF</strong> = 经营活动现金流 OCF − |资本开支 Capex|（百万元）。</p></blockquote>
+
+<table class="md-table"><thead><tr><th>年度</th><th>FCF</th><th>净利率(%)</th><th>DPS/EPS(%)</th><th>资产负债率(%)</th><th>有息负债/总资产(%)</th></tr></thead><tbody><tr><td>2025</td><td>76.44</td><td>12.70</td><td>0.00</td><td>44.36</td><td>26.13</td></tr><tr><td>2024</td><td>0.59</td><td>12.61</td><td>0.00</td><td>48.12</td><td>25.28</td></tr><tr><td>2023</td><td>-114.78</td><td>12.47</td><td>0.00</td><td>43.46</td><td>24.34</td></tr><tr><td>2022</td><td>20.12</td><td>12.31</td><td>0.00</td><td>43.57</td><td>22.07</td></tr><tr><td>2021</td><td>-327.86</td><td>17.50</td><td>0.00</td><td>37.07</td><td>8.63</td></tr></tbody></table></article></main>
+</body>
+</html>

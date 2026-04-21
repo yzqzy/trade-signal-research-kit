@@ -16,7 +16,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Business analysis (PDF-first) | `/business-analysis` | `pnpm run business-analysis:run -- ...` | evidence-pack + `business_analysis_manifest.json`（CLI 的 `qualitative_report.md`/`qualitative_d1_d6.md` 可为草稿；终稿由 Claude 会话写回） |
 | Valuation only | `/valuation` | `pnpm run valuation:run -- ...` | `valuation_computed.json`, `valuation_summary.md` |
 | Download annual report | `/download-annual-report` | `pnpm run phase0:download -- ...` | local PDF |
-| Markdown to HTML | `/report-to-html` | `pnpm run report-to-html:run -- ...` | `.html` |
+| Markdown to HTML | `/report-to-html` | `pnpm run report-to-html:run -- ...` | `.html`（legacy/调试；研报中心主链路见下行） |
+| 研报中心静态索引 | — | `pnpm run reports-site:emit -- --run-dir ...` → `pnpm run sync:reports-to-app` | `output/site/reports/**` → `apps/research-hub/public/reports`（见 `docs/guides/reports-site-publish.md`） |
 
 ## Architecture (UML)
 
@@ -67,6 +68,10 @@ pnpm run build
 # Linkage smoke (after build) + quality gates
 pnpm run test:linkage
 pnpm run quality:all
+
+# 研报中心：run 目录 → output/site/reports → ../trade-signal-docs/public/reports
+pnpm run reports-site:emit -- --run-dir output/workflow/600941/<runId>
+pnpm run sync:reports-to-app
 
 # Work on specific package
 pnpm --filter @trade-signal/schema-core run typecheck

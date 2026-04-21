@@ -23,7 +23,7 @@
 
 ## 环境变量与 `.env`（CLI 统一初始化）
 
-`@trade-signal/research-strategies` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `report-to-html` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
+`@trade-signal/research-strategies` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `report-to-html` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
 
 1. **当前工作目录**下的 `.env`
 2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-strategies` 执行时通常对应**仓库根**的 `.env`）
@@ -436,6 +436,13 @@ pnpm --filter @trade-signal/research-strategies run quality:phase3-golden -- --s
 
 - 输出格式：`Markdown + HTML`
 - 元信息要求：`schema_version`、`data_source`、`generated_at`、`capability_flags`
+
+## 研报中心（`site/reports` → `trade-signal-docs`）
+
+- **聚合产物**：`output/site/reports/`（协议：`index.json`、`entries/<entryId>/`、`views/timeline.json`、`views/by-topic/*.json`、`views/by-code/*.json`）。
+- **生成**：`pnpm run reports-site:emit -- --run-dir <run 根目录>`（或 workflow / business-analysis 成功末尾加 `--reports-site-dir <目录>` 自动写入）。
+- **同步到研究站**：`pnpm run sync:reports-to-app`（默认拷到本仓库 `apps/research-hub/public/reports`）。若仍需兄弟仓库 `trade-signal-docs`，可用 `pnpm run sync:reports-to-docs`（`--legacy-docs`）。
+- **发布形态**：`apps/research-hub` 执行 `next build` 静态导出后，报告由 `public/reports/**` 在构建期注入 `/reports`；独立 `entries/*/index.html` 便于仅发布 `site/reports` 子树。详见 [reports-site-publish.md](./reports-site-publish.md)。
 
 ## 相关文档
 

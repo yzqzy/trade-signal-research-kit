@@ -1,0 +1,122 @@
+import path from "node:path";
+import { readdirSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { extractReportArticleHtml } from "@/lib/reports/extract-body";
+import { TOPIC_LABEL_ZH, type ReportTopicType } from "@/lib/reports/topic-labels";
+
+const PLACEHOLDER_ENTRY_ID = "__no_entries__";
+
+type EntryMeta = {
+  entryId: string;
+  code: string;
+  topicType: ReportTopicType;
+  displayTitle: string;
+  publishedAt: string;
+  sourceRunId: string;
+  requiredFieldsStatus: "complete" | "degraded" | "missing";
+  confidenceState: "high" | "medium" | "low" | "unknown";
+};
+
+function metaStatusClass(s: EntryMeta["requiredFieldsStatus"]): string {
+  if (s === "complete") return "rh-pill rh-pill--success";
+  if (s === "degraded") return "rh-pill rh-pill--warn";
+  return "rh-pill rh-pill--danger";
+}
+
+/**
+ * 静态导出（`output: "export"`）要求至少返回一条路径；空目录时返回占位 id。
+ */
+export function generateStaticParams(): { entryId: string }[] {
+  const root = path.join(process.cwd(), "public", "reports", "entries");
+  try {
+    const ids = readdirSync(root, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .filter((id) => id !== PLACEHOLDER_ENTRY_ID);
+    return ids.length > 0 ? ids.map((entryId) => ({ entryId })) : [{ entryId: PLACEHOLDER_ENTRY_ID }];
+  } catch {
+    return [{ entryId: PLACEHOLDER_ENTRY_ID }];
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ entryId: string }>;
+}): Promise<Metadata> {
+  const { entryId } = await params;
+  if (entryId === PLACEHOLDER_ENTRY_ID) {
+    return { title: "暂无报告 · 研究站" };
+  }
+  const metaPath = path.join(process.cwd(), "public", "reports", "entries", entryId, "meta.json");
+  try {
+    const raw = await readFile(metaPath, "utf-8");
+    const meta = JSON.parse(raw) as EntryMeta;
+    return { title: `${meta.displayTitle} · 研究站` };
+  } catch {
+    return { title: "报告详情 · 研究站" };
+  }
+}
+
+export default async function ReportEntryPage({ params }: { params: Promise<{ entryId: string }> }) {
+  const { entryId } = await params;
+  if (entryId === PLACEHOLDER_ENTRY_ID) {
+    return (
+      <div className="rh-container rh-container--narrow">
+        <Link className="rh-back-link" href="/reports">
+          ← 报告中心
+        </Link>
+        <div className="rh-empty" role="status">
+          当前尚未同步任何报告条目。请在 monorepo 根执行 <code className="rh-kbd">pnpm run reports-site:emit -- --run-dir &lt;run&gt;</code> 与{" "}
+          <code className="rh-kbd">pnpm run sync:reports-to-app</code> 后重新构建本站。
+        </div>
+      </div>
+    );
+  }
+
+  const base = path.join(process.cwd(), "public", "reports", "entries", entryId);
+  let meta: EntryMeta;
+  let articleHtml: string;
+  try {
+    const [metaRaw, htmlRaw] = await Promise.all([
+      readFile(path.join(base, "meta.json"), "utf-8"),
+      readFile(path.join(base, "index.html"), "utf-8"),
+    ]);
+    meta = JSON.parse(metaRaw) as EntryMeta;
+    articleHtml = extractReportArticleHtml(htmlRaw);
+  } catch {
+    notFound();
+  }
+
+  return (
+    <div className="rh-container">
+      <Link className="rh-back-link" href="/reports">
+        ← 报告中心
+      </Link>
+      <header className="rh-report-header">
+        <div className="rh-report-hero">
+          <h1 className="rh-report-title">{meta.displayTitle}</h1>
+          <div className="rh-report-meta">
+            <time className="rh-report-meta-primary" dateTime={meta.publishedAt}>
+              {meta.publishedAt}
+            </time>
+            <span className="rh-pill">{TOPIC_LABEL_ZH[meta.topicType]}</span>
+            <span className="rh-pill rh-pill--mono">代码 {meta.code}</span>
+            <span className="rh-pill rh-pill--mono">run {meta.sourceRunId}</span>
+            <span className="rh-pill">置信度 {meta.confidenceState}</span>
+            <span className={metaStatusClass(meta.requiredFieldsStatus)}>字段 {meta.requiredFieldsStatus}</span>
+          </div>
+        </div>
+      </header>
+      <article
+        className="report-entry-body"
+        // eslint-disable-next-line react/no-danger -- 静态 HTML 由 CLI 生成
+        dangerouslySetInnerHTML={{ __html: articleHtml }}
+      />
+    </div>
+  );
+}
