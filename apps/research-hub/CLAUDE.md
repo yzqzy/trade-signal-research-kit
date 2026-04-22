@@ -9,7 +9,7 @@
 - **框架**: Next.js 15（App Router），静态导出 `output: "export"`
 - **样式**: Tailwind CSS 4 + `app/globals.css`（站点壳层 `.rh-site-*` 与研报区 `.rh-*`）
 - **壳层组件**: [`components/SiteHeader.tsx`](components/SiteHeader.tsx)、[`components/SiteFooter.tsx`](components/SiteFooter.tsx)，由 [`app/layout.tsx`](app/layout.tsx) 组合
-- **主题**: [`next-themes`](https://github.com/pacocoursey/next-themes)，默认 **跟随系统**，顶栏 **浅色 / 深色 / 跟随系统** 三键（`storageKey: research-hub-theme`）
+- **主题**: [`next-themes`](https://github.com/pacocoursey/next-themes)，默认 **跟随系统**；顶栏 **单按钮 + 下拉** 选浅色 / 深色 / 跟随系统（`storageKey: research-hub-theme`）
 - **搜索**: 构建后 Pagefind（`postbuild`）
 
 ## 目录骨架（勿随意删）

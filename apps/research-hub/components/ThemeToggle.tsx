@@ -1,122 +1,174 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const THEMES = ["light", "dark", "system"] as const;
-type AppTheme = (typeof THEMES)[number];
+type AppTheme = "light" | "dark" | "system";
 
-const LABELS: Record<AppTheme, string> = {
-  light: "浅色",
-  dark: "深色",
-  system: "跟随系统",
+const OPTIONS: { value: AppTheme; label: string }[] = [
+  { value: "system", label: "跟随系统" },
+  { value: "light", label: "浅色" },
+  { value: "dark", label: "深色" },
+];
+
+const stroke = {
+  width: 1.5 as const,
+  cap: "round" as const,
+  join: "round" as const,
 };
 
-/** Heroicons 24 solid Sun */
+/** 细线太阳（Heroicons outline 风格，小尺寸更清晰） */
 function IconSun({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path
-        fillRule="evenodd"
-        d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zm11.03-4.28a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM6.72 17.28a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.061 1.061l1.591-1.59zM6 12a.75.75 0 01-.75-.75v-1.5a.75.75 0 011.5 0v1.5A.75.75 0 016 12zm.97-7.53a.75.75 0 001.06 1.06l1.59-1.591a.75.75 0 10-1.061-1.06l-1.59 1.591zM18 12a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0118 12zm-2.97 7.53a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.06 1.061l1.59 1.591z"
-        clipRule="evenodd"
-      />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={stroke.width}
+      strokeLinecap={stroke.cap}
+      strokeLinejoin={stroke.join}
+      aria-hidden
+    >
+      <path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
     </svg>
   );
 }
 
-/** Heroicons 24 solid Moon */
+/** 细线月亮 */
 function IconMoon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path
-        fillRule="evenodd"
-        d="M9.528 1.028a.75.75 0 01.807.727v.008a.75.75 0 01-.638.75 9 9 0 00-6.22 10.96c.388.405.584.913.584 1.422 0 .213-.028.424-.084.626a.75.75 0 01.64 1.122 12 12 0 0010.44-10.44.75.75 0 01-1.122.64 13.5 13.5 0 00-1.726-.73 9 9 0 01-6.863-6.862 13.5 13.5 0 00-.73-1.725.75.75 0 01-.635-.644l-.09-.38zM15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
-        clipRule="evenodd"
-      />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={stroke.width}
+      strokeLinecap={stroke.cap}
+      strokeLinejoin={stroke.join}
+      aria-hidden
+    >
+      <path d="M21.752 15.002A9.718 9.718 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
     </svg>
   );
 }
 
-/** Heroicons 24 solid ComputerDesktop — 跟随系统 */
+/** 细线显示器（简化为屏 + 底座，避免粗实心块） */
 function IconSystem({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path
-        fillRule="evenodd"
-        d="M2.25 5.25a3 3 0 013-3h13.5a3 3 0 013 3V15a3 3 0 01-3 3h-7.5v.75h4.5a.75.75 0 010 1.5H6a.75.75 0 010-1.5h4.5V18H5.25a3 3 0 01-3-3V5.25Zm1.5 0c0-.414.336-.75.75-.75h13.5c.414 0 .75.336.75.75v8.25c0 .414-.336.75-.75.75H5.25a.75.75 0 01-.75-.75V5.25Z"
-        clipRule="evenodd"
-      />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={stroke.width}
+      strokeLinecap={stroke.cap}
+      strokeLinejoin={stroke.join}
+      aria-hidden
+    >
+      <rect x="3" y="4.5" width="18" height="12" rx="1.5" />
+      <path d="M9 19.5h6M12 16.5V19" />
     </svg>
   );
 }
 
-const iconClass = "h-[1.15rem] w-[1.15rem] shrink-0 sm:h-5 sm:w-5";
+function themeIcon(value: AppTheme, className: string) {
+  if (value === "light") return <IconSun className={className} />;
+  if (value === "dark") return <IconMoon className={className} />;
+  return <IconSystem className={className} />;
+}
 
-function ThemeIcon({ value }: { value: AppTheme }) {
-  if (value === "light") return <IconSun className={iconClass} />;
-  if (value === "dark") return <IconMoon className={iconClass} />;
-  return <IconSystem className={iconClass} />;
+function normalizeTheme(theme: string | undefined): AppTheme {
+  if (theme === "light" || theme === "dark" || theme === "system") return theme;
+  return "system";
 }
 
 /**
- * 浅色 / 深色 / 跟随系统：按 `theme` 选中态（不误把 `resolvedTheme` 的 undefined 当成深色）；
- * 挂载前占位与控件同高宽，减少布局跳动；`motion-reduce` 下减弱动效。
+ * 外观主题：圆形幽灵按钮 + 单层阴影菜单；描边图标，避免粗边框与 ring/border 叠层。
  */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const active: AppTheme = useMemo(() => {
-    const t = theme as string | undefined;
-    if (t === "light" || t === "dark" || t === "system") return t;
-    return "system";
-  }, [theme]);
+  const active = normalizeTheme(theme);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   if (!mounted) {
-    return (
-      <span
-        className="inline-flex h-9 w-27 shrink-0 rounded-lg border border-transparent bg-gray-100/50 dark:bg-neutral-800/40 sm:w-29"
-        aria-hidden
-      />
-    );
+    return <span className="inline-flex h-9 w-9 shrink-0 rounded-full bg-gray-100/50 dark:bg-neutral-800/40" aria-hidden />;
   }
 
   return (
-    <div
-      className="inline-flex h-9 rounded-lg border border-gray-200/90 bg-linear-to-b from-gray-50 to-gray-100/90 p-0.5 shadow-sm dark:border-neutral-600/90 dark:from-neutral-900 dark:to-neutral-950/90"
-      role="radiogroup"
-      aria-label="显示主题"
-    >
-      {THEMES.map((value) => {
-        const selected = active === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={LABELS[value]}
-            title={LABELS[value]}
-            className={[
-              "relative flex min-w-8 flex-1 items-center justify-center rounded-md px-1 sm:min-w-9 sm:px-1.5",
-              "transition-[color,background-color,box-shadow,transform] duration-200 ease-out motion-reduce:transition-none",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:focus-visible:outline-emerald-400",
-              "active:scale-[0.96] motion-reduce:active:scale-100",
-              selected
-                ? "bg-white text-emerald-700 shadow-sm ring-1 ring-gray-200/90 dark:bg-neutral-800 dark:text-emerald-400 dark:ring-neutral-600/80"
-                : "text-gray-500 hover:bg-gray-200/60 hover:text-gray-900 dark:text-neutral-400 dark:hover:bg-neutral-800/70 dark:hover:text-neutral-100",
-            ].join(" ")}
-            onClick={() => setTheme(value)}
-          >
-            <ThemeIcon value={value} />
-          </button>
-        );
-      })}
+    <div className="relative shrink-0" ref={rootRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={`外观主题，当前：${OPTIONS.find((o) => o.value === active)?.label ?? active}`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition-colors dark:text-neutral-300 ${
+          open
+            ? "bg-gray-100 dark:bg-neutral-800"
+            : "hover:bg-gray-100/90 dark:hover:bg-neutral-800/80"
+        }`}
+      >
+        {themeIcon(active, "h-[1.125rem] w-[1.125rem]")}
+      </button>
+
+      {open ? (
+        <div
+          className="absolute right-0 z-50 mt-2 min-w-38 overflow-hidden rounded-lg bg-white py-0.5 text-gray-800 shadow-[0_2px_12px_rgba(15,23,42,0.08)] dark:bg-neutral-900 dark:text-neutral-100 dark:shadow-[0_2px_16px_rgba(0,0,0,0.45)]"
+          role="listbox"
+          aria-label="选择外观主题"
+        >
+          {OPTIONS.map((opt) => {
+            const selected = active === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`flex w-full items-center gap-2 py-2 pl-3 pr-3 text-left text-sm transition-colors ${
+                  selected
+                    ? "bg-emerald-50 text-gray-900 dark:bg-emerald-950/40 dark:text-white"
+                    : "text-gray-600 hover:bg-gray-50/80 dark:text-neutral-300 dark:hover:bg-neutral-800/50"
+                }`}
+                onClick={() => {
+                  setTheme(opt.value);
+                  setOpen(false);
+                }}
+              >
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-gray-500 dark:text-neutral-400">
+                  {themeIcon(opt.value, "h-3.5 w-3.5")}
+                </span>
+                <span className="flex-1">{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

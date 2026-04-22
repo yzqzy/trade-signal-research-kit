@@ -333,6 +333,220 @@
   text-underline-offset: 2px;
 }
 
+/* —— Phase3 报告：投资结论元数据卡片 + 标签 —— */
+.rh-metadata-card {
+  margin: 0.65rem 0 1.15rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e5e5;
+  background: linear-gradient(165deg, #fafafa 0%, #f4f4f5 55%, #eef2f0 100%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.rh-metadata-dl {
+  margin: 0;
+}
+
+.rh-metadata-row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 5.25rem) 1fr;
+  gap: 0.35rem 0.65rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.rh-metadata-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.rh-metadata-row:first-child {
+  padding-top: 0;
+}
+
+.rh-metadata-row dt {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #737373;
+  text-transform: none;
+}
+
+.rh-metadata-row dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.rh-metadata-fallback {
+  overflow-x: auto;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #f4f4f5;
+  font-size: 0.8125rem;
+}
+
+/* 统一标签基座 */
+.rh-tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.18rem 0.55rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid transparent;
+  word-break: break-word;
+}
+
+.rh-tag--plain {
+  font-weight: 500;
+  color: #404040;
+  background: #f5f5f5;
+  border-color: #e5e5e5;
+}
+
+/* 决策 */
+.rh-tag--decision-buy {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.rh-tag--decision-watch {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.rh-tag--decision-avoid {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.rh-tag--decision-unknown {
+  color: #525252;
+  background: #f5f5f5;
+  border-color: #e5e5e5;
+}
+
+/* 置信度 */
+.rh-tag--confidence-high {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.rh-tag--confidence-medium {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.rh-tag--confidence-low {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.rh-tag--confidence-unknown {
+  color: #525252;
+  background: #f5f5f5;
+  border-color: #e5e5e5;
+}
+
+/* 风险等级（与 trap_risk / 价值陷阱文案共用色阶） */
+.rh-tag--risk-low {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.rh-tag--risk-medium {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.rh-tag--risk-high {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.rh-tag--risk-unknown {
+  color: #525252;
+  background: #f5f5f5;
+  border-color: #e5e5e5;
+}
+
+/* 仓位建议：中性信息强调 */
+.rh-tag--position {
+  font-weight: 500;
+  color: #1e3a2f;
+  background: #e0f2f1;
+  border-color: #99f6e4;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 段落级「键：值」扫读行（与 fenced 元数据互补） */
+.rh-kv-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin: 0.65em 0 !important;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+  background: #fafafa;
+  border: 1px solid #ececec;
+}
+
+.rh-kv-label {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #737373;
+}
+
+/* 「计算过程」小标题 + 其后引用块：更紧凑、低噪音 */
+.report-entry-body :where(h3.rh-heading-calc) {
+  margin-top: 1.05em;
+  margin-bottom: 0.2em;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #404040;
+  letter-spacing: 0.01em;
+}
+
+.report-entry-body :where(h3.rh-heading-calc + blockquote) {
+  margin-top: 0.25rem;
+  margin-bottom: 0.85rem;
+  padding: 0.45rem 0.65rem 0.45rem 0.8rem;
+  font-size: 0.8125rem;
+  line-height: 1.48;
+  border-left-width: 3px;
+  border-radius: 0 0.35rem 0.35rem 0;
+  color: #525252;
+  background: #f8faf8;
+}
+
+.report-entry-body :where(h3.rh-heading-calc + blockquote p) {
+  margin: 0.2em 0;
+}
+
+.report-entry-body :where(h3.rh-heading-calc + blockquote p:first-child) {
+  margin-top: 0;
+}
+
+.report-entry-body :where(h3.rh-heading-calc + blockquote p:last-child) {
+  margin-bottom: 0;
+}
+
 .dark .rh-page-desc {
   color: #a3a3a3;
 }
@@ -403,4 +617,126 @@
 
 .dark .report-entry-body :where(a) {
   color: #34d399;
+}
+
+.dark .rh-metadata-card {
+  border-color: #404040;
+  background: linear-gradient(165deg, #1a1a1a 0%, #171717 50%, #0f1a16 100%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 35%);
+}
+
+.dark .rh-metadata-row {
+  border-bottom-color: #404040;
+}
+
+.dark .rh-metadata-row dt {
+  color: #a3a3a3;
+}
+
+.dark .rh-metadata-fallback {
+  background: #262626;
+  color: #e5e5e5;
+}
+
+.dark .rh-tag--plain {
+  color: #d4d4d4;
+  background: #262626;
+  border-color: #404040;
+}
+
+.dark .rh-tag--decision-buy {
+  color: #a7f3d0;
+  background: #064e3b;
+  border-color: #059669;
+}
+
+.dark .rh-tag--decision-watch {
+  color: #fcd34d;
+  background: #422006;
+  border-color: #ca8a04;
+}
+
+.dark .rh-tag--decision-avoid {
+  color: #fecaca;
+  background: #450a0a;
+  border-color: #dc2626;
+}
+
+.dark .rh-tag--decision-unknown {
+  color: #d4d4d4;
+  background: #262626;
+  border-color: #525252;
+}
+
+.dark .rh-tag--confidence-high {
+  color: #a7f3d0;
+  background: #064e3b;
+  border-color: #34d399;
+}
+
+.dark .rh-tag--confidence-medium {
+  color: #fcd34d;
+  background: #422006;
+  border-color: #f59e0b;
+}
+
+.dark .rh-tag--confidence-low {
+  color: #fecaca;
+  background: #450a0a;
+  border-color: #f87171;
+}
+
+.dark .rh-tag--confidence-unknown {
+  color: #d4d4d4;
+  background: #262626;
+  border-color: #525252;
+}
+
+.dark .rh-tag--risk-low {
+  color: #a7f3d0;
+  background: #064e3b;
+  border-color: #34d399;
+}
+
+.dark .rh-tag--risk-medium {
+  color: #fcd34d;
+  background: #422006;
+  border-color: #f59e0b;
+}
+
+.dark .rh-tag--risk-high {
+  color: #fecaca;
+  background: #450a0a;
+  border-color: #f87171;
+}
+
+.dark .rh-tag--risk-unknown {
+  color: #d4d4d4;
+  background: #262626;
+  border-color: #525252;
+}
+
+.dark .rh-tag--position {
+  color: #ccfbf1;
+  background: #134e4a;
+  border-color: #2dd4bf;
+}
+
+.dark .rh-kv-line {
+  background: #171717;
+  border-color: #404040;
+}
+
+.dark .rh-kv-label {
+  color: #a3a3a3;
+}
+
+.dark .report-entry-body :where(h3.rh-heading-calc) {
+  color: #e5e5e5;
+}
+
+.dark .report-entry-body :where(h3.rh-heading-calc + blockquote) {
+  color: #a3a3a3;
+  background: #141916;
+  border-left-color: #404040;
 }

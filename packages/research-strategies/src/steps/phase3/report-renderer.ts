@@ -1,4 +1,6 @@
-import type { Factor2Result, Factor3Result, Phase3ExecutionResult } from "./types.js";
+import type { AnalysisReport } from "@trade-signal/schema-core";
+
+import type { Factor2Result, Factor3Result, Factor4Result, Phase3ExecutionResult } from "./types.js";
 
 function pct(value?: number): string {
   if (value === undefined || Number.isNaN(value)) return "—";
@@ -31,12 +33,42 @@ function verdictPenetrationFine(f3: Factor3Result | undefined): string {
   return `因子3：通过（外推${trust}${hh}）`;
 }
 
+/** 将多行列表包进引用块，便于阅读器单独样式化「计算过程」 */
+function asCalculationBlockquote(lines: string[]): string {
+  return lines.map((l) => `> ${l}`).join("\n");
+}
+
+/**
+ * 机器可读投资结论块（`rh-metadata`），由 `research-hub` 渲染为标签卡片。
+ * 仅使用 `key: value` 行，避免在 Markdown 中嵌入 HTML。
+ */
+function buildInvestmentVerdictBlock(report: AnalysisReport, f4: Factor4Result | undefined): string {
+  const trap = f4?.trapRisk;
+  const trapNorm =
+    trap === "low" || trap === "medium" || trap === "high" ? trap : trap && trap !== "—" ? trap : "unknown";
+  const pos = (f4?.position ?? "—").replace(/\s+/g, " ").trim() || "—";
+  return [
+    "## 投资结论",
+    "",
+    "> 核心判断一览；下方「一、Executive Summary」含完整指标表。",
+    "",
+    "```rh-metadata",
+    `decision: ${report.decision}`,
+    `confidence: ${report.confidence ?? "medium"}`,
+    `trap_risk: ${trapNorm}`,
+    `position: ${pos}`,
+    "```",
+    "",
+  ].join("\n");
+}
+
 function renderPhase3RejectMarkdown(result: Phase3ExecutionResult): string {
   const report = result.report;
   const blocks = report.sections.map((s) => [`### ${s.heading}`, "", s.content.trim(), ""].join("\n"));
   return [
     `# ${report.title}`,
     "",
+    buildInvestmentVerdictBlock(report, result.factor4),
     "> **报告类型：REJECT（早停）** — 仅输出否决因子、阈值对比与补救指引；不包含完整因子 3/4 定量展开，避免无意义 `—` 占位。",
     "",
     ...blocks,
@@ -71,6 +103,8 @@ export function renderPhase3Markdown(result: Phase3ExecutionResult): string {
     "",
   ].join("\n");
 
+  const verdict = buildInvestmentVerdictBlock(report, f4);
+
   const execSummary = [
     "## 一、Executive Summary（执行摘要）",
     "",
@@ -104,39 +138,55 @@ export function renderPhase3Markdown(result: Phase3ExecutionResult): string {
   const factor1b = [
     "## 三、因子1B：深度定性分析",
     "",
-    `- 模块0口径锚定：利润=${f1b?.module0.profitAnchor ?? "—"}；现金=${f1b?.module0.cashAnchor ?? "—"}；单位=${f1b?.module0.unit ?? "—"}`,
-    `- 模块九触发：${f1b?.module9Applied ? "是" : "否"}`,
-    `- 结论：${f1b?.passed ? "通过" : f1b?.reason ?? "否决"}`,
+    "### 计算过程（因子1B · 口径与结论）",
+    "",
+    asCalculationBlockquote([
+      `- 模块0口径锚定：利润=${f1b?.module0.profitAnchor ?? "—"}；现金=${f1b?.module0.cashAnchor ?? "—"}；单位=${f1b?.module0.unit ?? "—"}`,
+      `- 模块九触发：${f1b?.module9Applied ? "是" : "否"}`,
+      `- 结论：${f1b?.passed ? "通过" : f1b?.reason ?? "否决"}`,
+    ]),
     "",
   ].join("\n");
 
   const factor2 = [
     "## 四、因子2：穿透回报率粗算（Top-Down）",
     "",
-    `- A/B/C: ${num(f2?.A)} / ${num(f2?.B)} / ${num(f2?.C)} 百万元`,
-    `- D/E/G/I: ${num(f2?.D)} / ${num(f2?.E)} / ${num(f2?.G)} / ${num(f2?.I)}`,
-    `- M/O/Q: ${num(f2?.M)} / ${num(f2?.O)} / ${num(f2?.Q)}`,
-    `- R vs Rf/II: ${pct(f2?.R)} vs ${pct(result.valuation.impliedExpectations?.rf as number | undefined)} / ${pct(f2?.II)}`,
-    `- 结论：${f2?.passed ? "通过" : f2?.reason ?? "否决"}`,
+    "### 计算过程（因子2 · Top-Down）",
+    "",
+    asCalculationBlockquote([
+      `- A/B/C: ${num(f2?.A)} / ${num(f2?.B)} / ${num(f2?.C)} 百万元`,
+      `- D/E/G/I: ${num(f2?.D)} / ${num(f2?.E)} / ${num(f2?.G)} / ${num(f2?.I)}`,
+      `- M/O/Q: ${num(f2?.M)} / ${num(f2?.O)} / ${num(f2?.Q)}`,
+      `- R vs Rf/II: ${pct(f2?.R)} vs ${pct(result.valuation.impliedExpectations?.rf as number | undefined)} / ${pct(f2?.II)}`,
+      `- 结论：${f2?.passed ? "通过" : f2?.reason ?? "否决"}`,
+    ]),
     "",
   ].join("\n");
 
   const factor3 = [
     "## 五、因子3：穿透回报率精算（Bottom-Up）+ 现金质量审计",
     "",
-    `- AA/FF/GG/HH: ${num(f3?.AA)} / ${num(f3?.FF)} / ${pct(f3?.GG)} / ${num(f3?.HH)}`,
-    `- 外推可信度：${f3?.extrapolationTrust ?? "—"}`,
-    `- 结论：${f3?.passed ? "通过" : f3?.reason ?? "否决"}`,
+    "### 计算过程（因子3 · Bottom-Up）",
+    "",
+    asCalculationBlockquote([
+      `- AA/FF/GG/HH: ${num(f3?.AA)} / ${num(f3?.FF)} / ${pct(f3?.GG)} / ${num(f3?.HH)}`,
+      `- 外推可信度：${f3?.extrapolationTrust ?? "—"}`,
+      `- 结论：${f3?.passed ? "通过" : f3?.reason ?? "否决"}`,
+    ]),
     "",
   ].join("\n");
 
   const factor4 = [
     "## 六、因子4：估值与安全边际",
     "",
-    `- II/JJ/KK: ${pct(f4?.II)} / ${num(f4?.JJ)} / ${num(f4?.KK)}`,
-    `- 价值陷阱：${f4?.trapRisk ?? "—"}（特征数=${f4?.trapCount ?? 0}）`,
-    `- 仓位建议：${f4?.position ?? "—"}`,
-    `- 结论：${f4?.passed ? "通过" : f4?.reason ?? "排除"}`,
+    "### 计算过程（因子4 · 估值与安全边际）",
+    "",
+    asCalculationBlockquote([
+      `- II/JJ/KK: ${pct(f4?.II)} / ${num(f4?.JJ)} / ${num(f4?.KK)}`,
+      `- 价值陷阱：${f4?.trapRisk ?? "—"}（特征数=${f4?.trapCount ?? 0}）`,
+      `- 仓位建议：${f4?.position ?? "—"}`,
+      `- 结论：${f4?.passed ? "通过" : f4?.reason ?? "排除"}`,
+    ]),
     "",
   ].join("\n");
 
@@ -179,6 +229,7 @@ export function renderPhase3Markdown(result: Phase3ExecutionResult): string {
     "---",
     "",
     meta,
+    verdict,
     execSummary,
     factor1a,
     factor1b,
@@ -189,4 +240,3 @@ export function renderPhase3Markdown(result: Phase3ExecutionResult): string {
     riskAndDisclaimer,
   ].join("\n");
 }
-
