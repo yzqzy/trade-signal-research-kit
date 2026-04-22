@@ -8,7 +8,7 @@ import { resolvePhase3DefaultRunDirectory } from "../contracts/output-layout-v2.
 import { appendFeedGapSection, evaluateFeedDataGaps } from "../crosscut/feed-gap/feed-gap-contract.js";
 import { runPhase3Strict } from "../steps/phase3/analyzer.js";
 import { parseDataPackMarket } from "../steps/phase3/market-pack-parser.js";
-import { renderPhase3Html, renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
+import { renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
 
 type CliArgs = {
   marketMdPath?: string;
@@ -73,7 +73,6 @@ async function main(): Promise<void> {
     companyName: parsedMarket.name,
   });
   const markdown = appendFeedGapSection(renderPhase3Markdown(result), feedGaps);
-  const html = renderPhase3Html(markdown);
 
   const outDir = resolvePhase3DefaultRunDirectory({
     outputDirArg: args.outputDir,
@@ -81,15 +80,12 @@ async function main(): Promise<void> {
   }).outputDir;
   const valuationPath = path.join(outDir, "valuation_computed.json");
   const reportMdPath = path.join(outDir, "analysis_report.md");
-  const reportHtmlPath = path.join(outDir, "analysis_report.html");
 
   await writeText(valuationPath, JSON.stringify(result.valuation, null, 2));
   await writeText(reportMdPath, markdown);
-  await writeText(reportHtmlPath, html);
 
   console.log(`[phase3] valuation -> ${valuationPath}`);
   console.log(`[phase3] report(md) -> ${reportMdPath}`);
-  console.log(`[phase3] report(html) -> ${reportHtmlPath}`);
 }
 
 void main();

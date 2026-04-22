@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "2.0",
+  "generatedAt": "2026-04-21T23:56:36.617Z",
+  "outputLayout": {
+    "code": "600887",
+    "runId": "golden-cn_a"
+  },
+  "input": {
+    "code": "600887"
+  },
+  "orchestration": {
+    "threadId": "aaaaaaaa-bbbb-4ccc-8ddd-0000000cna1",
+    "runId": "golden-cn_a"
+  },
+  "outputs": {
+    "marketPackPath": "/Users/heora/workspace_trade_signal/trade-signal-schema-kit/output/phase3_golden/cn_a/data_pack_market.md",
+    "reportMarkdownPath": "/Users/heora/workspace_trade_signal/trade-signal-schema-kit/output/phase3_golden/cn_a/run/analysis_report.md",
+    "valuationPath": "/Users/heora/workspace_trade_signal/trade-signal-schema-kit/output/phase3_golden/cn_a/run/valuation_computed.json"
+  }
+}

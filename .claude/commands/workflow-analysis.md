@@ -53,7 +53,7 @@ pnpm run workflow:run -- --code 600887 --year 2024
 ## 产物
 
 - `valuation_computed.json`
-- `analysis_report.md` / `analysis_report.html`
+- `analysis_report.md`
 - `workflow_manifest.json`
 - 以及 Phase1A/1B/2A/2B 中间产物（同 `workflow:run` 文档）。
 

@@ -7,7 +7,7 @@ import path from "node:path";
 import { strict as assert } from "node:assert";
 
 import { runPhase3Strict } from "../steps/phase3/analyzer.js";
-import { renderPhase3Html, renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
+import { renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
 
 export type QualitySuite = "cn_a" | "hk" | "all";
 
@@ -53,16 +53,13 @@ async function runRegressionForSuite(root: string, name: "cn_a" | "hk"): Promise
   const reportPackPath = path.join(base, "data_pack_report.md");
   const baselineValuationPath = path.join(base, "run/valuation_computed.json");
   const baselineReportMdPath = path.join(base, "run/analysis_report.md");
-  const baselineReportHtmlPath = path.join(base, "run/analysis_report.html");
 
-  const [marketPack, reportPack, baselineValuationRaw, baselineReportMdRaw, baselineReportHtmlRaw] =
-    await Promise.all([
-      readFile(marketPackPath, "utf-8"),
-      readFile(reportPackPath, "utf-8"),
-      readFile(baselineValuationPath, "utf-8"),
-      readFile(baselineReportMdPath, "utf-8"),
-      readFile(baselineReportHtmlPath, "utf-8"),
-    ]);
+  const [marketPack, reportPack, baselineValuationRaw, baselineReportMdRaw] = await Promise.all([
+    readFile(marketPackPath, "utf-8"),
+    readFile(reportPackPath, "utf-8"),
+    readFile(baselineValuationPath, "utf-8"),
+    readFile(baselineReportMdPath, "utf-8"),
+  ]);
 
   const out = runPhase3Strict({
     marketMarkdown: marketPack,
@@ -73,13 +70,11 @@ async function runRegressionForSuite(root: string, name: "cn_a" | "hk"): Promise
   const valuation = JSON.stringify(valuationObj, null, 2);
   const markdownRaw = renderPhase3Markdown(out);
   const markdown = normalizeRegressibleDocs(markdownRaw);
-  const html = normalizeRegressibleDocs(renderPhase3Html(markdownRaw));
 
   const baselineValuationObj = JSON.parse(baselineValuationRaw) as Record<string, unknown>;
   baselineValuationObj.generatedAt = "<TIMESTAMP>";
   const baselineValuation = JSON.stringify(baselineValuationObj, null, 2);
   const baselineReportMd = normalizeRegressibleDocs(baselineReportMdRaw);
-  const baselineReportHtml = normalizeRegressibleDocs(baselineReportHtmlRaw);
 
   assert.equal(
     createHash("sha256").update(valuation).digest("hex"),
@@ -90,11 +85,6 @@ async function runRegressionForSuite(root: string, name: "cn_a" | "hk"): Promise
     createHash("sha256").update(markdown).digest("hex"),
     createHash("sha256").update(baselineReportMd).digest("hex"),
     `analysis_report.md regression mismatch (${name})`,
-  );
-  assert.equal(
-    createHash("sha256").update(html).digest("hex"),
-    createHash("sha256").update(baselineReportHtml).digest("hex"),
-    `analysis_report.html regression mismatch (${name})`,
   );
 
   console.log(`[quality] regression check passed (${name})`);

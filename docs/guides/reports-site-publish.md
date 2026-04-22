@@ -1,22 +1,31 @@
-# 研报中心发布（entries / views 协议）
+# 研报中心发布（entries / views 协议 v2）
 
 [返回 workflows](./workflows.md) · [文档索引](../README.md)
+
+## 破坏性变更（v2）
+
+- 协议版本 **`index.json` → `version: "2.0"`**。
+- 每条目正文固定为 **`entries/<entryId>/content.md`**，与 **`meta.json`** 同目录。
+- **`index.html` 已废弃**：旧数据不会自动迁移，请在 monorepo 根对每次 run **重跑** `reports-site:emit` 并 **`sync:reports-to-app`**。
+- Phase3 / workflow 不再产出 **`analysis_report.html`**；主消费形态为 **Markdown**（`analysis_report.md`）与研报站的 **`content.md`**。
 
 ## 职责边界
 
 | 组件 | 职责 |
 |------|------|
 | `trade-signal-schema-kit`（`@trade-signal/research-strategies`） | 从单次 `workflow` / `business-analysis` run 归一化生成 `output/site/reports/**` |
-| `apps/research-hub`（`@trade-signal/research-hub`） | 基于 **Nextra docs**（由 `trade-signal-docs` 迁入）+ 消费 `public/reports/**`，静态导出 `/reports` 列表与详情 |
+| `apps/research-hub`（`@trade-signal/research-hub`） | 消费 `public/reports/**`，静态导出 `/reports` 列表与详情（详情页 **仅 Markdown 渲染**） |
 
 ## 目录协议（`site/reports`）
 
-- `index.json`：`version`、`generatedAt`、`entryCount`、`timelineHref`
+- `index.json`：`version`（`"2.0"`）、`generatedAt`、`entryCount`、`timelineHref`
 - `views/timeline.json`：时间流列表项（`entryId`、`displayTitle`、`topicType`、`code`、`publishedAt`、`href`、`requiredFieldsStatus`、`confidenceState`）
 - `views/by-topic/<topicType>.json`、`views/by-code/<code>.json`：分类视图
-- `entries/<entryId>/meta.json`、`entries/<entryId>/index.html`：详情元数据 + 可独立托管的静态页
+- `entries/<entryId>/meta.json`、`entries/<entryId>/content.md`：详情元数据 + **Markdown 正文**
 
 `entryId`：`<date>-<code>-<topicSlug>-<runIdShort>`（去重键：`date + code + topicType`，timeline 保留最新 `publishedAt`）。
+
+`meta.json` 中 **`contentFile`** 固定为 **`content.md`**（与协议类型一致）。
 
 ## 常用命令
 
@@ -47,6 +56,6 @@ pnpm --filter @trade-signal/research-strategies run run:reports-site-sync -- \
 1. 在 CI 或本地生成并同步：`reports-site:emit` → `sync:reports-to-app`，再 `pnpm --filter @trade-signal/research-hub run build`（或直接部署 `output/site/reports` 子树）。
 2. 静态托管可将 **`research-hub/out/`** 作为站点根，入口 **`/reports/`**；若单独发布 `site/reports`，按托管商配置子路径。
 
-## 与 `report-to-html` 的关系
+## 与历史 HTML 产出的关系
 
-`report-to-html` 为 **legacy / 调试** 单文件 HTML，**不作为** 研报中心主发布链路；主链路以 **`entries` + `views` + 程序化索引** 为准。
+此前独立的 **Markdown → HTML** CLI 与 **`analysis_report.html`** 链路已移除。定性/龟龟报告请以 **`content.md` / `analysis_report.md`** 为准；如需离线阅读可复制 Markdown 或用通用 MD 预览工具。

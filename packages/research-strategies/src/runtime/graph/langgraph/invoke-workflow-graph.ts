@@ -72,7 +72,6 @@ export function mapStateToWorkflowArtifacts(state: WorkflowGraphState): Workflow
     phase2bInterimMarkdownPath: state.phase2bInterimMarkdownPath,
     valuationPath: assertState(state.valuationPath, "[workflow:langgraph] 缺少 valuationPath"),
     reportMarkdownPath: assertState(state.reportMarkdownPath, "[workflow:langgraph] 缺少 reportMarkdownPath"),
-    reportHtmlPath: assertState(state.reportHtmlPath, "[workflow:langgraph] 缺少 reportHtmlPath"),
     manifestPath: assertState(state.manifestPath, "[workflow:langgraph] 缺少 manifestPath"),
     phase3PreflightPath: state.phase3PreflightPath,
   };

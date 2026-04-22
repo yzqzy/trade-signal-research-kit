@@ -54,11 +54,7 @@ export function ReportsTimelineClient({
     <div className="rh-container reports-root">
       <header className="rh-page-header">
         <h1 className="rh-page-title">报告中心</h1>
-        <p className="rh-page-desc">
-          时间流与按专题、代码筛选。数据在构建时来自 <code className="rh-kbd">public/reports/**</code>；由 monorepo 根{" "}
-          <code className="rh-kbd">pnpm run reports-site:emit</code> 与 <code className="rh-kbd">pnpm run sync:reports-to-app</code>{" "}
-          生成。
-        </p>
+        <p className="rh-page-desc">按发布时间浏览报告，并可用专题、股票代码筛选。</p>
         {indexMeta ? (
           <p className="rh-page-meta">
             索引 {indexMeta.version} · 生成 {indexMeta.generatedAt} · 条目 {indexMeta.entryCount}
@@ -103,9 +99,11 @@ export function ReportsTimelineClient({
 
       {filtered.length === 0 ? (
         <div className="rh-empty" role="status">
-          暂无报告条目。请在 monorepo 根执行 <code className="rh-kbd">pnpm run reports-site:emit -- --run-dir &lt;run&gt;</code>，再执行{" "}
-          <code className="rh-kbd">pnpm run sync:reports-to-app</code>，然后{" "}
-          <code className="rh-kbd">pnpm --filter @trade-signal/research-hub run build</code>。
+          {items.length === 0 ? (
+            <>暂无报告。</>
+          ) : (
+            <>没有符合当前筛选条件的条目。可点击「全部」或调整筛选。</>
+          )}
         </div>
       ) : (
         <ul className="rh-card-list">

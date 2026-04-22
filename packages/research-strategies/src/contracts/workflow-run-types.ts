@@ -45,7 +45,6 @@ export interface WorkflowArtifacts {
   phase2bInterimMarkdownPath?: string;
   valuationPath: string;
   reportMarkdownPath: string;
-  reportHtmlPath: string;
   manifestPath: string;
   phase3PreflightPath?: string;
 }

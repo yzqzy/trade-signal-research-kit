@@ -23,7 +23,7 @@
 
 ## 环境变量与 `.env`（CLI 统一初始化）
 
-`@trade-signal/research-strategies` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `report-to-html` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
+`@trade-signal/research-strategies` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
 
 1. **当前工作目录**下的 `.env`
 2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-strategies` 执行时通常对应**仓库根**的 `.env`）
@@ -38,7 +38,6 @@
 - **续跑**：`--resume-from-stage` 时必须传入 `--output-dir`，且指向**已有 run 根目录**（该目录下含 `workflow_graph_checkpoint.json`）。
 - **`valuation:run`（独立 CLI）**：`--output-dir` 为默认 `output` 时，写入 `output/valuation/<code>/<runId>/`；可用 `--code` 指定分区（缺省 `_adhoc`）。**`--from-manifest` 且未传 `--code` 时**，分区代码回退到 **`manifest.outputLayout.code`**（避免 `_adhoc`）。`--from-manifest` 且默认 `--output-dir` 时，估值产物仍写入 manifest 所在 run 目录。
 - **`run:phase3`（独立 CLI）**：`--output-dir` 为默认 `output` 时，写入 `output/phase3/<code>/<runId>/`；可用 `--code` 指定分区（缺省 `_adhoc`）。显式 `--output-dir` 为**写入根目录**，不再追加子 UUID。
-- **report-to-html**：未传 `--output-html` 时，写入 `output/report/<code>/<runId>/<stem>.html`；可用 `--code` 指定分区（缺省 `_adhoc`）。
 - **screener**：在 `--output-dir` 根下写入 `output/screener/<market>/<mode>/<runId>/`（若根为默认 `output`，则完整路径为 `output/screener/...`）。
 - **清单字段**：`workflow_manifest.json` / `business_analysis_manifest.json` 的 `manifestVersion` 为 **`2.0`**，并含 `outputLayout: { version, area, code, runId }`。
 
@@ -215,24 +214,9 @@ pnpm run valuation:run -- \
 pnpm run valuation:run -- --from-manifest "./output/workflow/600887/<runId>/business_analysis_manifest.json"
 ```
 
-**report-to-html**：
-
-```bash
-# Phase3 / workflow 定量报告（语义 HTML，默认）
-pnpm run report-to-html:run -- \
-  --input-md "./output/workflow/600887/<runId>/analysis_report.md" \
-  [--toc] [--legacy-pre]
-
-# 商业分析定性发布模板（KPI 卡片 + 六维摘要 + 结构化参数表，内嵌 CSS）
-pnpm run report-to-html:run -- \
-  --input-md "./output/business-analysis/600887/<runId>/qualitative_d1_d6.md" \
-  --mode dashboard
-```
-
-- **`--mode`**：`semantic`（默认）= `renderPhase3Html`；`dashboard` = `@trade-signal/reporting` 定性 dashboard（输入多为 `qualitative_d1_d6.md`）。
 - 另见：[Feed 缺口契约](./feed-gap-contract.md)（`## 数据缺口与补齐建议`）。Screener 行为对照：`packages/research-strategies/src/screener/screener-parity.md`。
 
-Claude：`/valuation`、`/report-to-html`（见 `.claude/commands/`）。
+Claude：`/valuation`（见 `.claude/commands/`）。研报站发布见 [reports-site-publish](./reports-site-publish.md)（`content.md` v2）。
 
 `workflow_manifest.json` 同样包含 `pipeline.valuation.relativePaths`。
 
@@ -316,7 +300,6 @@ pnpm --filter @trade-signal/research-strategies run run:phase3 -- \
 
 - `output/valuation_computed.json`
 - `output/analysis_report.md`
-- `output/analysis_report.html`
 
 Workflow CLI（一键串联）：
 

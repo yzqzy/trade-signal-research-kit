@@ -28,7 +28,7 @@ pnpm run valuation:run -- \
 
 - `valuation_computed.json`
 - `valuation_summary.md`
-- 可选 `--full-report`：同目录追加 `analysis_report.md` + `analysis_report.html`（与 `phase3:run` 同构）
+- 可选 `--full-report`：同目录追加 `analysis_report.md`（与 `phase3:run` 同构）
 
 ## 与 business-analysis 衔接
 

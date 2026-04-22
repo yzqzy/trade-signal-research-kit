@@ -13,7 +13,6 @@
     "business-analysis:run": "pnpm --filter @trade-signal/research-strategies run run:business-analysis",
     "websearch:smoke": "pnpm run build && pnpm --filter @trade-signal/research-strategies run run:websearch-smoke --",
     "valuation:run": "pnpm --filter @trade-signal/research-strategies run run:valuation",
-    "report-to-html:run": "pnpm --filter @trade-signal/research-strategies run run:report-to-html",
     "evidence-index:normalize": "pnpm --filter @trade-signal/research-strategies run run:evidence-index-normalize --",
     "quality:conformance": "pnpm --filter @trade-signal/research-strategies run quality:conformance",
     "quality:contract": "pnpm --filter @trade-signal/research-strategies run quality:contract",

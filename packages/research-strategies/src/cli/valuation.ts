@@ -9,7 +9,7 @@ import { resolveInputPath, resolveOutputPath } from "../crosscut/normalization/r
 import { appendFeedGapSection, evaluateFeedDataGaps } from "../crosscut/feed-gap/feed-gap-contract.js";
 import { runPhase3Strict } from "../steps/phase3/analyzer.js";
 import { parseDataPackMarket } from "../steps/phase3/market-pack-parser.js";
-import { renderPhase3Html, renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
+import { renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
 import type { Phase3ExecutionResult } from "../steps/phase3/types.js";
 
 type CliArgs = {
@@ -106,7 +106,7 @@ function renderValuationSummaryMarkdown(result: Phase3ExecutionResult, fullRepor
     ...(rows.length > 0 ? rows : ["| — | 无方法输出 | — |"]),
     "",
     fullReport
-      ? "> 已通过 `--full-report` 输出同目录 `analysis_report.md` / `analysis_report.html`。"
+      ? "> 已通过 `--full-report` 输出同目录 `analysis_report.md`。"
       : "> 完整 Phase3 报告可使用包内 `run:phase3`、根目录 `pnpm run workflow:run`，或 `valuation:run --full-report`。",
     "",
   ].join("\n");
@@ -230,11 +230,8 @@ async function main(): Promise<void> {
     });
     const fullMd = appendFeedGapSection(renderPhase3Markdown(result), feedGaps);
     const reportMdPath = path.join(outDir, "analysis_report.md");
-    const reportHtmlPath = path.join(outDir, "analysis_report.html");
     await writeText(reportMdPath, fullMd);
-    await writeText(reportHtmlPath, renderPhase3Html(fullMd));
     console.log(`[valuation] report(md) -> ${reportMdPath}`);
-    console.log(`[valuation] report(html) -> ${reportHtmlPath}`);
   }
 }
 

@@ -36,7 +36,7 @@ description: "`workflow:run --mode turtle-strict`：TS 跑严格证据链与 Pha
 
 ## 产物速查
 
-- `analysis_report.md` / `analysis_report.html`
+- `analysis_report.md`
 - `valuation_computed.json`
 - `workflow_manifest.json`
 

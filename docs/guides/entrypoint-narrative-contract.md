@@ -20,7 +20,7 @@
 | `/workflow-analysis` / `workflow:run` | 全链路至 `analysis_report`、估值、manifest | 全链路终稿以 **Phase3 规则报告**为主；深度六维定性补强仍在 **Claude** 侧（与 [agent-framework-comparison](../strategy/agent-framework-comparison.md) 一致） |
 | `/valuation` / `valuation:run` | 估值 JSON/摘要（可选 full report） | **否** |
 | `/download-annual-report` / `phase0:download` | 年报 PDF 获取与缓存 | **否** |
-| `/report-to-html` / `report-to-html:run` | Markdown → HTML（`--mode semantic` Phase3 报告；`--mode dashboard` 定性发布模板） | **否** |
+| `reports-site:emit` / `sync:reports-to-app` | 将单次 run 聚合为研报站静态数据（`content.md` v2，见 [reports-site-publish](./reports-site-publish.md)） | **否** |
 
 ## 推荐执行顺序（与 reference 一致）
 

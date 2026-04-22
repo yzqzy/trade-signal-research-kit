@@ -6,7 +6,7 @@
 
 ## 目标
 
-- 验证 CLI 主入口（`phase0` / `business-analysis` / `workflow` / `valuation` / `report-to-html`）可联通
+- 验证 CLI 主入口（`phase0` / `business-analysis` / `workflow` / `valuation` / `reports-site:emit`）可联通
 - 验证财务新路径（`financial/snapshot`、`financial/history`）已在 Provider 生效
 - 验证 `quality:all` 通过后链路具备可回归性
 
@@ -60,8 +60,6 @@ pnpm run business-analysis:run -- \
 - [ ] `business_analysis_manifest.json`
 - [ ] **Feed 缺口**：`qualitative_report.md` 与 `qualitative_d1_d6.md` 文末含 **`## 数据缺口与补齐建议`**（见 [feed-gap-contract.md](./feed-gap-contract.md)）
 - [ ] **发布级结构化参数骨架**：`qualitative_d1_d6.md` 含 **「发布级结构化参数（output_schema 兼容骨架）」** 表（键名对齐，值默认 `—`）
-- [ ] （可选）`pnpm run report-to-html:run -- --input-md .../qualitative_d1_d6.md --mode dashboard` 生成发布预览 HTML
-
 财务关键验收：
 
 - [ ] `financialHistory` 至少 2 个独立财年
@@ -135,7 +133,6 @@ pnpm run workflow:run -- \
 验收产物（`output/workflow/600887/<runId>/`）：
 
 - [ ] `analysis_report.md`
-- [ ] `analysis_report.html`（或由 `report-to-html` 生成）
 - [ ] `valuation_computed.json`
 - [ ] `workflow_manifest.json`
 
@@ -159,20 +156,19 @@ pnpm run valuation:run -- \
 - [ ] `valuation_computed.json`
 - [ ] `valuation_summary.md`
 
-## 5. 报告转 HTML
+## 5. 研报站聚合（`content.md` v2）
 
-执行：
+执行（在 monorepo 根，需已 `pnpm run build`）：
 
 ```bash
-pnpm run report-to-html:run -- \
-  --input-md "./output/workflow/600887/<runId>/analysis_report.md" \
-  --code 600887
+pnpm run reports-site:emit -- --run-dir "./output/workflow/600887/<runId>"
+pnpm run sync:reports-to-app
 ```
 
 验收：
 
-- [ ] HTML 成功生成
-- [ ] 标题/段落/列表结构正常
+- [ ] `output/site/reports/entries/*/content.md` 存在且 `meta.json` 中 `contentFile` 为 `content.md`
+- [ ] `apps/research-hub/public/reports/index.json` 的 `version` 为 `2.0`
 
 ## 6. Provider 一致性（HTTP / MCP）
 

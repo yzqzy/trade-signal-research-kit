@@ -7,15 +7,15 @@
 | 能力域 | 参考（Turtle_investment_framework） | 本仓库现状 | 差距状态 | 验收/门禁 |
 |--------|--------------------------------------|------------|----------|-----------|
 | 端到端 workflow（行情→PDF→证据→Phase3） | 脚本链 + 多阶段产物 | `workflow:run`、`executeWorkflowDataPipeline`、checkpoint | **已具备**（架构不同） | `quality:regression`、`quality:phase3-golden` |
-| Phase3 严格估值与报告 | 因子/门槛逻辑 | `runPhase3Strict`、`renderPhase3Markdown/Html` | **已具备** | 同上 |
+| Phase3 严格估值与报告 | 因子/门槛逻辑 | `runPhase3Strict`、`renderPhase3Markdown` | **已具备** | 同上 |
 | PDF-first 商业分析 | qualitative v2 + 证据 | `business-analysis:run`、`d1-d6-scaffold`、`phase1b` | **部分**：工程骨架+证据；终稿在 Claude 会话 | `business-analysis --strict`、文档契约 |
 | 发布级结构化参数（output_schema 键） | `output_schema.md` 风格键表 | `qualitative_d1_d6.md` 增加 **发布级结构化参数骨架**（键名对齐） | **本轮补齐** | 键名 grep / 人工审 schema |
-| 发布级 HTML（KPI/Verdict/参数面板） | `dashboard.html` + `report_to_html.py` | `report-to-html`：`semantic`（Phase3）+ **`dashboard`（定性发布模板）** | **本轮补齐** | 快照/烟测 `renderQualitativeDashboardHtml` |
+| 发布级 HTML（KPI/Verdict/参数面板） | `dashboard.html` + `report_to_html.py` | 定性侧保留 `@trade-signal/reporting` 的 dashboard HTML **生成函数**（供独立预览）；**编排主链路**为 Markdown + 研报站 `content.md` v2 | **策略替代** | 定性 HTML 烟测 `renderQualitativeDashboardHtml`；主站见 `reports-site-publish` |
 | Feed 缺口契约（分级+模板+命令建议） | 部分隐含在脚本 | `feed-gap-contract.ts` + 固定小节 **`## 数据缺口与补齐建议`** | **本轮补齐** | 跑 `business-analysis` / `workflow` 后人工检视小节 |
 | 同业对标 / 周期定位数据层 | 外采/宽表 | **无静默补采**；由缺口规则提示「需 feed 扩展」 | **Feed-first**：仅缺口与指引 | 报告内小节 + 契约测试 |
 | Screener Tier1/2 + 导出 | `screener_core.py` 等 | `packages/research-strategies/src/screener/*`、`screener-parity.md` | **已对齐 CLI/契约**（见 parity 文档） | `pnpm run test:screener` |
 | Screener Web UI | 参考若有 Web | `apps/screener-web` | **冻结 / 待独立规划** | 不阻断本轮 |
-| Notebook / 交互 | Jupyter 等 | CLI + Markdown/HTML + Claude 会话收口叙事 | **策略替代**（非逐行复刻） | E2E checklist |
+| Notebook / 交互 | Jupyter 等 | CLI + Markdown + Claude 会话收口叙事 | **策略替代**（非逐行复刻） | E2E checklist |
 | 质量门禁 | pytest 等 | `quality:conformance|contract|regression|phase3-golden` | **已具备** | `pnpm run quality:all` |
 
 ## 输入 / 输出对照（摘要）
@@ -26,7 +26,7 @@
 | 年报解析 | PDF 管线 | Phase2A/2B → `data_pack_report.md` |
 | 定性终稿 | LLM + 模板 | `qualitative_report.md` / `qualitative_d1_d6.md`（会话写回） |
 | 估值 JSON | 结构化输出 | `valuation_computed.json` |
-| HTML | Jinja dashboard | `analysis_report.html`（Phase3）/ `dashboard` 模式（定性） |
+| 研报站正文 | Jinja dashboard | `entries/*/content.md`（v2）+ `analysis_report.md`；定性 dashboard HTML 仅库内预览 |
 
 ## 里程碑映射（与实施计划一致）
 

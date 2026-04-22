@@ -161,7 +161,6 @@ async function main(): Promise<void> {
   }
   console.log(`[workflow] phase3 valuation -> ${result.valuationPath}`);
   console.log(`[workflow] phase3 report(md) -> ${result.reportMarkdownPath}`);
-  console.log(`[workflow] phase3 report(html) -> ${result.reportHtmlPath}`);
   console.log(`[workflow] manifest -> ${result.manifestPath}`);
 
   if (args.reportsSiteDir) {

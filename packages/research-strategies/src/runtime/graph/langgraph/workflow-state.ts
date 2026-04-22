@@ -54,7 +54,6 @@ export const WorkflowGraphStateAnnotation = Annotation.Root({
   phase3Execution: Annotation<Phase3ExecutionResult | undefined>(),
   valuationPath: Annotation<string | undefined>(),
   reportMarkdownPath: Annotation<string | undefined>(),
-  reportHtmlPath: Annotation<string | undefined>(),
   manifestPath: Annotation<string | undefined>(),
 
   preflightEffective: Annotation<PreflightLevel | undefined>(),

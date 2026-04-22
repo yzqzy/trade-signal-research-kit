@@ -283,7 +283,7 @@ export function renderQualitativeDashboardHtml(
       "<tr><td colspan=\"3\">（未解析到参数表；请确认存在「## 发布级结构化参数」小节）</td></tr>",
     "</tbody></table>",
     "</details>",
-    '<footer>trade-signal-schema-kit · report-to-html --mode dashboard · 本地独立预览</footer>',
+    '<footer>trade-signal-schema-kit · qualitative dashboard HTML · 本地独立预览</footer>',
     "</div>",
     "</body>",
     "</html>",

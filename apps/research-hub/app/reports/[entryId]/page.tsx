@@ -5,10 +5,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { extractReportArticleHtml } from "@/lib/reports/extract-body";
+import { ReportMarkdownBody } from "@/components/ReportMarkdownBody";
 import { TOPIC_LABEL_ZH, type ReportTopicType } from "@/lib/reports/topic-labels";
 
 const PLACEHOLDER_ENTRY_ID = "__no_entries__";
+const DEFAULT_CONTENT_FILE = "content.md";
 
 type EntryMeta = {
   entryId: string;
@@ -19,6 +20,7 @@ type EntryMeta = {
   sourceRunId: string;
   requiredFieldsStatus: "complete" | "degraded" | "missing";
   confidenceState: "high" | "medium" | "low" | "unknown";
+  contentFile?: string;
 };
 
 function metaStatusClass(s: EntryMeta["requiredFieldsStatus"]): string {
@@ -71,8 +73,7 @@ export default async function ReportEntryPage({ params }: { params: Promise<{ en
           ← 报告中心
         </Link>
         <div className="rh-empty" role="status">
-          当前尚未同步任何报告条目。请在 monorepo 根执行 <code className="rh-kbd">pnpm run reports-site:emit -- --run-dir &lt;run&gt;</code> 与{" "}
-          <code className="rh-kbd">pnpm run sync:reports-to-app</code> 后重新构建本站。
+          当前没有可展示的报告。
         </div>
       </div>
     );
@@ -80,14 +81,12 @@ export default async function ReportEntryPage({ params }: { params: Promise<{ en
 
   const base = path.join(process.cwd(), "public", "reports", "entries", entryId);
   let meta: EntryMeta;
-  let articleHtml: string;
+  let markdown: string;
   try {
-    const [metaRaw, htmlRaw] = await Promise.all([
-      readFile(path.join(base, "meta.json"), "utf-8"),
-      readFile(path.join(base, "index.html"), "utf-8"),
-    ]);
+    const metaRaw = await readFile(path.join(base, "meta.json"), "utf-8");
     meta = JSON.parse(metaRaw) as EntryMeta;
-    articleHtml = extractReportArticleHtml(htmlRaw);
+    const contentName = meta.contentFile?.trim() || DEFAULT_CONTENT_FILE;
+    markdown = await readFile(path.join(base, contentName), "utf-8");
   } catch {
     notFound();
   }
@@ -112,11 +111,7 @@ export default async function ReportEntryPage({ params }: { params: Promise<{ en
           </div>
         </div>
       </header>
-      <article
-        className="report-entry-body"
-        // eslint-disable-next-line react/no-danger -- 静态 HTML 由 CLI 生成
-        dangerouslySetInnerHTML={{ __html: articleHtml }}
-      />
+      <ReportMarkdownBody markdown={markdown} />
     </div>
   );
 }

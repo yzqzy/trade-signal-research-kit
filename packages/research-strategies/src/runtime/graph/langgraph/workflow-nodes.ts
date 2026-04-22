@@ -13,7 +13,7 @@ import { renderPhase1BMarkdown } from "../../../steps/phase1b/renderer.js";
 import { runPhase2AExtractPdfSections } from "../../../steps/phase2a/extractor.js";
 import { tryApplyPdfSectionVerifier } from "./pdf-section-verifier.js";
 import { renderPhase2BDataPackReport } from "../../../steps/phase2b/renderer.js";
-import { renderPhase3Html, renderPhase3Markdown } from "../../../steps/phase3/report-renderer.js";
+import { renderPhase3Markdown } from "../../../steps/phase3/report-renderer.js";
 import { appendFeedGapSection, evaluateFeedDataGaps } from "../../../crosscut/feed-gap/feed-gap-contract.js";
 import { resolveWorkflowStrategyPlugin } from "../../../strategy/registry.js";
 import { evaluatePhase3Preflight } from "../../../crosscut/preflight/phase3-preflight.js";
@@ -88,7 +88,6 @@ async function persistCheckpoint(
       phase3PreflightPath: state.phase3PreflightPath,
       valuationPath: state.valuationPath,
       reportMarkdownPath: state.reportMarkdownPath,
-      reportHtmlPath: state.reportHtmlPath,
       manifestPath: state.manifestPath,
     },
   };
@@ -195,7 +194,6 @@ export async function nodeInitPrep(state: WorkflowGraphState): Promise<Partial<W
       phase3PreflightPath: cp.snapshot.phase3PreflightPath,
       valuationPath: cp.snapshot.valuationPath,
       reportMarkdownPath: cp.snapshot.reportMarkdownPath,
-      reportHtmlPath: cp.snapshot.reportHtmlPath,
       manifestPath: cp.snapshot.manifestPath,
       completedStages: resumedStages,
       resumeLoaded: true,
@@ -443,7 +441,6 @@ export async function nodeStageE(state: WorkflowGraphState): Promise<Partial<Wor
 
   const valuationPath = path.join(outputDir, "valuation_computed.json");
   const reportMarkdownPath = path.join(outputDir, "analysis_report.md");
-  const reportHtmlPath = path.join(outputDir, "analysis_report.html");
   await writeText(valuationPath, JSON.stringify(phase3Execution.valuation, null, 2));
   const feedGaps = evaluateFeedDataGaps({
     marketMarkdown: marketPackMarkdown,
@@ -455,13 +452,11 @@ export async function nodeStageE(state: WorkflowGraphState): Promise<Partial<Wor
     feedGaps,
   );
   await writeText(reportMarkdownPath, reportMarkdown);
-  await writeText(reportHtmlPath, renderPhase3Html(reportMarkdown));
 
   const next: Partial<WorkflowGraphState> = {
     phase3Execution,
     valuationPath,
     reportMarkdownPath,
-    reportHtmlPath,
     completedStages: ["stageE"],
   };
   const mergedStages = mergeCompletedStages(state, "stageE");
@@ -491,7 +486,6 @@ export async function nodeFinalizeManifest(state: WorkflowGraphState): Promise<P
   const phase3PreflightPath = state.phase3PreflightPath;
   const valuationPath = state.valuationPath!;
   const reportMarkdownPath = state.reportMarkdownPath!;
-  const reportHtmlPath = state.reportHtmlPath!;
   const reportUrlResolved = state.reportUrlResolved;
 
   const marketRelW = path.relative(outputDir, marketPackPath) || "data_pack_market.md";
@@ -524,7 +518,6 @@ export async function nodeFinalizeManifest(state: WorkflowGraphState): Promise<P
       phase3PreflightPath,
       valuationPath,
       reportMarkdownPath,
-      reportHtmlPath,
     },
     pipeline: {
       valuation: {

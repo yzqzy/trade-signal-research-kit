@@ -13,8 +13,8 @@
 - **`turtle-strict`**：Claude `/workflow-analysis`；CLI `--mode turtle-strict`（PDF/报告包前置校验 + fail-fast）
 - **质量回归**：`cn_a` + `hk` 双套件 golden（`quality:regression` / `quality:phase3-golden` 默认 `--suite all`）
 - **独立估值**：`/valuation`；CLI `pnpm run valuation:run`，可与 `business-analysis` manifest 串接
-- **Markdown 转 HTML**：`/report-to-html`；CLI `pnpm run report-to-html:run`
-- 输出：`run:phase3`（包内）与 `workflow:run`（根目录编排）均在指定目录产出 `analysis_report.md` / `analysis_report.html`（文件名固定）
+- **研报站 Markdown**：`reports-site:emit` → `sync:reports-to-app`（`content.md` v2，见 [reports-site-publish](../guides/reports-site-publish.md)）
+- 输出：`run:phase3`（包内）与 `workflow:run`（根目录编排）均在指定目录产出 `analysis_report.md`（文件名固定）
 - **A 股优先**；**港股**：基础数据与 `hk` 黄金样例已具备，与 A 股同等深度 **暂未实现**
 
 ## v0.2（计划中）

@@ -2,13 +2,8 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { DataPackMarket, Market } from "@trade-signal/schema-core";
-import { qualitativeMarkdownToDashboardHtml } from "@trade-signal/reporting";
 
 import { resolveOutputPath } from "../crosscut/normalization/resolve-monorepo-path.js";
-import { renderMarkdownToSemanticHtml } from "../steps/phase3/markdown-to-html.js";
-import { renderPhase3Html } from "../steps/phase3/report-renderer.js";
-import { extractInnerBodyFromFullHtml } from "./extract-html-body.js";
-import { wrapStandaloneReportHtml } from "./html-shell.js";
 import { formatListedCode } from "./listed-code.js";
 import { buildDisplayTitle, TOPIC_ENTRY_SLUG } from "./topic-labels.js";
 import type {
@@ -50,9 +45,38 @@ async function readJson<T>(p: string): Promise<T> {
   return JSON.parse(raw) as T;
 }
 
+function resolveArtifactPath(runDir: string, filePath?: string): string | undefined {
+  const p = filePath?.trim();
+  if (!p) return undefined;
+  return path.isAbsolute(p) ? p : path.resolve(runDir, p);
+}
+
+/** 从 `data_pack_market.md` 首行标题（如 `# 伊利股份（600887）`）与「市场」行推断展示名与板块 */
+function parseMarketPackMarkdownContext(md: string): { companyName?: string; market?: Market } {
+  const firstLine = (md.trim().split(/\r?\n/u)[0] ?? "").trim();
+  const h1 = firstLine.match(/^#\s*(.+)$/u);
+  let companyName: string | undefined;
+  if (h1) {
+    const inner = h1[1].trim();
+    const paren = inner.match(/^(.+?)（\s*([0-9A-Za-z._-]+)\s*）\s*$/u);
+    companyName = paren ? paren[1].trim() : inner;
+  }
+  const marketLine = md.match(/^\s*-\s*市场：\s*(\S+)/imu);
+  const rawM = marketLine?.[1]?.trim();
+  const market: Market | undefined = rawM === "HK" || rawM === "CN_A" ? rawM : undefined;
+  return { companyName, market };
+}
+
+/** Phase3 龟龟报告中的「因子 1B」整节（workflow 无 Phase1B 时的商业质量占位摘录） */
+function extractTurtleReportFactor1bSection(reportMd: string): string | undefined {
+  const m = reportMd.match(/## 三、因子1B：深度定性分析[\s\S]*?(?=\n## [四五六七八九十])/u);
+  return m?.[0]?.trim();
+}
+
 async function tryReadCompanyContext(
   runDir: string,
   manifestInput: Record<string, unknown>,
+  options?: { marketPackPath?: string },
 ): Promise<{ name: string; market?: Market }> {
   const code = String(manifestInput.code ?? "").trim() || "—";
   const fromInput = manifestInput.companyName;
@@ -70,13 +94,35 @@ async function tryReadCompanyContext(
       /* ignore */
     }
   }
+  const marketAbs = resolveArtifactPath(runDir, options?.marketPackPath);
+  if (marketAbs && (await pathExists(marketAbs))) {
+    try {
+      const md = await readFile(marketAbs, "utf-8");
+      const parsed = parseMarketPackMarkdownContext(md);
+      if (parsed.companyName) return { name: parsed.companyName, market: parsed.market };
+      if (parsed.market) return { name: code, market: parsed.market };
+    } catch {
+      /* ignore */
+    }
+  }
   return { name: code };
 }
 
-function parseConfidenceFromReportMd(md: string): ConfidenceState {
-  const m = md.match(/^\s*-\s*confidence:\s*(\S+)/im);
-  const v = m?.[1]?.toLowerCase();
+function normalizeConfidenceToken(raw: string | undefined): ConfidenceState | undefined {
+  const v = raw?.trim().toLowerCase();
   if (v === "high" || v === "medium" || v === "low") return v;
+  return undefined;
+}
+
+/** 从 Phase3 / 定性稿 Markdown 提取置信度（YAML 列表或执行摘要表「分析置信度」行） */
+function parseConfidenceFromReportMd(md: string): ConfidenceState {
+  const yaml = normalizeConfidenceToken(md.match(/^\s*-\s*confidence:\s*(\S+)/im)?.[1]);
+  if (yaml) return yaml;
+
+  const tableCell = md.match(/\|\s*分析置信度\s*\|\s*([^|\n]+?)\s*\|/imu)?.[1];
+  const fromTable = normalizeConfidenceToken(tableCell);
+  if (fromTable) return fromTable;
+
   return "unknown";
 }
 
@@ -85,15 +131,32 @@ function buildEntryId(date: string, codeDigits: string, topic: ReportTopicType, 
   return `${date}-${codeDigits}-${slug}-${runShort}`;
 }
 
+function joinSections(sections: string[]): string {
+  return sections
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n\n---\n\n");
+}
+
+function valuationComputedMarkdownBlock(rawJson: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return ["## valuation_computed.json（解析失败，原文）", "", "```text", rawJson.trim(), "```"].join("\n");
+  }
+  return ["## valuation_computed.json", "", "```json", JSON.stringify(parsed, null, 2), "```"].join("\n");
+}
+
 async function writeEntry(params: {
   siteDir: string;
   meta: EntryMeta;
-  indexHtml: string;
+  contentMarkdown: string;
 }): Promise<void> {
   const dir = path.join(params.siteDir, "entries", params.meta.entryId);
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, "meta.json"), JSON.stringify(params.meta, null, 2), "utf-8");
-  await writeFile(path.join(dir, "index.html"), params.indexHtml, "utf-8");
+  await writeFile(path.join(dir, "content.md"), params.contentMarkdown, "utf-8");
 }
 
 type WorkflowManifest = {
@@ -107,7 +170,6 @@ type WorkflowManifest = {
     phase1bMarkdownPath?: string;
     valuationPath?: string;
     reportMarkdownPath?: string;
-    reportHtmlPath?: string;
   };
   orchestration?: { threadId?: string; runId?: string };
 };
@@ -132,13 +194,14 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const codeDigits = String(m.outputLayout.code ?? "").replace(/\D/g, "") || m.outputLayout.code;
   const sourceRunId = String(m.orchestration?.threadId ?? m.orchestration?.runId ?? m.outputLayout.runId ?? "");
   const runShort = shortRunId(sourceRunId || m.outputLayout.runId || "run");
-  const ctx = await tryReadCompanyContext(runDir, m.input as Record<string, unknown>);
-  const listed = formatListedCode(codeDigits, ctx.market);
+  const reportMdPath = resolveArtifactPath(runDir, m.outputs.reportMarkdownPath);
+  const valuationPath = resolveArtifactPath(runDir, m.outputs.valuationPath);
+  const marketPath = resolveArtifactPath(runDir, m.outputs.marketPackPath);
 
-  const reportMdPath = m.outputs.reportMarkdownPath;
-  const reportHtmlPath = m.outputs.reportHtmlPath;
-  const valuationPath = m.outputs.valuationPath;
-  const marketPath = m.outputs.marketPackPath;
+  const ctx = await tryReadCompanyContext(runDir, m.input as Record<string, unknown>, {
+    marketPackPath: marketPath,
+  });
+  const listed = formatListedCode(codeDigits, ctx.market);
 
   let reportMarkdown = "";
   if (reportMdPath && (await pathExists(reportMdPath))) {
@@ -148,7 +211,6 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
 
   const hasValuationJson = Boolean(valuationPath && (await pathExists(valuationPath)));
   const hasReportMd = reportMarkdown.length > 0;
-  const hasReportHtml = Boolean(reportHtmlPath && (await pathExists(reportHtmlPath)));
   const hasMarketMd = Boolean(marketPath && (await pathExists(marketPath)));
 
   const manifestRel = path.relative(siteDir, manifestPath);
@@ -156,96 +218,91 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const topics: Array<{
     topic: ReportTopicType;
     status: RequiredFieldsStatus;
-    html: string;
+    markdown: string;
   }> = [];
 
   /** 龟龟整包 */
   {
     let status: RequiredFieldsStatus = "missing";
-    let html = "";
-    if (hasReportHtml && reportHtmlPath) {
-      status = hasValuationJson && hasReportMd ? "complete" : "degraded";
-      const inner = extractInnerBodyFromFullHtml(await readFile(reportHtmlPath, "utf-8"));
-      html = wrapStandaloneReportHtml({
-        title: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic: "turtle-strategy" }),
-        bodyInnerHtml: inner,
-      });
-    } else if (hasReportMd) {
-      status = hasValuationJson ? "degraded" : "degraded";
-      html = wrapStandaloneReportHtml({
-        title: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic: "turtle-strategy" }),
-        bodyInnerHtml: extractInnerBodyFromFullHtml(renderPhase3Html(reportMarkdown)),
-      });
+    let markdown = "";
+    if (hasReportMd) {
+      markdown = reportMarkdown.trim();
+      status = hasValuationJson ? "complete" : "degraded";
     }
-    topics.push({ topic: "turtle-strategy", status, html });
+    topics.push({ topic: "turtle-strategy", status, markdown });
   }
 
   /** 估值 */
   {
     let status: RequiredFieldsStatus = "missing";
-    let body = "";
-    if (hasReportMd) {
-      body = extractInnerBodyFromFullHtml(renderPhase3Html(reportMarkdown));
-      status = hasValuationJson ? "complete" : "degraded";
-    }
+    const parts: string[] = [];
     if (hasValuationJson && valuationPath) {
       const vj = await readFile(valuationPath, "utf-8");
-      const parsed = JSON.parse(vj) as unknown;
-      const pre = `<section class="meta"><h2>valuation_computed.json</h2><pre>${escapeHtml(
-        JSON.stringify(parsed, null, 2),
-      )}</pre></section>`;
-      body = `${pre}${body}`;
+      parts.push(valuationComputedMarkdownBlock(vj));
+      status = hasReportMd ? "complete" : "degraded";
+    } else if (hasReportMd) {
+      status = "degraded";
     }
-    const html = body
-      ? wrapStandaloneReportHtml({
-          title: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic: "valuation" }),
-          bodyInnerHtml: body,
-        })
-      : "";
-    topics.push({ topic: "valuation", status, html });
+    if (hasReportMd) {
+      parts.push(reportMarkdown.trim());
+    }
+    const markdown = joinSections(parts);
+    topics.push({ topic: "valuation", status, markdown });
   }
 
   /** 穿透回报率 */
   {
     let status: RequiredFieldsStatus = "missing";
-    let parts: string[] = [];
+    const parts: string[] = [];
     if (hasReportMd) {
-      parts.push(extractInnerBodyFromFullHtml(renderPhase3Html(reportMarkdown)));
+      parts.push(reportMarkdown.trim());
       status = hasMarketMd ? "complete" : "degraded";
+    } else if (hasMarketMd) {
+      status = "degraded";
     }
     if (hasMarketMd && marketPath) {
       const md = await readFile(marketPath, "utf-8");
-      parts.push(`<h2>市场数据包（data_pack_market.md）</h2>${mdToArticleHtml(md, "市场数据包")}`);
+      parts.push(`## 市场数据包（data_pack_market.md）\n\n${md.trim()}`);
     }
-    const body = parts.join('<hr style="margin:2rem 0" />');
-    const html = body
-      ? wrapStandaloneReportHtml({
-          title: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic: "penetration-return" }),
-          bodyInnerHtml: body,
-        })
-      : "";
-    topics.push({ topic: "penetration-return", status, html });
+    const markdown = joinSections(parts);
+    topics.push({ topic: "penetration-return", status, markdown });
   }
 
-  /** 商业质量（workflow 侧通常无终稿 qualitative；以 Phase1B 为降级占位） */
+  /** 商业质量（终稿在 business-analysis；workflow 用 Phase1B 或 Phase3 因子 1B 占位） */
   {
-    const p1b = m.outputs.phase1bMarkdownPath;
-    const hasP1b = Boolean(p1b && (await pathExists(p1b!)));
+    const p1bPath = resolveArtifactPath(runDir, m.outputs.phase1bMarkdownPath);
+    const hasP1b = Boolean(p1bPath && (await pathExists(p1bPath)));
     let status: RequiredFieldsStatus = "missing";
-    let html = "";
-    if (hasP1b && p1b) {
-      const md = await readFile(p1b, "utf-8");
+    const parts: string[] = [];
+    if (hasP1b && p1bPath) {
+      const md = await readFile(p1bPath, "utf-8");
       status = "degraded";
-      html = wrapStandaloneReportHtml({
-        title: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic: "business-quality" }),
-        bodyInnerHtml: `<p class="meta">workflow 产物不包含 <code>qualitative_report.md</code> 终稿；以下为 Phase1B 外部证据补充稿（占位降级）。完整商业质量评估请运行 <code>business-analysis:run</code>。</p>${mdToArticleHtml(md, "Phase1B")}`,
-      });
+      parts.push(
+        "> **说明**：workflow 产物不包含 `qualitative_report.md` 终稿；以下为 Phase1B 外部证据补充稿（占位降级）。完整商业质量评估请运行 `business-analysis:run`。",
+        "## Phase1B（phase1b 补充稿）",
+        md.trim(),
+      );
+    } else {
+      const f1b = hasReportMd ? extractTurtleReportFactor1bSection(reportMarkdown) : undefined;
+      if (f1b) {
+        status = "degraded";
+        parts.push(
+          "> **说明**：当前 run 未携带 Phase1B 外部证据稿；以下为 **Phase3 报告中的因子 1B 摘要**（占位，**不是**六维商业质量终稿）。完整评估请运行 `business-analysis:run` 并在 Claude 会话收口 `qualitative_report.md`。",
+          f1b,
+        );
+      } else if (hasReportMd) {
+        status = "degraded";
+        parts.push(
+          "> **说明**：未找到 Phase1B 稿件，且本报告无可摘录的「因子 1B」章节。请运行 `business-analysis:run` 生成商业质量证据与终稿。",
+        );
+      }
     }
-    topics.push({ topic: "business-quality", status, html });
+    const markdown = joinSections(parts);
+    topics.push({ topic: "business-quality", status, markdown });
   }
 
   for (const t of topics) {
-    if (!t.html) continue;
+    if (!t.markdown.trim()) continue;
     const entryId = buildEntryId(date, codeDigits, t.topic, runShort);
     const meta: EntryMeta = {
       entryId,
@@ -256,26 +313,11 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       sourceRunId,
       requiredFieldsStatus: t.status,
       confidenceState: confidence,
-      contentFile: "index.html",
+      contentFile: "content.md",
       sourceManifestPath: manifestRel,
     };
-    await writeEntry({ siteDir, meta, indexHtml: t.html });
+    await writeEntry({ siteDir, meta, contentMarkdown: t.markdown });
   }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function mdToArticleHtml(markdown: string, documentTitle: string): string {
-  return extractInnerBodyFromFullHtml(
-    renderMarkdownToSemanticHtml(markdown, { documentTitle }),
-  );
 }
 
 async function emitFromBusinessAnalysis(
@@ -289,13 +331,16 @@ async function emitFromBusinessAnalysis(
   const codeDigits = String(m.outputLayout.code ?? "").replace(/\D/g, "") || m.outputLayout.code;
   const sourceRunId = String(m.input.runId ?? m.outputLayout.runId ?? "");
   const runShort = shortRunId(sourceRunId || m.outputLayout.runId || "run");
-  const ctx = await tryReadCompanyContext(runDir, m.input as Record<string, unknown>);
+  const marketPathBa = resolveArtifactPath(runDir, m.outputs.marketPackPath);
+  const ctx = await tryReadCompanyContext(runDir, m.input as Record<string, unknown>, {
+    marketPackPath: marketPathBa,
+  });
   const listed = formatListedCode(codeDigits, ctx.market);
 
-  const qPath = m.outputs.qualitativeReportPath;
-  const d1 = m.outputs.qualitativeD1D6Path;
-  const hasQ = Boolean(qPath && (await pathExists(qPath!)));
-  const hasD1 = Boolean(d1 && (await pathExists(d1!)));
+  const qPath = m.outputs.qualitativeReportPath ? resolveArtifactPath(runDir, m.outputs.qualitativeReportPath) : undefined;
+  const d1 = m.outputs.qualitativeD1D6Path ? resolveArtifactPath(runDir, m.outputs.qualitativeD1D6Path) : undefined;
+  const hasQ = Boolean(qPath && (await pathExists(qPath)));
+  const hasD1 = Boolean(d1 && (await pathExists(d1)));
 
   let status: RequiredFieldsStatus = "missing";
   if (hasQ && hasD1) status = "complete";
@@ -304,20 +349,17 @@ async function emitFromBusinessAnalysis(
   const parts: string[] = [];
   if (hasQ && qPath) {
     const md = await readFile(qPath, "utf-8");
-    parts.push(extractInnerBodyFromFullHtml(qualitativeMarkdownToDashboardHtml(md)));
+    parts.push(`## qualitative_report.md\n\n${md.trim()}`);
   }
   if (hasD1 && d1) {
     const md = await readFile(d1, "utf-8");
-    parts.push(`<h2>qualitative_d1_d6.md</h2>${mdToArticleHtml(md, "D1~D6")}`);
+    parts.push(`## qualitative_d1_d6.md\n\n${md.trim()}`);
   }
 
-  const body = parts.join('<hr style="margin:2rem 0" />');
-  if (!body) return;
+  const markdown = joinSections(parts);
+  if (!markdown.trim()) return;
 
-  const html = wrapStandaloneReportHtml({
-    title: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic: "business-quality" }),
-    bodyInnerHtml: body,
-  });
+  const confidenceBa = parseConfidenceFromReportMd(markdown);
 
   const topic: ReportTopicType = "business-quality";
   const entryId = buildEntryId(date, codeDigits, topic, runShort);
@@ -330,11 +372,11 @@ async function emitFromBusinessAnalysis(
     publishedAt,
     sourceRunId,
     requiredFieldsStatus: status,
-    confidenceState: "unknown",
-    contentFile: "index.html",
+    confidenceState: confidenceBa,
+    contentFile: "content.md",
     sourceManifestPath: manifestRel,
   };
-  await writeEntry({ siteDir, meta, indexHtml: html });
+  await writeEntry({ siteDir, meta, contentMarkdown: markdown });
 }
 
 /** 扫描 entries 下各子目录的 meta.json，去重后重写 views 与 index.json */
@@ -399,7 +441,7 @@ export async function rebuildSiteReportsIndex(siteDir: string): Promise<void> {
   await writeFile(path.join(siteDir, "views", "timeline.json"), JSON.stringify(timeline, null, 2), "utf-8");
 
   const index: SiteReportsIndex = {
-    version: "1.0",
+    version: "2.0",
     generatedAt: new Date().toISOString(),
     entryCount: timeline.length,
     timelineHref: "/reports/",

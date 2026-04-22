@@ -12,7 +12,7 @@ import path from "node:path";
 import { buildMarketPackMarkdown } from "../runtime/workflow/build-market-pack.js";
 import { renderPhase2BDataPackReport } from "../steps/phase2b/renderer.js";
 import { runPhase3Strict } from "../steps/phase3/analyzer.js";
-import { renderPhase3Html, renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
+import { renderPhase3Markdown } from "../steps/phase3/report-renderer.js";
 import {
   sampleCnADataPack,
   sampleHkDataPack,
@@ -55,17 +55,28 @@ async function writeSuite(
 
   const out = runPhase3Strict({ marketMarkdown, reportMarkdown });
   const markdownRaw = renderPhase3Markdown(out);
-  const html = renderPhase3Html(markdownRaw);
 
   await writeFile(path.join(runDir, "valuation_computed.json"), JSON.stringify(out.valuation, null, 2), "utf-8");
   await writeFile(path.join(runDir, "analysis_report.md"), markdownRaw, "utf-8");
-  await writeFile(path.join(runDir, "analysis_report.html"), html, "utf-8");
 
-  const manifestRelFiles = [
-    "valuation_computed.json",
-    "analysis_report.md",
-    "analysis_report.html",
-  ] as const;
+  const goldenThreadId =
+    folder === "cn_a" ? "aaaaaaaa-bbbb-4ccc-8ddd-0000000cna1" : "aaaaaaaa-bbbb-4ccc-8ddd-0000000hk01";
+
+  const workflowManifest = {
+    manifestVersion: "2.0",
+    generatedAt: new Date().toISOString(),
+    outputLayout: { code, runId: `golden-${folder}` },
+    input: { code },
+    orchestration: { threadId: goldenThreadId, runId: `golden-${folder}` },
+    outputs: {
+      marketPackPath: path.resolve(base, "data_pack_market.md"),
+      reportMarkdownPath: path.resolve(runDir, "analysis_report.md"),
+      valuationPath: path.resolve(runDir, "valuation_computed.json"),
+    },
+  };
+  await writeFile(path.join(base, "workflow_manifest.json"), JSON.stringify(workflowManifest, null, 2), "utf-8");
+
+  const manifestRelFiles = ["valuation_computed.json", "analysis_report.md"] as const;
   const manifest: Record<string, { sha256: string; bytes: number }> = {};
   for (const rel of manifestRelFiles) {
     const fp = path.join(runDir, rel);

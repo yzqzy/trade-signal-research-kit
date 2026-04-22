@@ -116,26 +116,6 @@ export function resolvePhase3DefaultRunDirectory(input: {
   });
 }
 
-/** report-to-html：未指定 `--output-html` 时写入 `output/report/<code>/<runId>/<stem>.html` */
-export function resolveReportHtmlDefaultPath(input: {
-  inputMdAbsolute: string;
-  stockCode?: string;
-}): { outputHtmlPath: string; layout: OutputLayoutV2Meta } {
-  const runId = randomUUID();
-  const code = normalizeCodeForFeed((input.stockCode ?? "_adhoc").trim() || "_adhoc");
-  const stem = path.basename(input.inputMdAbsolute, path.extname(input.inputMdAbsolute));
-  const outputHtmlPath = resolveOutputPath(path.join("output", "report", code, runId, `${stem}.html`));
-  return {
-    outputHtmlPath,
-    layout: {
-      version: OUTPUT_LAYOUT_VERSION,
-      area: "report",
-      code,
-      runId,
-    },
-  };
-}
-
 /** screener：`output/screener/<market>/<mode>/<runId>/`（`--output-dir` 为根，默认 `output`） */
 export function resolveScreenerRunDirectory(input: {
   outputRootArg: string;

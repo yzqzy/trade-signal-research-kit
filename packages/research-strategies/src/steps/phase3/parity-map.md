@@ -30,5 +30,5 @@
 | PREFLIGHT-1A | `turtle-strict` / `business-analysis --strict` 下 Phase1A 后门禁 | `pipeline/preflight.ts` | implemented |
 | P2B-MDA | `data_pack_report.md` 默认含 **MDA**（`--no-mda` 可关闭） | `phase2b/renderer.ts` | implemented |
 | QUAL-D1D6 | 输出 `qualitative_d1_d6.md`（Turtle D1~D6 契约骨架） | `business-analysis/d1-d6-scaffold.ts` | implemented |
-| HTML-SEM | Phase3 / `report-to-html` 默认语义化 HTML（`--legacy-pre` 回退） | `phase3/markdown-to-html.ts` | implemented |
+| HTML-SEM | （已移除）历史 Phase3 MD→HTML；主链路为 `analysis_report.md` + 研报站 `content.md` | — | removed |
 | VAL-FULL-REPORT | `valuation:run --full-report` 额外写 `analysis_report.md/html` | `valuation/cli.ts` | implemented |
