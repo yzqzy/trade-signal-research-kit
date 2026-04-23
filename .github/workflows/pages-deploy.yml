@@ -29,8 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: production
-      # GitHub 项目页：<user>.github.io/<repo>/ — 与 Next basePath 对齐
-      NEXT_BASE_PATH: /${{ github.event.repository.name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -77,7 +75,9 @@ jobs:
       - name: Build research-hub static export
         run: pnpm --filter @trade-signal/research-hub run build
         env:
-          NEXT_BASE_PATH: /${{ github.event.repository.name }}
+          # 自定义域名（如 research.tradersignal.org）应留空；
+          # 若改回 GitHub 项目页，可在仓库 Variables 设置 NEXT_BASE_PATH=/<repo-name>
+          NEXT_BASE_PATH: ${{ vars.NEXT_BASE_PATH }}
           NEXT_PUBLIC_REPORTS_TIMEZONE: Asia/Shanghai
 
       - name: Upload Pages artifact

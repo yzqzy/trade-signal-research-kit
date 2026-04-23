@@ -35,12 +35,12 @@ export function buildPhase1bWebSearchQueries(
   if (item === "行业监管动态") {
     return {
       primary: [
-        clip100(`${name} 行业监管 政策 农业农村部 生猪`),
-        clip100(`生猪养殖 行业政策 监管 ${y}`),
+        clip100(`${name} ${code} 行业监管 政策 规范 监管动态 ${y}`),
+        clip100(`${name} ${code} 证监会 交易所 监管 问询 处罚 ${y}`),
       ],
       fallback: [
-        clip100(`${name} 环保 畜禽 养殖 监管`),
-        clip100(`猪肉 行业 监管动态 ${y}`),
+        clip100(`${name} ${code} 行业政策 法规 标准 ${y}`),
+        clip100(`${name} ${code} 行业监管 通知 指引`),
       ],
     };
   }
