@@ -141,7 +141,7 @@ Phase1A → Phase1B → Phase3 → ReportPolish → manifest
 - **LangGraph**：主链外层流程（阶段、分支、checkpoint、重试、审计）。
 - **Claude Code**：深度定性、PDF 对照与六维契约写作（Skills / slash commands）。
 
-组合方式：图编排跑采集与规则 Phase3；**final-narrative（六维终稿）**在 **Claude 会话**完成；纯 CLI 跑通表示 **evidence-pack / 规则报告**状态，**cli-evidence-only** 不宣称已完成 AI 终稿叙事。单一路径契约见 [entrypoint-narrative-contract.md](./entrypoint-narrative-contract.md)。选型见 [Agent 编排框架选型](../strategy/agent-framework-comparison.md)。
+组合方式：图编排跑采集与规则 Phase3，并在 Stage **F（report-polish）** 产出多页 Markdown 发布稿（TS，可审计）；**final-narrative（六维终稿）**仅在 **`/business-analysis`** 路径由 **Claude 会话**（`business-analysis-finalize`）完成；纯 CLI 跑通 workflow 表示 **evidence-pack / 规则报告 / report-polish** 就绪，**cli-evidence-only** 不宣称已完成六维终稿叙事。契约见 [entrypoint-narrative-contract.md](./entrypoint-narrative-contract.md) 与 [report-polish-narrative-contract.md](./report-polish-narrative-contract.md)。选型见 [Agent 编排框架选型](../strategy/agent-framework-comparison.md)。
 
 ## 逻辑总览（方法论）
 

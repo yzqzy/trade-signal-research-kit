@@ -5,7 +5,7 @@ argument-hint: [--market-md] [--report-md] [--from-manifest]
 
 在 **monorepo 根目录**执行（需已 `pnpm run build`）。
 
-> **职责边界**：本入口只做估值数值与摘要（可选 full report），**不是** `qualitative_report` / D1–D6 **final-narrative** 入口；定性终稿请用 `/business-analysis` 或编排完成后的 Claude 收口（见 [entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)）。
+> **职责边界**：本入口只做估值数值与摘要（可选 full report），**不是** `qualitative_report` / D1–D6 **final-narrative** 入口；六维定性终稿请用 **`/business-analysis`** + `business-analysis-finalize`（见 [entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)）。
 
 ## Slash → CLI（脚本 / CI）
 

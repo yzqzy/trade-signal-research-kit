@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `trade-signal-schema-kit` is a TypeScript analysis framework for A-share and Hong Kong stock research. It provides data collection → qualitative analysis → quantitative evaluation → valuation → report output capabilities.
 
-**Narrative split (single path):** TypeScript orchestration is **cli-evidence-only** for narrative—no in-repo LLM vendor HTTP/SDK for “auto narrative.” **final-narrative** (Turtle-style six-dimension qualitative) is completed in **Claude Code** (slash commands / skills / session) and written back to `qualitative_report.md` / `qualitative_d1_d6.md`. See `docs/guides/entrypoint-narrative-contract.md`.
+**Narrative split:** TypeScript orchestration is **cli-evidence-only** for LLM vendor narrative—no in-repo Anthropic/OpenAI HTTP/SDK for “auto narrative.” **`/workflow-analysis`** additionally runs **report-polish** (four Markdown pages + `report_view_model.json`) for **site publish** via `reports-site:emit`. **final-narrative** (Turtle-style six-dimension qualitative) is completed in **Claude Code** for **`/business-analysis`** and written back to `qualitative_report.md` / `qualitative_d1_d6.md`. See `docs/guides/entrypoint-narrative-contract.md` and `docs/guides/report-polish-narrative-contract.md`.
 
 ## Core Capability Overview
 
 | Goal | Claude slash | Root command | Key outputs |
 |------|--------------|--------------|-------------|
-| Full workflow (strict branch) | `/workflow-analysis` | `pnpm run workflow:run -- --mode turtle-strict ...` | `analysis_report.md`, `valuation_computed.json`, `workflow_manifest.json` |
+| Full workflow (strict branch) | `/workflow-analysis` | `pnpm run workflow:run -- --mode turtle-strict ...` | `analysis_report.md`, `valuation_computed.json`, `workflow_manifest.json`, report-polish（`report_view_model.json`, `turtle_overview.md`, `business_quality.md`, `penetration_return.md`, `valuation.md`） |
 | Business analysis (PDF-first) | `/business-analysis` | `pnpm run business-analysis:run -- ...` | evidence-pack + `business_analysis_manifest.json`（CLI 的 `qualitative_report.md`/`qualitative_d1_d6.md` 可为草稿；终稿由 Claude 会话写回） |
 | Valuation only | `/valuation` | `pnpm run valuation:run -- ...` | `valuation_computed.json`, `valuation_summary.md` |
 | Download annual report | `/download-annual-report` | `pnpm run phase0:download -- ...` | local PDF |
@@ -92,7 +92,7 @@ pnpm --filter @trade-signal/provider-http run build
 
 ## Notes
 
-- Skills: `business-analysis-finalize`（`.claude/skills/business-analysis-finalize/SKILL.md`）, `workflow-strict/SKILL.md`, `quality-gates/SKILL.md`.
+- Skills: `business-analysis-finalize`（`.claude/skills/business-analysis-finalize/SKILL.md`）, `workflow-strict/SKILL.md`（严格链 + **report-polish** 验收）, `quality-gates/SKILL.md`.
 - `workflow:run --mode standard` keeps legacy behavior (Phase3 may run without `data_pack_report.md`).
 - Quality: `pnpm run quality:all` runs regression + golden for **cn_a** and **hk** (`output/phase3_golden/<suite>/`). HK suite is snapshot regression; full HK depth is not yet at A-share parity.
 

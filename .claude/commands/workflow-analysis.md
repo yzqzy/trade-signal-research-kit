@@ -1,5 +1,5 @@
 ---
-description: 全流程研究编排（严格 PDF 链 + Phase3 估值与规则报告）；深度六维定性终稿在 Claude 会话收口，TS 不调模型叙事 API
+description: 全流程研究编排（严格 PDF 链 + Phase3 + report-polish 多页 Markdown）；发布走研报站 emit；六维定性终稿请用 /business-analysis
 argument-hint: [--code] [--mode standard|turtle-strict] [--pdf|--report-url] [--run-id] [--strategy turtle|value_v1]
 ---
 
@@ -8,14 +8,15 @@ argument-hint: [--code] [--mode standard|turtle-strict] [--pdf|--report-url] [--
 ## 入口与执行映射
 
 - **入口（command）**：`/workflow-analysis`
-- **默认执行 skill**：`workflow-strict`（文件：`.claude/skills/workflow-strict/SKILL.md`；名称与入口不同是为了区分“用户入口名”与“严格执行规范名”）
+- **默认执行 skill**：`workflow-strict`（文件：`.claude/skills/workflow-strict/SKILL.md`）
 
-## 与「终稿叙事」的关系
+## 与「终稿 / 发布」的关系
 
-- **CLI / LangGraph**：确定性阶段、估值与 `analysis_report.*`（**cli-evidence-only** 语义延伸至「不含模型厂商叙事 HTTP」；见架构红线）。
-- **Claude**：若要对齐 Turtle 六维叙事深度，在编排完成后于会话内对照 **evidence-pack** 与 `.claude/skills/workflow-strict/SKILL.md` 做 **final-narrative** 补强；失败时不得宣称终稿已完成。
+- **CLI / LangGraph**：确定性阶段、估值、`analysis_report.md`（规则审计）与 **report-polish**（`report_view_model.json` + 四页 Markdown）。**cli-evidence-only**：TS 不调模型厂商叙事 API。
+- **发布进站点**：对本次 run 执行 `pnpm run reports-site:emit -- --run-dir <run 根目录>`，再 `pnpm run sync:reports-to-app`；emit 会**优先**使用 polish 四页作为各专题 `content.md` 来源（见 [reports-site-publish.md](../../docs/guides/reports-site-publish.md)）。
+- **六维定性终稿**：不属于本入口；请用 **`/business-analysis`** 并在会话内执行 **`business-analysis-finalize`**，写回 `qualitative_report.md` / `qualitative_d1_d6.md`。
 
-契约：[docs/guides/entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md)。
+契约：[docs/guides/entrypoint-narrative-contract.md](../../docs/guides/entrypoint-narrative-contract.md) · [report-polish-narrative-contract.md](../../docs/guides/report-polish-narrative-contract.md)
 
 ## Slash → CLI（脚本 / CI，严格主链）
 
@@ -55,7 +56,15 @@ pnpm run workflow:run -- --code 600887 --year 2024
 - `valuation_computed.json`
 - `analysis_report.md`
 - `workflow_manifest.json`
-- 以及 Phase1A/1B/2A/2B 中间产物（同 `workflow:run` 文档）。
+- **report-polish**：`report_view_model.json`、`turtle_overview.md`、`business_quality.md`、`penetration_return.md`、`valuation.md`
+- 以及 Phase1A/1B/2A/2B 中间产物（同 [workflows.md](../../docs/guides/workflows.md)）。
+
+## 发布后（可选）
+
+```bash
+pnpm run reports-site:emit -- --run-dir "./output/workflow/<code>/<runId>"
+pnpm run sync:reports-to-app
+```
 
 ## 相关 skill
 

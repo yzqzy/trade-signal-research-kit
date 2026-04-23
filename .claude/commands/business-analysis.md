@@ -16,6 +16,11 @@ argument-hint: [--code <股票代码>] [--year YYYY] [--pdf <path> | --report-ur
 2. **终稿叙事（Claude，默认步骤）**：在同一会话执行 skill `business-analysis-finalize`（`.claude/skills/business-analysis-finalize/SKILL.md`），基于证据包完成 **final-narrative**，写回 `qualitative_report.md`（终稿）与 `qualitative_d1_d6.md`（填充稿）。
 3. **失败语义**：若证据不足或无法负责任生成终稿，**禁止**对用户宣称「已完成终稿」；应列出缺口。纯 CLI/CI 跑通只表示证据链状态，**不等于**终稿完成。
 
+### 与 `/workflow-analysis`（report-polish）的边界
+
+- **本入口**：六维定性终稿写回（上节第 2 步）。
+- **`/workflow-analysis`**：规则链 + **report-polish**（`turtle_overview.md` 等）→ `reports-site:emit`；**不**替代本入口的六维终稿。需要站点多页时跑 workflow；需要六维终稿时跑本入口（或两条都跑）。
+
 ## 「终稿完成」判定（分级 PDF 门禁）
 
 仅当 skill **终稿硬约束 + 呈现规范 + PDF 语义**全部满足时，方可对用户宣称 **「终稿已写回」** 并使用 **`[终稿状态: 完成]`**。最低限度包括：
