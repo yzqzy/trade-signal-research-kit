@@ -47,6 +47,12 @@ export interface WorkflowArtifacts {
   reportMarkdownPath: string;
   manifestPath: string;
   phase3PreflightPath?: string;
+  /** Markdown-first 研报整形（`report-polish` 阶段） */
+  reportViewModelPath?: string;
+  turtleOverviewMarkdownPath?: string;
+  businessQualityMarkdownPath?: string;
+  penetrationReturnMarkdownPath?: string;
+  valuationTopicMarkdownPath?: string;
 }
 
 export interface WorkflowDataPipelineResult {

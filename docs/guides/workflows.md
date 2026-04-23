@@ -82,6 +82,7 @@ pnpm run valuation:run -- \
 | C | ExternalEvidence | Phase 1B（含 C1 通用采集 + C2 策略投影） | C1 是 / C2 随策略 |
 | D | ReportExtract | Phase 2A + 2B | 是 |
 | E | StrategyEvaluate | Phase 3（定性 + 定量 + 估值 + 报告） | 核心在策略插件 |
+| F | ReportPolish | Phase3 之后：Markdown-first 四页研报 + `report_view_model.json` | 是（与策略插件解耦） |
 
 ### ExternalEvidence（C1 / C2）
 
@@ -113,18 +114,18 @@ A → B → C → E
 - 有年报 PDF（`--pdf`，或 `--report-url` / 自动发现后经 Phase0 得到本地 PDF，用于年报 2A/2B）：
 
 ```text
-Phase1A → Phase2A/2B → Phase1B → Phase3
+Phase1A → Phase2A/2B → Phase1B → Phase3 → ReportPolish → manifest
 ```
 
-即 **B→D→C→E**（Stage A 仍仅在 `--report-url` 等场景发生，见上文）。
+即 **B→D→C→E→F→finalize**（Stage A 仍仅在 `--report-url` 等场景发生，见上文）。**F（ReportPolish）** 产出 `turtle_overview.md` / `business_quality.md` / `penetration_return.md` / `valuation.md` 与 `report_view_model.json`，详见 [report-polish-narrative-contract.md](./report-polish-narrative-contract.md)。
 
 - 无年报 PDF：
 
 ```text
-Phase1A → Phase1B → Phase3
+Phase1A → Phase1B → Phase3 → ReportPolish → manifest
 ```
 
-即 **B→C→E**（无 D）。
+即 **B→C→E→F→finalize**（无 D）。
 
 ## 原语义契约基线（M0）合并说明
 

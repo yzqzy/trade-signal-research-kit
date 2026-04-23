@@ -1,11 +1,12 @@
 import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { DataPackMarket, Market, ValuationComputed, ValuationMethodResult } from "@trade-signal/schema-core";
+import type { DataPackMarket, Market } from "@trade-signal/schema-core";
 
 import { resolveOutputPath } from "../crosscut/normalization/resolve-monorepo-path.js";
 import { formatListedCode } from "./listed-code.js";
 import { buildDisplayTitle, TOPIC_ENTRY_SLUG } from "./topic-labels.js";
+import { renderValuationComputedMarkdownFromJson } from "./valuation-computed-markdown.js";
 import type {
   ConfidenceState,
   EntryMeta,
@@ -149,130 +150,6 @@ function joinSections(sections: string[]): string {
     .join("\n\n---\n\n");
 }
 
-function isValuationComputedShape(v: unknown): v is ValuationComputed {
-  if (typeof v !== "object" || v === null) return false;
-  const o = v as Record<string, unknown>;
-  return typeof o.code === "string" && Array.isArray(o.methods);
-}
-
-function fmtNum(n: number | undefined | null): string {
-  if (n === undefined || n === null || Number.isNaN(n)) return "—";
-  const abs = Math.abs(n);
-  const digits = abs >= 100 ? 2 : abs >= 10 ? 2 : 4;
-  return n.toLocaleString("zh-CN", { maximumFractionDigits: digits, minimumFractionDigits: 0 });
-}
-
-function fmtPctMaybe(n: number | undefined | null): string {
-  if (n === undefined || n === null || Number.isNaN(n)) return "—";
-  return `${fmtNum(n)}%`;
-}
-
-function companyTypeZh(t: ValuationComputed["companyType"]): string {
-  if (t === "blue_chip_value") return "蓝筹价值";
-  if (t === "growth") return "成长";
-  if (t === "hybrid") return "混合";
-  return t ?? "—";
-}
-
-function assumptionsCell(a: ValuationMethodResult["assumptions"]): string {
-  if (!a || Object.keys(a).length === 0) return "—";
-  return Object.entries(a)
-    .map(([k, v]) => `${k}=${typeof v === "number" ? fmtNum(v) : String(v)}`)
-    .join("；");
-}
-
-function methodRow(m: ValuationMethodResult): string {
-  const hasValue = m.value !== undefined && m.value !== null && Number.isFinite(m.value);
-  const r = m.range;
-  const rangeCell =
-    r && (r.conservative !== undefined || r.central !== undefined || r.optimistic !== undefined)
-      ? `${fmtNum(r.conservative)} / ${fmtNum(r.central)} / ${fmtNum(r.optimistic)}`
-      : "—";
-  const valCell = hasValue ? fmtNum(m.value) : "—";
-  const noteCell = m.note?.trim() || "—";
-  const assumptions = assumptionsCell(m.assumptions);
-  return `| ${m.method} | ${valCell} | ${rangeCell} | ${noteCell} | ${assumptions} |`;
-}
-
-/** 将 `valuation_computed.json` 渲染为可读 Markdown（研报站正文，避免整段 JSON 代码块） */
-function valuationComputedMarkdownBlock(rawJson: string): string {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawJson);
-  } catch {
-    return ["## 估值数据（解析失败）", "", "```text", rawJson.trim(), "```"].join("\n");
-  }
-  if (!isValuationComputedShape(parsed)) {
-    return ["## 估值数据（结构异常）", "", "```json", JSON.stringify(parsed, null, 2), "```"].join("\n");
-  }
-  const v = parsed;
-  const lines: string[] = [
-    "## 估值结果（valuation_computed）",
-    "",
-    "| 字段 | 内容 |",
-    "|:-----|:-----|",
-    `| 标的代码 | ${v.code} |`,
-    `| 生成时间 | ${v.generatedAt} |`,
-    `| 公司画像 | ${companyTypeZh(v.companyType)} |`,
-    `| WACC | ${v.wacc !== undefined ? fmtPctMaybe(v.wacc) : "—"} |`,
-    `| Ke | ${v.ke !== undefined ? fmtPctMaybe(v.ke) : "—"} |`,
-    "",
-    "### 分方法估值",
-    "",
-    "| 方法 | 估值 | 区间（保守 / 中枢 / 乐观） | 说明 | 关键假设 |",
-    "|:-----|-----:|:-----------------------------|:-----|:---------|",
-    ...v.methods.map(methodRow),
-    "",
-  ];
-
-  const cv = v.crossValidation;
-  if (cv) {
-    lines.push("### 交叉验证", "", "| 字段 | 数值 |", "|:-----|:-----|");
-    lines.push(`| 加权平均 | ${fmtNum(cv.weightedAverage)} |`);
-    lines.push(`| 变异系数（CV） | ${fmtNum(cv.coefficientOfVariation)} |`);
-    lines.push(`| 一致性 | ${cv.consistency ?? "—"} |`);
-    if (cv.activeWeights && Object.keys(cv.activeWeights).length > 0) {
-      const w = Object.entries(cv.activeWeights)
-        .map(([k, n]) => `${k}=${fmtNum(n)}`)
-        .join("；");
-      lines.push(`| 活跃权重 | ${w} |`);
-    }
-    const rr = cv.range;
-    if (rr && (rr.conservative !== undefined || rr.central !== undefined || rr.optimistic !== undefined)) {
-      lines.push(`| 合成区间 | ${fmtNum(rr.conservative)} / ${fmtNum(rr.central)} / ${fmtNum(rr.optimistic)} |`);
-    }
-    lines.push("");
-  }
-
-  const ie = v.impliedExpectations;
-  /** 与估值引擎常见口径一致：比率类字段加 %；权重、β 等保持原数 */
-  const impliedPctKey =
-    /^(wacc|ke|modelWacc|modelKe|rf|erp|kdPre|taxRate|fcfYield|gTerminal|gTerminalDefault|historicalProfitCagr)$/i;
-
-  if (ie && Object.keys(ie).length > 0) {
-    lines.push("### 隐含预期与模型参数", "", "| 参数 | 数值 |", "|:-----|:-----|");
-    for (const [k, val] of Object.entries(ie)) {
-      const cell =
-        typeof val === "number"
-          ? impliedPctKey.test(k)
-            ? fmtPctMaybe(val)
-            : fmtNum(val)
-          : val === null || val === undefined
-            ? "—"
-            : String(val);
-      lines.push(`| ${k} | ${cell} |`);
-    }
-    lines.push("");
-  }
-
-  lines.push(
-    "> **说明**：上表与 `valuation_computed.json` 数值一致；若需机器交换或离线核对，请直接打开本 run 目录下的 **`valuation_computed.json`**。",
-    "",
-  );
-
-  return lines.join("\n");
-}
-
 async function writeEntry(params: {
   siteDir: string;
   meta: EntryMeta;
@@ -295,6 +172,12 @@ type WorkflowManifest = {
     phase1bMarkdownPath?: string;
     valuationPath?: string;
     reportMarkdownPath?: string;
+    reportViewModelPath?: string;
+    turtleOverviewMarkdownPath?: string;
+    businessQualityMarkdownPath?: string;
+    penetrationReturnMarkdownPath?: string;
+    /** 与 `valuation.md` 文件对应（workflow manifest 字段名） */
+    valuationMarkdownPath?: string;
   };
   orchestration?: { threadId?: string; runId?: string };
 };
@@ -322,6 +205,10 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const reportMdPath = resolveArtifactPath(runDir, m.outputs.reportMarkdownPath);
   const valuationPath = resolveArtifactPath(runDir, m.outputs.valuationPath);
   const marketPath = resolveArtifactPath(runDir, m.outputs.marketPackPath);
+  const polishOverviewPath = resolveArtifactPath(runDir, m.outputs.turtleOverviewMarkdownPath);
+  const polishBusinessPath = resolveArtifactPath(runDir, m.outputs.businessQualityMarkdownPath);
+  const polishPenetrationPath = resolveArtifactPath(runDir, m.outputs.penetrationReturnMarkdownPath);
+  const polishValuationPath = resolveArtifactPath(runDir, m.outputs.valuationMarkdownPath);
 
   const ctx = await tryReadCompanyContext(runDir, m.input as Record<string, unknown>, {
     marketPackPath: marketPath,
@@ -337,6 +224,10 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const hasValuationJson = Boolean(valuationPath && (await pathExists(valuationPath)));
   const hasReportMd = reportMarkdown.length > 0;
   const hasMarketMd = Boolean(marketPath && (await pathExists(marketPath)));
+  const hasPolishOverview = Boolean(polishOverviewPath && (await pathExists(polishOverviewPath)));
+  const hasPolishBusiness = Boolean(polishBusinessPath && (await pathExists(polishBusinessPath)));
+  const hasPolishPenetration = Boolean(polishPenetrationPath && (await pathExists(polishPenetrationPath)));
+  const hasPolishValuation = Boolean(polishValuationPath && (await pathExists(polishValuationPath)));
 
   const manifestRel = path.relative(siteDir, manifestPath);
 
@@ -350,7 +241,10 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   {
     let status: RequiredFieldsStatus = "missing";
     let markdown = "";
-    if (hasReportMd) {
+    if (hasPolishOverview && polishOverviewPath) {
+      markdown = (await readFile(polishOverviewPath, "utf-8")).trim();
+      status = hasValuationJson ? "complete" : "degraded";
+    } else if (hasReportMd) {
       markdown = reportMarkdown.trim();
       status = hasValuationJson ? "complete" : "degraded";
     }
@@ -360,36 +254,48 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   /** 估值 */
   {
     let status: RequiredFieldsStatus = "missing";
-    const parts: string[] = [];
-    if (hasValuationJson && valuationPath) {
-      const vj = await readFile(valuationPath, "utf-8");
-      parts.push(valuationComputedMarkdownBlock(vj));
-      status = hasReportMd ? "complete" : "degraded";
-    } else if (hasReportMd) {
-      status = "degraded";
+    let markdown = "";
+    if (hasPolishValuation && polishValuationPath) {
+      markdown = (await readFile(polishValuationPath, "utf-8")).trim();
+      status = hasValuationJson ? "complete" : "degraded";
+    } else {
+      const parts: string[] = [];
+      if (hasValuationJson && valuationPath) {
+        const vj = await readFile(valuationPath, "utf-8");
+        parts.push(renderValuationComputedMarkdownFromJson(vj));
+        status = hasReportMd ? "complete" : "degraded";
+      } else if (hasReportMd) {
+        status = "degraded";
+      }
+      if (hasReportMd) {
+        parts.push(reportMarkdown.trim());
+      }
+      markdown = joinSections(parts);
     }
-    if (hasReportMd) {
-      parts.push(reportMarkdown.trim());
-    }
-    const markdown = joinSections(parts);
     topics.push({ topic: "valuation", status, markdown });
   }
 
   /** 穿透回报率 */
   {
     let status: RequiredFieldsStatus = "missing";
-    const parts: string[] = [];
-    if (hasReportMd) {
-      parts.push(reportMarkdown.trim());
+    let markdown = "";
+    if (hasPolishPenetration && polishPenetrationPath) {
+      markdown = (await readFile(polishPenetrationPath, "utf-8")).trim();
       status = hasMarketMd ? "complete" : "degraded";
-    } else if (hasMarketMd) {
-      status = "degraded";
+    } else {
+      const parts: string[] = [];
+      if (hasReportMd) {
+        parts.push(reportMarkdown.trim());
+        status = hasMarketMd ? "complete" : "degraded";
+      } else if (hasMarketMd) {
+        status = "degraded";
+      }
+      if (hasMarketMd && marketPath) {
+        const md = await readFile(marketPath, "utf-8");
+        parts.push(`## 市场数据包（data_pack_market.md）\n\n${md.trim()}`);
+      }
+      markdown = joinSections(parts);
     }
-    if (hasMarketMd && marketPath) {
-      const md = await readFile(marketPath, "utf-8");
-      parts.push(`## 市场数据包（data_pack_market.md）\n\n${md.trim()}`);
-    }
-    const markdown = joinSections(parts);
     topics.push({ topic: "penetration-return", status, markdown });
   }
 
@@ -398,31 +304,38 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
     const p1bPath = resolveArtifactPath(runDir, m.outputs.phase1bMarkdownPath);
     const hasP1b = Boolean(p1bPath && (await pathExists(p1bPath)));
     let status: RequiredFieldsStatus = "missing";
-    const parts: string[] = [];
-    if (hasP1b && p1bPath) {
-      const md = await readFile(p1bPath, "utf-8");
+    let markdown = "";
+    if (hasPolishBusiness && polishBusinessPath) {
+      markdown = (await readFile(polishBusinessPath, "utf-8")).trim();
+      /** 仍为 degraded：workflow 侧无 `qualitative_report.md` 六维终稿 */
       status = "degraded";
-      parts.push(
-        "> **说明**：workflow 产物不包含 `qualitative_report.md` 终稿；以下为 Phase1B 外部证据补充稿（占位降级）。完整商业质量评估请运行 `business-analysis:run`。",
-        "## Phase1B（phase1b 补充稿）",
-        md.trim(),
-      );
     } else {
-      const f1b = hasReportMd ? extractTurtleReportFactor1bSection(reportMarkdown) : undefined;
-      if (f1b) {
+      const parts: string[] = [];
+      if (hasP1b && p1bPath) {
+        const md = await readFile(p1bPath, "utf-8");
         status = "degraded";
         parts.push(
-          "> **说明**：当前 run 未携带 Phase1B 外部证据稿；以下为 **Phase3 报告中的因子 1B 摘要**（占位，**不是**六维商业质量终稿）。完整评估请运行 `business-analysis:run` 并在 Claude 会话收口 `qualitative_report.md`。",
-          f1b,
+          "> **说明**：workflow 产物不包含 `qualitative_report.md` 终稿；以下为 Phase1B 外部证据补充稿（占位降级）。完整商业质量评估请运行 `business-analysis:run`。",
+          "## Phase1B（phase1b 补充稿）",
+          md.trim(),
         );
-      } else if (hasReportMd) {
-        status = "degraded";
-        parts.push(
-          "> **说明**：未找到 Phase1B 稿件，且本报告无可摘录的「因子 1B」章节。请运行 `business-analysis:run` 生成商业质量证据与终稿。",
-        );
+      } else {
+        const f1b = hasReportMd ? extractTurtleReportFactor1bSection(reportMarkdown) : undefined;
+        if (f1b) {
+          status = "degraded";
+          parts.push(
+            "> **说明**：当前 run 未携带 Phase1B 外部证据稿；以下为 **Phase3 报告中的因子 1B 摘要**（占位，**不是**六维商业质量终稿）。完整评估请运行 `business-analysis:run` 并在 Claude 会话收口 `qualitative_report.md`。",
+            f1b,
+          );
+        } else if (hasReportMd) {
+          status = "degraded";
+          parts.push(
+            "> **说明**：未找到 Phase1B 稿件，且本报告无可摘录的「因子 1B」章节。请运行 `business-analysis:run` 生成商业质量证据与终稿。",
+          );
+        }
       }
+      markdown = joinSections(parts);
     }
-    const markdown = joinSections(parts);
     topics.push({ topic: "business-quality", status, markdown });
   }
 

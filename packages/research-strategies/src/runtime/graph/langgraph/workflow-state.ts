@@ -54,6 +54,14 @@ export const WorkflowGraphStateAnnotation = Annotation.Root({
   phase3Execution: Annotation<Phase3ExecutionResult | undefined>(),
   valuationPath: Annotation<string | undefined>(),
   reportMarkdownPath: Annotation<string | undefined>(),
+
+  /** Markdown-first 研报整形（Phase3 之后） */
+  reportViewModelPath: Annotation<string | undefined>(),
+  turtleOverviewMarkdownPath: Annotation<string | undefined>(),
+  businessQualityMarkdownPath: Annotation<string | undefined>(),
+  penetrationReturnMarkdownPath: Annotation<string | undefined>(),
+  valuationTopicMarkdownPath: Annotation<string | undefined>(),
+
   manifestPath: Annotation<string | undefined>(),
 
   preflightEffective: Annotation<PreflightLevel | undefined>(),

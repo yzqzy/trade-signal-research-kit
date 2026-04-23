@@ -74,6 +74,11 @@ export function mapStateToWorkflowArtifacts(state: WorkflowGraphState): Workflow
     reportMarkdownPath: assertState(state.reportMarkdownPath, "[workflow:langgraph] 缺少 reportMarkdownPath"),
     manifestPath: assertState(state.manifestPath, "[workflow:langgraph] 缺少 manifestPath"),
     phase3PreflightPath: state.phase3PreflightPath,
+    reportViewModelPath: state.reportViewModelPath,
+    turtleOverviewMarkdownPath: state.turtleOverviewMarkdownPath,
+    businessQualityMarkdownPath: state.businessQualityMarkdownPath,
+    penetrationReturnMarkdownPath: state.penetrationReturnMarkdownPath,
+    valuationTopicMarkdownPath: state.valuationTopicMarkdownPath,
   };
 }
 

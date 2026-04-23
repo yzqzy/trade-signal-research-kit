@@ -35,6 +35,11 @@ export type WorkflowCheckpointFile = {
     | "phase3PreflightPath"
     | "valuationPath"
     | "reportMarkdownPath"
+    | "reportViewModelPath"
+    | "turtleOverviewMarkdownPath"
+    | "businessQualityMarkdownPath"
+    | "penetrationReturnMarkdownPath"
+    | "valuationTopicMarkdownPath"
     | "manifestPath"
   >;
 };

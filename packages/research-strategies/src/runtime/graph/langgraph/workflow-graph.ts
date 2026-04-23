@@ -9,6 +9,7 @@ import {
   nodeStageC,
   nodeStageD,
   nodeStageE,
+  nodeReportPolish,
   routeAfterB,
   routeAfterInit,
 } from "./workflow-nodes.js";
@@ -37,7 +38,7 @@ export function buildWorkflowPipelineGraph() {
     .addEdge("preflight3", END);
 }
 
-/** 完整 workflow：在 pipeline 图基础上追加 Stage E 与 manifest。 */
+/** 完整 workflow：在 pipeline 图基础上追加 Stage E、ReportPolish（Markdown 四页）与 manifest。 */
 export function buildWorkflowFullGraph() {
   return new StateGraph(WorkflowGraphStateAnnotation)
     .addNode("initPrep", nodeInitPrep)
@@ -46,6 +47,7 @@ export function buildWorkflowFullGraph() {
     .addNode("stageC", nodeStageC)
     .addNode("preflight3", nodePreflight3)
     .addNode("stageE", nodeStageE)
+    .addNode("reportPolish", nodeReportPolish)
     .addNode("finalizeManifest", nodeFinalizeManifest)
     .addEdge(START, "initPrep")
     .addConditionalEdges("initPrep", routeAfterInit, {
@@ -59,7 +61,8 @@ export function buildWorkflowFullGraph() {
     .addEdge("stageD", "stageC")
     .addEdge("stageC", "preflight3")
     .addEdge("preflight3", "stageE")
-    .addEdge("stageE", "finalizeManifest")
+    .addEdge("stageE", "reportPolish")
+    .addEdge("reportPolish", "finalizeManifest")
     .addEdge("finalizeManifest", END);
 }
 

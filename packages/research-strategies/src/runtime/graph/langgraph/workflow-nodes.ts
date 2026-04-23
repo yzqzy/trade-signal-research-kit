@@ -14,6 +14,8 @@ import { runPhase2AExtractPdfSections } from "../../../steps/phase2a/extractor.j
 import { tryApplyPdfSectionVerifier } from "./pdf-section-verifier.js";
 import { renderPhase2BDataPackReport } from "../../../steps/phase2b/renderer.js";
 import { renderPhase3Markdown } from "../../../steps/phase3/report-renderer.js";
+import { composeReportViewModel } from "../../../steps/phase3/report-polish/compose-report-view-model.js";
+import { renderAllReportPolishMarkdowns } from "../../../steps/phase3/report-polish/render-report-polish-markdown.js";
 import { appendFeedGapSection, evaluateFeedDataGaps } from "../../../crosscut/feed-gap/feed-gap-contract.js";
 import { resolveWorkflowStrategyPlugin } from "../../../strategy/registry.js";
 import { evaluatePhase3Preflight } from "../../../crosscut/preflight/phase3-preflight.js";
@@ -88,6 +90,11 @@ async function persistCheckpoint(
       phase3PreflightPath: state.phase3PreflightPath,
       valuationPath: state.valuationPath,
       reportMarkdownPath: state.reportMarkdownPath,
+      reportViewModelPath: state.reportViewModelPath,
+      turtleOverviewMarkdownPath: state.turtleOverviewMarkdownPath,
+      businessQualityMarkdownPath: state.businessQualityMarkdownPath,
+      penetrationReturnMarkdownPath: state.penetrationReturnMarkdownPath,
+      valuationTopicMarkdownPath: state.valuationTopicMarkdownPath,
       manifestPath: state.manifestPath,
     },
   };
@@ -194,6 +201,11 @@ export async function nodeInitPrep(state: WorkflowGraphState): Promise<Partial<W
       phase3PreflightPath: cp.snapshot.phase3PreflightPath,
       valuationPath: cp.snapshot.valuationPath,
       reportMarkdownPath: cp.snapshot.reportMarkdownPath,
+      reportViewModelPath: cp.snapshot.reportViewModelPath,
+      turtleOverviewMarkdownPath: cp.snapshot.turtleOverviewMarkdownPath,
+      businessQualityMarkdownPath: cp.snapshot.businessQualityMarkdownPath,
+      penetrationReturnMarkdownPath: cp.snapshot.penetrationReturnMarkdownPath,
+      valuationTopicMarkdownPath: cp.snapshot.valuationTopicMarkdownPath,
       manifestPath: cp.snapshot.manifestPath,
       completedStages: resumedStages,
       resumeLoaded: true,
@@ -468,6 +480,61 @@ export async function nodeStageE(state: WorkflowGraphState): Promise<Partial<Wor
   return next;
 }
 
+export async function nodeReportPolish(state: WorkflowGraphState): Promise<Partial<WorkflowGraphState>> {
+  const outputDir = state.outputDir!;
+  const phase3Execution = state.phase3Execution;
+  if (!phase3Execution) {
+    throw new Error("[workflow:langgraph] reportPolish 需要 phase3Execution");
+  }
+
+  const { viewModel, buffers } = await composeReportViewModel({
+    outputDir,
+    runId: state.runId,
+    normalizedCode: state.normalizedCode!,
+    displayCompanyName: state.resolvedCompanyName,
+    phase1aJsonPath: state.phase1aJsonPath!,
+    marketPackPath: state.marketPackPath!,
+    marketPackMarkdown: state.marketPackMarkdown!,
+    phase1bMarkdownPath: state.phase1bMarkdownPath!,
+    phase2bMarkdownPath: state.phase2bMarkdownPath,
+    phase2bInterimMarkdownPath: state.phase2bInterimMarkdownPath,
+    valuationPath: state.valuationPath!,
+    reportMarkdownPath: state.reportMarkdownPath!,
+    phase3PreflightPath: state.phase3PreflightPath,
+    phase3Execution,
+  });
+
+  const rendered = renderAllReportPolishMarkdowns(viewModel, buffers);
+
+  const reportViewModelPath = path.join(outputDir, "report_view_model.json");
+  const turtleOverviewMarkdownPath = path.join(outputDir, "turtle_overview.md");
+  const businessQualityMarkdownPath = path.join(outputDir, "business_quality.md");
+  const penetrationReturnMarkdownPath = path.join(outputDir, "penetration_return.md");
+  const valuationTopicMarkdownPath = path.join(outputDir, "valuation.md");
+
+  await writeText(reportViewModelPath, JSON.stringify(viewModel, null, 2));
+  await writeText(turtleOverviewMarkdownPath, rendered.turtleOverviewMarkdown);
+  await writeText(businessQualityMarkdownPath, rendered.businessQualityMarkdown);
+  await writeText(penetrationReturnMarkdownPath, rendered.penetrationReturnMarkdown);
+  await writeText(valuationTopicMarkdownPath, rendered.valuationMarkdown);
+
+  const next: Partial<WorkflowGraphState> = {
+    reportViewModelPath,
+    turtleOverviewMarkdownPath,
+    businessQualityMarkdownPath,
+    penetrationReturnMarkdownPath,
+    valuationTopicMarkdownPath,
+    completedStages: ["reportPolish"],
+  };
+  const mergedStages = mergeCompletedStages(state, "reportPolish");
+  await persistCheckpoint(outputDir, state.runId!, state.threadId!, mergedStages, {
+    ...state,
+    ...next,
+    completedStages: mergedStages,
+  } as WorkflowGraphState);
+  return next;
+}
+
 export async function nodeFinalizeManifest(state: WorkflowGraphState): Promise<Partial<WorkflowGraphState>> {
   const input = state.input;
   const outputDir = state.outputDir!;
@@ -486,6 +553,11 @@ export async function nodeFinalizeManifest(state: WorkflowGraphState): Promise<P
   const phase3PreflightPath = state.phase3PreflightPath;
   const valuationPath = state.valuationPath!;
   const reportMarkdownPath = state.reportMarkdownPath!;
+  const reportViewModelPath = state.reportViewModelPath;
+  const turtleOverviewMarkdownPath = state.turtleOverviewMarkdownPath;
+  const businessQualityMarkdownPath = state.businessQualityMarkdownPath;
+  const penetrationReturnMarkdownPath = state.penetrationReturnMarkdownPath;
+  const valuationTopicMarkdownPath = state.valuationTopicMarkdownPath;
   const reportUrlResolved = state.reportUrlResolved;
 
   const marketRelW = path.relative(outputDir, marketPackPath) || "data_pack_market.md";
@@ -518,6 +590,11 @@ export async function nodeFinalizeManifest(state: WorkflowGraphState): Promise<P
       phase3PreflightPath,
       valuationPath,
       reportMarkdownPath,
+      reportViewModelPath,
+      turtleOverviewMarkdownPath,
+      businessQualityMarkdownPath,
+      penetrationReturnMarkdownPath,
+      valuationMarkdownPath: valuationTopicMarkdownPath,
     },
     pipeline: {
       valuation: {
