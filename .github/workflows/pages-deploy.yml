@@ -54,6 +54,8 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Restore Next.js cache (research-hub)
         uses: actions/cache@v4
