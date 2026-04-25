@@ -46,6 +46,8 @@ export interface TopicReport {
   code: string;
   siteTopicType?: string;
   markdownPath?: string;
+  qualityStatus?: "complete" | "degraded" | "blocked" | "draft";
+  blockingReasons?: string[];
   evidenceRefs: SourceRef[];
 }
 

@@ -3,6 +3,7 @@
  * 供 Markdown-first 研报整形与研报站映射；**不含**全文证据（全文在同 run 各 `.md` / `.json`）。
  */
 import type { Phase3Decision } from "../types.js";
+import type { PolicyResult, TopicReport } from "@trade-signal/research-contracts";
 
 export type ReportEvidenceRefsV1 = {
   phase1aJsonRelative: string;
@@ -71,6 +72,10 @@ export type ValuationSummaryV1 = {
 
 export type Factor2SummaryV1 = {
   passed?: boolean;
+  A?: number;
+  C?: number;
+  D?: number;
+  I?: number;
   R?: number;
   II?: number;
   rejectType?: string;
@@ -125,6 +130,8 @@ export type ReportViewModelV1 = {
   phase1b: Phase1bMetaV1;
   phase3: Phase3RollupV1;
   valuation: ValuationSummaryV1;
+  policyResult: PolicyResult;
+  topicReports: TopicReport[];
   /** 显式缺口，禁止静默造数 */
   todos: ReportViewModelTodoV1[];
 };

@@ -21,6 +21,10 @@ import {
   type TopicManifestEntryV1,
   type TopicManifestV1,
 } from "./topic-manifest-v2.js";
+import {
+  validateFinalNarrativeMarkdown,
+  type FinalNarrativeStatus,
+} from "../runtime/business-analysis/final-narrative-status.js";
 
 export type EmitSiteReportsOptions = {
   /** workflow 或 business-analysis 单次 run 根目录（含 manifest） */
@@ -206,6 +210,8 @@ type WorkflowManifest = {
 type BusinessAnalysisManifest = {
   manifestVersion: string;
   generatedAt: string;
+  finalNarrativeStatus?: FinalNarrativeStatus;
+  finalNarrativeBlockingReasons?: string[];
   outputLayout: { code: string; runId: string };
   input: Record<string, unknown>;
   outputs: {
@@ -213,7 +219,17 @@ type BusinessAnalysisManifest = {
     qualitativeD1D6Path?: string;
     marketPackPath?: string;
     phase1bMarkdownPath?: string;
+    dataPackReportPath?: string;
   };
+};
+
+type WorkflowReportViewModel = {
+  topicReports?: Array<{
+    topicId?: string;
+    siteTopicType?: string;
+    qualityStatus?: "complete" | "degraded" | "blocked" | "draft";
+    blockingReasons?: string[];
+  }>;
 };
 
 async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: string): Promise<void> {
@@ -230,6 +246,23 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const polishBusinessPath = resolveArtifactPath(runDir, m.outputs.businessQualityMarkdownPath);
   const polishPenetrationPath = resolveArtifactPath(runDir, m.outputs.penetrationReturnMarkdownPath);
   const polishValuationPath = resolveArtifactPath(runDir, m.outputs.valuationMarkdownPath);
+  const reportViewModelPath = resolveArtifactPath(runDir, m.outputs.reportViewModelPath);
+  let topicQuality = new Map<string, { qualityStatus?: "complete" | "degraded" | "blocked" | "draft"; blockingReasons?: string[] }>();
+  if (reportViewModelPath && (await pathExists(reportViewModelPath))) {
+    try {
+      const vm = await readJson<WorkflowReportViewModel>(reportViewModelPath);
+      topicQuality = new Map(
+        (vm.topicReports ?? [])
+          .filter((t) => t.siteTopicType)
+          .map((t) => [
+            String(t.siteTopicType),
+            { qualityStatus: t.qualityStatus, blockingReasons: t.blockingReasons },
+          ]),
+      );
+    } catch {
+      topicQuality = new Map();
+    }
+  }
 
   const ctx = await tryReadCompanyContext(runDir, m.input as Record<string, unknown>, {
     marketPackPath: marketPath,
@@ -397,12 +430,15 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       sourceManifestPath: manifestRel,
     };
     await writeEntry({ siteDir, meta, contentMarkdown: t.markdown });
+    const q = topicQuality.get(t.topic);
     manifestTopics.push({
       v2TopicId: siteTopicTypeToV2TopicId(t.topic),
       siteTopicType: t.topic,
       entryId,
       requiredFieldsStatus: t.status,
       sourceMarkdownRelative: relFromRun(runDir, sourceMarkdownAbsForTopic(t.topic)),
+      qualityStatus: q?.qualityStatus ?? (t.status === "complete" ? "complete" : "degraded"),
+      blockingReasons: q?.blockingReasons,
     });
   }
 
@@ -508,17 +544,35 @@ async function emitFromBusinessAnalysis(
   else if (hasQ || hasD1) status = "degraded";
 
   const parts: string[] = [];
+  let qMarkdown = "";
+  let d1Markdown = "";
   if (hasQ && qPath) {
-    const md = await readFile(qPath, "utf-8");
-    parts.push(`## qualitative_report.md\n\n${md.trim()}`);
+    qMarkdown = await readFile(qPath, "utf-8");
+    parts.push(`## qualitative_report.md\n\n${qMarkdown.trim()}`);
   }
   if (hasD1 && d1) {
-    const md = await readFile(d1, "utf-8");
-    parts.push(`## qualitative_d1_d6.md\n\n${md.trim()}`);
+    d1Markdown = await readFile(d1, "utf-8");
+    parts.push(`## qualitative_d1_d6.md\n\n${d1Markdown.trim()}`);
   }
 
   const markdown = joinSections(parts);
   if (!markdown.trim()) return;
+
+  const dataPackReportPath =
+    typeof m.outputs.dataPackReportPath === "string" ? resolveArtifactPath(runDir, m.outputs.dataPackReportPath) : undefined;
+  const dataPackReportMarkdown = dataPackReportPath && (await pathExists(dataPackReportPath))
+    ? await readFile(dataPackReportPath, "utf-8")
+    : undefined;
+  const finalNarrative = validateFinalNarrativeMarkdown({
+    qualitativeReportMarkdown: qMarkdown,
+    qualitativeD1D6Markdown: d1Markdown,
+    dataPackReportMarkdown,
+  });
+  if (finalNarrative.status !== "complete") {
+    status = status === "missing" ? "missing" : "degraded";
+  } else {
+    status = "complete";
+  }
 
   const confidenceBa = parseConfidenceFromReportMd(markdown);
 
@@ -555,6 +609,8 @@ async function emitFromBusinessAnalysis(
           relFromRun(runDir, qPath) ??
           relFromRun(runDir, d1) ??
           (typeof m.outputs.qualitativeReportPath === "string" ? m.outputs.qualitativeReportPath : undefined),
+        qualityStatus: finalNarrative.status,
+        blockingReasons: finalNarrative.blockingReasons,
       },
     ],
   };

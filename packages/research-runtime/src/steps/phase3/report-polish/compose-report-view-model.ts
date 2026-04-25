@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ValuationComputed } from "@trade-signal/schema-core";
+import type { PolicyResult, SourceRef, TopicReport } from "@trade-signal/research-contracts";
 
 import { parseDataPackMarket } from "../market-pack-parser.js";
 import type { Phase3ExecutionResult } from "../types.js";
@@ -14,6 +15,10 @@ import type {
 function rel(outputDir: string, filePath: string): string {
   const r = path.relative(outputDir, filePath);
   return r && !r.startsWith("..") ? r : path.basename(filePath);
+}
+
+function fileRef(outputDir: string, filePath: string, note?: string): SourceRef {
+  return { kind: "file", ref: rel(outputDir, filePath), note };
 }
 
 function pickPdfGate(md: string): "OK" | "DEGRADED" | "CRITICAL" | undefined {
@@ -206,6 +211,10 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
     factor2: exec.factor2
       ? {
           passed: exec.factor2.passed,
+          A: exec.factor2.A,
+          C: exec.factor2.C,
+          D: exec.factor2.D,
+          I: exec.factor2.I,
           R: exec.factor2.R,
           II: exec.factor2.II,
           rejectType: exec.factor2.rejectType,
@@ -251,6 +260,83 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
     phase3PreflightMdRelative: input.phase3PreflightPath ? rel(outputDir, input.phase3PreflightPath) : undefined,
   };
 
+  const policyReasonRefs: SourceRef[] = [
+    fileRef(outputDir, input.reportMarkdownPath, "Phase3 规则报告"),
+    fileRef(outputDir, input.valuationPath, "估值计算结果"),
+    fileRef(outputDir, input.marketPackPath, "市场与财务数据包"),
+  ];
+  if (input.phase2bMarkdownPath) {
+    policyReasonRefs.push(fileRef(outputDir, input.phase2bMarkdownPath, "年报证据包"));
+  }
+  const policyResult: PolicyResult = {
+    policyId: "policy:turtle",
+    runId: input.runId ?? "",
+    code: input.normalizedCode,
+    payload: {
+      decision: exec.decision,
+      confidence: exec.confidence,
+      reportMode: exec.reportMode ?? "full",
+      factor2: phase3.factor2,
+      factor3: phase3.factor3,
+      factor4: phase3.factor4,
+      valuation,
+    },
+    reasonRefs: policyReasonRefs,
+  };
+
+  const topicEvidenceRefs: SourceRef[] = [
+    fileRef(outputDir, input.phase1aJsonPath, "Phase1A 数据包"),
+    fileRef(outputDir, input.marketPackPath, "市场数据包"),
+    fileRef(outputDir, input.phase1bMarkdownPath, "Phase1B 外部证据补充"),
+    fileRef(outputDir, input.valuationPath, "估值 JSON"),
+    fileRef(outputDir, input.reportMarkdownPath, "Phase3 规则报告"),
+  ];
+  if (input.phase2bMarkdownPath) topicEvidenceRefs.push(fileRef(outputDir, input.phase2bMarkdownPath, "年报 data_pack"));
+  if (input.phase3PreflightPath) topicEvidenceRefs.push(fileRef(outputDir, input.phase3PreflightPath, "Phase3 预检"));
+  const businessStatus = dataPackReport.present && dataPackReport.pdfGateVerdict !== "CRITICAL" ? "degraded" : "blocked";
+  const topicReports: TopicReport[] = [
+    {
+      topicId: "topic:turtle-strategy-explainer",
+      runId: input.runId ?? "",
+      code: input.normalizedCode,
+      siteTopicType: "turtle-strategy",
+      markdownPath: "turtle_overview.md",
+      qualityStatus: "complete",
+      evidenceRefs: topicEvidenceRefs,
+    },
+    {
+      topicId: "topic:business-six-dimension",
+      runId: input.runId ?? "",
+      code: input.normalizedCode,
+      siteTopicType: "business-quality",
+      markdownPath: "business_quality.md",
+      qualityStatus: businessStatus,
+      blockingReasons:
+        businessStatus === "blocked"
+          ? ["workflow report-polish 不是 Claude 六维终稿，且年报证据包缺失或 PDF gate=CRITICAL"]
+          : ["workflow report-polish 仅为结构化商业质量草稿；完整六维终稿需 business-analysis-finalize"],
+      evidenceRefs: topicEvidenceRefs,
+    },
+    {
+      topicId: "topic:penetration-return",
+      runId: input.runId ?? "",
+      code: input.normalizedCode,
+      siteTopicType: "penetration-return",
+      markdownPath: "penetration_return.md",
+      qualityStatus: "complete",
+      evidenceRefs: topicEvidenceRefs,
+    },
+    {
+      topicId: "topic:valuation",
+      runId: input.runId ?? "",
+      code: input.normalizedCode,
+      siteTopicType: "valuation",
+      markdownPath: "valuation.md",
+      qualityStatus: valuation.methodCount > 0 ? "complete" : "degraded",
+      evidenceRefs: topicEvidenceRefs,
+    },
+  ];
+
   const viewModel: ReportViewModelV1 = {
     schema: "report_view_model",
     version: "1.0",
@@ -265,6 +351,8 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
     phase1b: phase1bMeta,
     phase3,
     valuation,
+    policyResult,
+    topicReports,
     todos,
   };
 

@@ -1,22 +1,27 @@
 import { registerTopicPlugin } from "./topic-registry.js";
 import { TOPIC_IDS } from "./topic-ids.js";
 
+function registerBasicTopic(id: string, siteTopicType?: string): void {
+  registerTopicPlugin(id, () => ({
+    id,
+    version: "0.0.0",
+    render: ({ runId, code, markdownPath, evidenceRefs }) => ({
+      topicId: id,
+      runId,
+      code,
+      siteTopicType,
+      markdownPath,
+      qualityStatus: markdownPath ? "draft" : "blocked",
+      blockingReasons: markdownPath ? [] : ["缺少 Topic Markdown 路径"],
+      evidenceRefs: evidenceRefs ?? [],
+    }),
+  }));
+}
+
 export function bootstrapTopicRegistry(): void {
-  registerTopicPlugin(TOPIC_IDS.businessSixDimension, () => ({
-    id: TOPIC_IDS.businessSixDimension,
-    version: "0.0.0",
-  }));
-  registerTopicPlugin(TOPIC_IDS.valuation, () => ({ id: TOPIC_IDS.valuation, version: "0.0.0" }));
-  registerTopicPlugin(TOPIC_IDS.penetrationReturn, () => ({
-    id: TOPIC_IDS.penetrationReturn,
-    version: "0.0.0",
-  }));
-  registerTopicPlugin(TOPIC_IDS.turtleStrategyExplainer, () => ({
-    id: TOPIC_IDS.turtleStrategyExplainer,
-    version: "0.0.0",
-  }));
-  registerTopicPlugin(TOPIC_IDS.earningsAlert, () => ({
-    id: TOPIC_IDS.earningsAlert,
-    version: "0.0.0",
-  }));
+  registerBasicTopic(TOPIC_IDS.businessSixDimension, "business-quality");
+  registerBasicTopic(TOPIC_IDS.valuation, "valuation");
+  registerBasicTopic(TOPIC_IDS.penetrationReturn, "penetration-return");
+  registerBasicTopic(TOPIC_IDS.turtleStrategyExplainer, "turtle-strategy");
+  registerBasicTopic(TOPIC_IDS.earningsAlert);
 }

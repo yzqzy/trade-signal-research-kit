@@ -5,5 +5,11 @@ export function bootstrapFeatureRegistry(): void {
   registerFeaturePlugin("feature:placeholders", () => ({
     id: "feature:placeholders",
     version: "0.0.0",
+    compute: ({ runId, code }) => ({
+      runId,
+      code,
+      features: {},
+      sourceRefs: [],
+    }),
   }));
 }

@@ -21,6 +21,7 @@ import { shellQuoteArg } from '../../lib/shell-quote-arg.js';
 import { renderQualitativeD1D6Scaffold } from './d1-d6-scaffold.js';
 import { appendFeedGapSection, evaluateFeedDataGaps } from '../../crosscut/feed-gap/feed-gap-contract.js';
 import type { DataPackMarket } from '@trade-signal/schema-core';
+import { validateFinalNarrativeMarkdown } from './final-narrative-status.js';
 
 export type RunBusinessAnalysisInput = RunWorkflowInput & {
   /** 与 workflow turtle-strict 一致：要求可解析的年报 PDF（可经自动发现 + Phase0 下载） */
@@ -209,6 +210,11 @@ export async function runBusinessAnalysis(
   ].join('\n');
   const qualitativeWithGaps = appendFeedGapSection(qualitativeBody, feedGaps);
   await writeFile(qualitativeReportPath, qualitativeWithGaps, 'utf-8');
+  const finalNarrative = validateFinalNarrativeMarkdown({
+    qualitativeReportMarkdown: qualitativeWithGaps,
+    qualitativeD1D6Markdown: d1d6WithGaps,
+    dataPackReportMarkdown: pipeline.reportPackMarkdown,
+  });
 
   const manifestPath = path.resolve(
     pipeline.outputDir,
@@ -272,6 +278,8 @@ export async function runBusinessAnalysis(
     } as const,
     generatedAt: new Date().toISOString(),
     kind: 'business-analysis',
+    finalNarrativeStatus: finalNarrative.status,
+    finalNarrativeBlockingReasons: finalNarrative.blockingReasons,
     input: manifestInput,
     outputs: {
       qualitativeReportPath,
