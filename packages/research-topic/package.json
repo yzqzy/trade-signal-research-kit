@@ -1,0 +1,21 @@
+{
+  "name": "@trade-signal/research-topic",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/packages/research-topic/src/index.js",
+  "types": "dist/packages/research-topic/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/packages/research-topic/src/index.d.ts",
+      "import": "./dist/packages/research-topic/src/index.js",
+      "default": "./dist/packages/research-topic/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@trade-signal/research-contracts": "workspace:*"
+  }
+}
