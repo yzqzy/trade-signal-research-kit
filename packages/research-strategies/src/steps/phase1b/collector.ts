@@ -11,7 +11,6 @@ import type {
   ExternalEvidenceC1Hit,
   ExternalEvidenceC1Result,
   ExternalEvidenceCatalog,
-  McpToolCaller,
   Phase1BChannel,
   Phase1BEvidence,
   Phase1BInput,
@@ -74,8 +73,6 @@ export interface FeedSearchClientOptions {
 }
 
 export interface Phase1BCollectOptions extends Partial<FeedSearchClientOptions> {
-  mcpCallTool?: McpToolCaller;
-  mcpToolName?: string;
 }
 
 const NOT_FOUND_TEXT = "⚠️ 未搜索到相关信息";
@@ -265,40 +262,6 @@ async function searchFeedSection8Tiered(
   return { evidences: broad, diagnostics: { variantKeywordsTried, zeroHitBroadFallbackUsed } };
 }
 
-async function searchMcpSection8Tiered(
-  callTool: McpToolCaller,
-  toolName: string,
-  input: Phase1BInput,
-  query: FeedSearchQuery,
-): Promise<{ evidences: Phase1BEvidence[]; diagnostics: Section8RetrievalDiag }> {
-  const variantKeywordsTried: string[] = [];
-  const tryKw = async (kw: string | undefined) =>
-    searchMcp(callTool, toolName, input, { ...query, reportKeyword: kw });
-
-  const primary = query.reportKeyword?.trim();
-  if (primary) {
-    const ev = await tryKw(primary);
-    if (ev.length > 0) {
-      return { evidences: ev, diagnostics: { variantKeywordsTried, zeroHitBroadFallbackUsed: false } };
-    }
-    variantKeywordsTried.push(primary);
-  }
-
-  for (const extra of query.intentKeywords ?? []) {
-    const k = extra.trim();
-    if (!k || k === primary) continue;
-    const ev = await tryKw(k);
-    variantKeywordsTried.push(k);
-    if (ev.length > 0) {
-      return { evidences: ev, diagnostics: { variantKeywordsTried, zeroHitBroadFallbackUsed: false } };
-    }
-  }
-
-  const broad = await tryKw(undefined);
-  const zeroHitBroadFallbackUsed = broad.length > 0 && Boolean(primary || (query.intentKeywords?.length ?? 0) > 0);
-  return { evidences: broad, diagnostics: { variantKeywordsTried, zeroHitBroadFallbackUsed } };
-}
-
 async function searchFeed(
   options: FeedSearchClientOptions,
   input: Phase1BInput,
@@ -345,37 +308,8 @@ async function searchFeed(
   return evidences;
 }
 
-async function searchMcp(
-  callTool: McpToolCaller,
-  toolName: string,
-  input: Phase1BInput,
-  query: FeedSearchQuery,
-): Promise<Phase1BEvidence[]> {
-  const kw = query.reportKeyword?.trim();
-  const payload = await callTool(toolName, {
-    code: input.stockCode,
-    year: resolvePhase1BReportYear(input),
-    category: query.reportCategory,
-    limit: input.limitPerQuery ?? 5,
-    timeRange: "3y",
-    stockName: input.companyName?.trim() || undefined,
-    item: query.item,
-    ...(kw ? { keyword: kw } : {}),
-  });
-  const obj = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
-  const hitsPayload = Array.isArray(payload)
-    ? ({ data: payload } as FeedSearchResponse)
-    : Array.isArray(obj.candidates)
-      ? { candidates: obj.candidates as FeedSearchHit[] }
-      : payload;
-  const evidences = normalizeHitsFromUnknown(hitsPayload)
-    .map(toEvidence)
-    .filter((item): item is Phase1BEvidence => Boolean(item));
-  return evidences;
-}
-
 /**
- * **Stage C · C1**：通用外部证据采集（HTTP/MCP），不含策略判断。
+ * **Stage C · C1**：通用外部证据采集（HTTP），不含策略判断。
  */
 export async function collectExternalEvidenceC1(
   input: Phase1BInput,
@@ -387,84 +321,45 @@ export async function collectExternalEvidenceC1(
   const webProvider = tryGetWebSearchProviderFromEnv();
   const webCfg = getResolvedWebSearchConfigForProvider();
 
-  let results: Array<{
+  const results: Array<{
     query: FeedSearchQuery;
     evidences: Phase1BEvidence[];
     diagnostics?: Section8RetrievalDiag;
-  }>;
-  if (channel === "http") {
-    const clientOptions = resolveFeedSearchClientOptionsFromEnv(options);
-    const limit = input.limitPerQuery ?? 5;
-    results = await Promise.all(
-      queries.map(async (query) => {
-        let diagnostics: Section8RetrievalDiag | undefined;
-        let evidences: Phase1BEvidence[] = [];
-        const useWeb = Boolean(webProvider && webCfg && PHASE1B_WEB_SEARCH_ITEMS.has(query.item));
+  }> = [];
+  const clientOptions = resolveFeedSearchClientOptionsFromEnv(options);
+  const limit = input.limitPerQuery ?? 5;
+  const resolved = await Promise.all(
+    queries.map(async (query) => {
+      let diagnostics: Section8RetrievalDiag | undefined;
+      let evidences: Phase1BEvidence[] = [];
+      const useWeb = Boolean(webProvider && webCfg && PHASE1B_WEB_SEARCH_ITEMS.has(query.item));
 
-        if (useWeb && webProvider && webCfg) {
-          const web = await tryWebSearchForPhase1bItem(webProvider, webCfg, input, query.item);
-          diagnostics = mergeRetrievalDiagnostics(diagnostics, web.diagnostics);
-          if (web.evidences.length > 0) {
-            evidences = web.evidences;
-          }
+      if (useWeb && webProvider && webCfg) {
+        const web = await tryWebSearchForPhase1bItem(webProvider, webCfg, input, query.item);
+        diagnostics = mergeRetrievalDiagnostics(diagnostics, web.diagnostics);
+        if (web.evidences.length > 0) {
+          evidences = web.evidences;
         }
+      }
 
-        if (evidences.length === 0) {
-          if (query.catalog === "8") {
-            const tiered = await searchFeedSection8Tiered(clientOptions, input, query);
-            evidences = tiered.evidences;
-            diagnostics = mergeRetrievalDiagnostics(diagnostics, tiered.diagnostics);
-          } else {
-            evidences = await searchFeed(clientOptions, input, query);
-          }
-        }
-
+      if (evidences.length === 0) {
         if (query.catalog === "8") {
-          evidences = postProcessSection8Evidences(query.item, evidences, limit);
-          diagnostics = { ...(diagnostics ?? {}), aiRerankApplied: false };
+          const tiered = await searchFeedSection8Tiered(clientOptions, input, query);
+          evidences = tiered.evidences;
+          diagnostics = mergeRetrievalDiagnostics(diagnostics, tiered.diagnostics);
+        } else {
+          evidences = await searchFeed(clientOptions, input, query);
         }
-        return { query, evidences, diagnostics };
-      }),
-    );
-  } else {
-    const mcpCallTool = options.mcpCallTool;
-    if (!mcpCallTool) {
-      throw new Error("Phase1B MCP mode requires options.mcpCallTool");
-    }
-    const toolName = options.mcpToolName ?? "search_stock_reports";
-    const limit = input.limitPerQuery ?? 5;
-    results = await Promise.all(
-      queries.map(async (query) => {
-        let diagnostics: Section8RetrievalDiag | undefined;
-        let evidences: Phase1BEvidence[] = [];
-        const useWeb = Boolean(webProvider && webCfg && PHASE1B_WEB_SEARCH_ITEMS.has(query.item));
+      }
 
-        if (useWeb && webProvider && webCfg) {
-          const web = await tryWebSearchForPhase1bItem(webProvider, webCfg, input, query.item);
-          diagnostics = mergeRetrievalDiagnostics(diagnostics, web.diagnostics);
-          if (web.evidences.length > 0) {
-            evidences = web.evidences;
-          }
-        }
-
-        if (evidences.length === 0) {
-          if (query.catalog === "8") {
-            const tiered = await searchMcpSection8Tiered(mcpCallTool, toolName, input, query);
-            evidences = tiered.evidences;
-            diagnostics = mergeRetrievalDiagnostics(diagnostics, tiered.diagnostics);
-          } else {
-            evidences = await searchMcp(mcpCallTool, toolName, input, query);
-          }
-        }
-
-        if (query.catalog === "8") {
-          evidences = postProcessSection8Evidences(query.item, evidences, limit);
-          diagnostics = { ...(diagnostics ?? {}), aiRerankApplied: false };
-        }
-        return { query, evidences, diagnostics };
-      }),
-    );
-  }
+      if (query.catalog === "8") {
+        evidences = postProcessSection8Evidences(query.item, evidences, limit);
+        diagnostics = { ...(diagnostics ?? {}), aiRerankApplied: false };
+      }
+      return { query, evidences, diagnostics };
+    }),
+  );
+  results.push(...resolved);
 
   const collectedAt = new Date().toISOString();
   const hits: ExternalEvidenceC1Hit[] = results.map(({ query, evidences, diagnostics }) => ({
@@ -551,15 +446,4 @@ export async function collectPhase1BQualitative(
   options: Phase1BCollectOptions = {},
 ): Promise<Phase1BQualitativeSupplement> {
   return runStageCExternalEvidence(input, options);
-}
-
-export async function collectPhase1BQualitativeWithMcp(
-  input: Omit<Phase1BInput, "channel">,
-  mcpCallTool: McpToolCaller,
-  mcpToolName?: string,
-): Promise<Phase1BQualitativeSupplement> {
-  return collectPhase1BQualitative(
-    { ...input, channel: "mcp" },
-    { mcpCallTool, mcpToolName },
-  );
 }

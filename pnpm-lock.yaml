@@ -72,17 +72,21 @@ importers:
         specifier: workspace:*
         version: link:../core-schema
 
-  packages/provider-mcp:
-    dependencies:
-      '@trade-signal/schema-core':
-        specifier: workspace:*
-        version: link:../core-schema
+  packages/research-adapters: {}
 
-  packages/reporting:
+  packages/research-contracts: {}
+
+  packages/research-pipelines:
     dependencies:
-      '@trade-signal/schema-core':
+      '@trade-signal/research-contracts':
         specifier: workspace:*
-        version: link:../core-schema
+        version: link:../research-contracts
+
+  packages/research-registry:
+    dependencies:
+      '@trade-signal/research-contracts':
+        specifier: workspace:*
+        version: link:../research-contracts
 
   packages/research-strategies:
     dependencies:
@@ -92,12 +96,18 @@ importers:
       '@trade-signal/provider-http':
         specifier: workspace:*
         version: link:../provider-http
-      '@trade-signal/provider-mcp':
+      '@trade-signal/research-adapters':
         specifier: workspace:*
-        version: link:../provider-mcp
-      '@trade-signal/reporting':
+        version: link:../research-adapters
+      '@trade-signal/research-contracts':
         specifier: workspace:*
-        version: link:../reporting
+        version: link:../research-contracts
+      '@trade-signal/research-pipelines':
+        specifier: workspace:*
+        version: link:../research-pipelines
+      '@trade-signal/research-registry':
+        specifier: workspace:*
+        version: link:../research-registry
       '@trade-signal/schema-core':
         specifier: workspace:*
         version: link:../core-schema

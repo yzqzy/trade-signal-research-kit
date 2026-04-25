@@ -35,6 +35,7 @@ export * from "./contracts/workflow-run-types.js";
 export * from "./contracts/report-conflict-log.js";
 export * from "./contracts/report-topic-contract.js";
 export * from "./contracts/report-index-contract.js";
+export * from "./v2/index.js";
 export * from "./strategy/contracts.js";
 export { createTurtleStrategyPlugin } from "./strategy/turtle/plugin.js";
 export { createValueV1StrategyPlugin } from "./strategy/value-v1/plugin.js";

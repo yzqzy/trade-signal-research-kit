@@ -15,6 +15,12 @@ import type {
   SiteReportsIndex,
   TimelineItem,
 } from "./types.js";
+import {
+  siteTopicTypeToV2TopicId,
+  TOPIC_MANIFEST_VERSION,
+  type TopicManifestEntryV1,
+  type TopicManifestV1,
+} from "./topic-manifest-v2.js";
 
 export type EmitSiteReportsOptions = {
   /** workflow 或 business-analysis 单次 run 根目录（含 manifest） */
@@ -61,6 +67,21 @@ function resolveArtifactPath(runDir: string, filePath?: string): string | undefi
   const p = filePath?.trim();
   if (!p) return undefined;
   return path.isAbsolute(p) ? p : path.resolve(runDir, p);
+}
+
+function relFromRun(runDir: string, absPath?: string): string | undefined {
+  if (!absPath) return undefined;
+  try {
+    const r = path.relative(runDir, absPath);
+    return r && !r.startsWith("..") ? r : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeTopicManifest(runDir: string, body: TopicManifestV1): Promise<void> {
+  const out = path.join(runDir, "topic_manifest.json");
+  await writeFile(out, JSON.stringify(body, null, 2), "utf-8");
 }
 
 /** 从 `data_pack_market.md` 首行标题（如 `# 伊利股份（600887）`）与「市场」行推断展示名与板块 */
@@ -339,6 +360,27 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
     topics.push({ topic: "business-quality", status, markdown });
   }
 
+  const sourceMarkdownAbsForTopic = (topic: ReportTopicType): string | undefined => {
+    switch (topic) {
+      case "turtle-strategy":
+        return polishOverviewPath ?? reportMdPath;
+      case "valuation":
+        return polishValuationPath ?? valuationPath;
+      case "penetration-return":
+        return polishPenetrationPath ?? reportMdPath;
+      case "business-quality": {
+        const p1bPath = resolveArtifactPath(runDir, m.outputs.phase1bMarkdownPath);
+        return polishBusinessPath ?? p1bPath ?? reportMdPath;
+      }
+      default: {
+        const _ex: never = topic;
+        return _ex;
+      }
+    }
+  };
+
+  const manifestTopics: TopicManifestEntryV1[] = [];
+
   for (const t of topics) {
     if (!t.markdown.trim()) continue;
     const entryId = buildEntryId(date, codeDigits, t.topic, runShort);
@@ -355,6 +397,87 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       sourceManifestPath: manifestRel,
     };
     await writeEntry({ siteDir, meta, contentMarkdown: t.markdown });
+    manifestTopics.push({
+      v2TopicId: siteTopicTypeToV2TopicId(t.topic),
+      siteTopicType: t.topic,
+      entryId,
+      requiredFieldsStatus: t.status,
+      sourceMarkdownRelative: relFromRun(runDir, sourceMarkdownAbsForTopic(t.topic)),
+    });
+  }
+
+  if (manifestTopics.length > 0) {
+    const topicManifest: TopicManifestV1 = {
+      manifestVersion: TOPIC_MANIFEST_VERSION,
+      generatedAt: new Date().toISOString(),
+      publishedAt,
+      runProfile: "stock_full",
+      outputLayout: { code: m.outputLayout.code, runId: m.outputLayout.runId },
+      topics: manifestTopics,
+    };
+    await writeTopicManifest(runDir, topicManifest);
+  }
+}
+
+/** 仅 `topic_manifest.json`（publish_only）：再发布已有 Markdown 专题 */
+async function emitFromTopicManifestOnly(
+  runDir: string,
+  siteDir: string,
+  manifestPath: string,
+): Promise<void> {
+  const m = await readJson<TopicManifestV1>(manifestPath);
+  if (m.manifestVersion !== TOPIC_MANIFEST_VERSION) {
+    throw new Error(`[reports-site] topic_manifest.json 不支持的 manifestVersion: ${String(m.manifestVersion)}`);
+  }
+  const publishedAt = m.publishedAt ?? m.generatedAt;
+  const codeDigits =
+    String(m.outputLayout?.code ?? "")
+      .replace(/\D/g, "")
+      .trim() ||
+    (() => {
+      const e0 = m.topics[0]?.entryId ?? "";
+      const mm = e0.match(/^(\d{4}-\d{2}-\d{2})-([^-]+)-/u);
+      return (mm?.[2] ?? "").replace(/\D/g, "") || e0;
+    })();
+  const sourceRunId = String(m.outputLayout?.runId ?? "");
+  const manifestRel = path.relative(siteDir, manifestPath);
+  const marketTry = path.join(runDir, "data_pack_market.md");
+  const ctx = await tryReadCompanyContext(runDir, { code: codeDigits } as Record<string, unknown>, {
+    marketPackPath: (await pathExists(marketTry)) ? marketTry : undefined,
+  });
+  const listed = formatListedCode(codeDigits, ctx.market);
+
+  for (const row of m.topics) {
+    const rel = row.sourceMarkdownRelative?.trim();
+    if (!rel) continue;
+    const absMd = path.resolve(runDir, rel);
+    if (!(await pathExists(absMd))) continue;
+    const markdown = (await readFile(absMd, "utf-8")).trim();
+    if (!markdown) continue;
+    const status: RequiredFieldsStatus =
+      row.requiredFieldsStatus === "complete" ||
+      row.requiredFieldsStatus === "degraded" ||
+      row.requiredFieldsStatus === "missing"
+        ? row.requiredFieldsStatus
+        : "degraded";
+    const confidence = parseConfidenceFromReportMd(markdown);
+    const meta: EntryMeta = {
+      entryId: row.entryId,
+      code: codeDigits,
+      topicType: row.siteTopicType,
+      displayTitle: buildDisplayTitle({
+        companyName: ctx.name,
+        listedCode: listed,
+        topic: row.siteTopicType,
+      }),
+      publishedAt,
+      sourceRunId,
+      requiredFieldsStatus: status,
+      confidenceState: confidence,
+      contentFile: "content.md",
+      sourceManifestPath: manifestRel,
+    };
+    await writeEntry({ siteDir, meta, contentMarkdown: markdown });
   }
 }
 
@@ -415,6 +538,27 @@ async function emitFromBusinessAnalysis(
     sourceManifestPath: manifestRel,
   };
   await writeEntry({ siteDir, meta, contentMarkdown: markdown });
+
+  const topicManifest: TopicManifestV1 = {
+    manifestVersion: TOPIC_MANIFEST_VERSION,
+    generatedAt: new Date().toISOString(),
+    publishedAt,
+    runProfile: "stock_full",
+    outputLayout: { code: m.outputLayout.code, runId: m.outputLayout.runId },
+    topics: [
+      {
+        v2TopicId: siteTopicTypeToV2TopicId(topic),
+        siteTopicType: topic,
+        entryId,
+        requiredFieldsStatus: status,
+        sourceMarkdownRelative:
+          relFromRun(runDir, qPath) ??
+          relFromRun(runDir, d1) ??
+          (typeof m.outputs.qualitativeReportPath === "string" ? m.outputs.qualitativeReportPath : undefined),
+      },
+    ],
+  };
+  await writeTopicManifest(runDir, topicManifest);
 }
 
 /** 扫描 entries 下各子目录的 meta.json，去重后重写 views 与 index.json */
@@ -499,14 +643,17 @@ export async function emitSiteReportsFromRun(opts: EmitSiteReportsOptions): Prom
 
   const wf = path.join(runDir, "workflow_manifest.json");
   const ba = path.join(runDir, "business_analysis_manifest.json");
+  const tm = path.join(runDir, "topic_manifest.json");
 
   if (await pathExists(wf)) {
     await emitFromWorkflow(runDir, siteDir, wf);
   } else if (await pathExists(ba)) {
     await emitFromBusinessAnalysis(runDir, siteDir, ba);
+  } else if (await pathExists(tm)) {
+    await emitFromTopicManifestOnly(runDir, siteDir, tm);
   } else {
     throw new Error(
-      `[reports-site] 未找到 workflow_manifest.json / business_analysis_manifest.json：${runDir}`,
+      `[reports-site] 未找到 workflow_manifest.json / business_analysis_manifest.json / topic_manifest.json：${runDir}`,
     );
   }
 

@@ -10,6 +10,7 @@ import { resolveScreenerConfig, validateScreenerConfig } from "./config.js";
 import { exportScreenerResultsCsv, exportScreenerUniverseCsv } from "./export-results.js";
 import { runScreenerPipeline } from "./pipeline.js";
 import { renderScreenerHtml, renderScreenerMarkdown } from "./renderer.js";
+import { buildSelectionManifestV1 } from "./selection-manifest-v2.js";
 import type { ScreenerConfigOverrides, ScreenerRunInput, ScreenerUniverseRow } from "./types.js";
 
 type CliArgs = {
@@ -164,6 +165,11 @@ async function main(): Promise<void> {
   });
   await mkdir(outDir, { recursive: true });
   await writeText(path.join(outDir, "screener_results.json"), JSON.stringify(result, null, 2));
+  const runId = path.basename(outDir);
+  await writeText(
+    path.join(outDir, "selection_manifest.json"),
+    JSON.stringify(buildSelectionManifestV1(result, runId), null, 2),
+  );
   await writeText(path.join(outDir, "screener_input.csv"), exportScreenerUniverseCsv(universe));
   await writeText(path.join(outDir, "screener_report.md"), renderScreenerMarkdown(result));
   await writeText(path.join(outDir, "screener_report.html"), renderScreenerHtml(result));

@@ -15,7 +15,7 @@ export interface RunWorkflowInput {
   pdfPath?: string;
   reportUrl?: string;
   category?: string;
-  phase1bChannel?: "http" | "mcp";
+  phase1bChannel?: "http";
   mode?: WorkflowMode;
   /** Stage E 策略；与 `--mode` 并行，不改变 CLI 既有默认行为（未传即 turtle）。 */
   strategy?: WorkflowStrategyId;

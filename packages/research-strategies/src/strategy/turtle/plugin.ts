@@ -9,6 +9,9 @@ import type {
 const TURTLE_STRATEGY_ID = "turtle";
 const TURTLE_STRATEGY_VERSION = "0.1.0";
 
+/** 架构 V2 策略插件 ID（与 docs/architecture/v2-plugin-model.md 对齐） */
+export const V2_POLICY_ID_TURTLE = "policy:turtle" as const;
+
 /**
  * 当前默认策略：Turtle 严格 Phase3（`runPhase3Strict`）。
  * M1 仅做封装，不改变计算与报告语义。

@@ -79,7 +79,7 @@
 1. **Stage A / PDF**：无 `--pdf`/`--report-url` 时，在 run 目录下按 Feed **自动发现**年报 URL 并 Phase0 下载（**非 `--strict`** 为 best-effort；**`--strict`** 为强制，失败 fail-fast）。与 `workflow --mode turtle-strict` 共用 `ensureAnnualPdfOnDisk` 语义。
 2. **Phase 1A**：结构化市场数据 → `data_pack_market.md`。
 3. **Phase 2A/2B（有本地 PDF 时）**：精提取 → `data_pack_report.md`。
-4. **Phase 1B**：HTTP/MCP 检索补充 → 合并写入 `qualitative_report.md`（§7/§8/§10）与 `qualitative_d1_d6.md`（含可选 `data_pack_report` 摘录）——此为 **草稿/证据合并**，**不等于**终稿叙事。
+4. **Phase 1B**：HTTP 检索补充 → 合并写入 `qualitative_report.md`（§7/§8/§10）与 `qualitative_d1_d6.md`（含可选 `data_pack_report` 摘录）——此为 **草稿/证据合并**，**不等于**终稿叙事。
 5. **AI 六维终稿（Claude，默认）**：通读 `data_pack_market.md`、（若有）`data_pack_report.md`、`phase1b_qualitative.md`，将 `qualitative_report.md` 写为 **六维叙事终稿**，将 `qualitative_d1_d6.md` 各维写为 **实质正文**（去掉「待补全」类占位）。若证据不足，**明确阻断**并列出缺口，**不**宣称已完成终稿。
 
 ## 降级与告警

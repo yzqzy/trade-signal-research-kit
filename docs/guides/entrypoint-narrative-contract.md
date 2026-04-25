@@ -10,7 +10,8 @@
 |------|------|
 | **evidence-pack（证据包）** | `data_pack_market.md`、可选 `data_pack_report.md`、`phase1b_qualitative.*` 等可重复、可门禁的产物 |
 | **cli-evidence-only** | 仅通过 `pnpm run …` 跑编排时的语义：产出证据与工程合并稿，**不宣称**已完成「AI 六维终稿」 |
-| **final-narrative（终稿叙事）** | 基于证据包，由 **Claude** 写回的 `qualitative_report.md` / `qualitative_d1_d6.md`（**`/business-analysis`** 路径）：**正文仅 `[E*]`/`[M:§x]`**，**裸 URL 只在附录**；含 **监管与合规要点**、**附录：证据索引**、按需缺口与 PDF 声明；终稿完成态受 **PDF 是否存在 / gateVerdict** 约束（见下文） |
+| **final-narrative（终稿叙事）** | **V2 专题 ID**：`topic:business-six-dimension`。落地文件仍为 **`qualitative_report.md` / `qualitative_d1_d6.md`**（**`/business-analysis`** 路径），由 **Claude** 写回：**正文仅 `[E*]`/`[M:§x]`**，**裸 URL 只在附录**；含 **监管与合规要点**、**附录：证据索引**、按需缺口与 PDF 声明；终稿完成态受 **PDF 是否存在 / gateVerdict** 约束（见下文）。对外「含六维的全流程完成」以站点发布集合是否包含该 **Topic** 为准（见 [v2-flow-topology](../architecture/v2-flow-topology.md)）。 |
+| **SelectionResult（选股分支）** | **V2**：`SelectionLayer` 产出候选池与排序（如 screener）；**不得**视为 Topic 子树。候选可 **按需** 触发额外 **TopicReport** 下钻（非强制全量）；证据链仍须满足 [v2-domain-contract](../architecture/v2-domain-contract.md)（经 Feature → Policy）。 |
 | **report-polish（发布型多页稿）** | **`/workflow-analysis`** 在 Phase3 后由 TS 落盘：`report_view_model.json` + `turtle_overview.md` 等四页 Markdown；经 `reports-site:emit` 进入研报站；**不是** `final-narrative`，也**不**替代六维终稿 |
 
 ## 入口矩阵

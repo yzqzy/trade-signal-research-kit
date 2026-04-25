@@ -7,11 +7,9 @@
     "paths": {
       "@trade-signal/schema-core": ["./packages/core-schema/src/index.ts"],
       "@trade-signal/provider-http": ["./packages/provider-http/src/index.ts"],
-      "@trade-signal/provider-mcp": ["./packages/provider-mcp/src/index.ts"],
       "@trade-signal/research-strategies": [
         "./packages/research-strategies/src/index.ts"
-      ],
-      "@trade-signal/reporting": ["./packages/reporting/src/index.ts"]
+      ]
     },
     "declaration": true,
     "outDir": "dist",

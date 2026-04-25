@@ -128,18 +128,6 @@ function installHttpFetchMock(): () => void {
   };
 }
 
-async function mockMcpCall(toolName: string): Promise<unknown> {
-  if (toolName === "get_stock_info") return { detail: FIXTURE.instrument };
-  if (toolName === "get_stock_quote") return FIXTURE.quote;
-  if (toolName === "get_stock_kline") return FIXTURE.klines;
-  if (toolName === "get_stock_financial") return { financial: FIXTURE.financial };
-  if (toolName === "get_stock_financial_snapshot") return FIXTURE.financialSnapshot;
-  if (toolName === "get_stock_financial_history") return FIXTURE.financialHistory;
-  if (toolName === "get_stock_corporate_actions") return FIXTURE.actions;
-  if (toolName === "get_trading_calendar") return FIXTURE.calendar;
-  throw new Error(`Unsupported tool in fixture: ${toolName}`);
-}
-
 async function main(): Promise<void> {
   initCliEnv();
   const root = path.resolve(process.cwd(), "../..");
@@ -147,65 +135,41 @@ async function main(): Promise<void> {
     root,
     "packages/provider-http/dist/index.js",
   );
-  const mcpProviderModulePath = path.join(
-    root,
-    "packages/provider-mcp/dist/index.js",
-  );
   const { FeedHttpProvider } = (await import(pathToFileURL(httpProviderModulePath).href)) as {
     FeedHttpProvider: new (...args: any[]) => any;
-  };
-  const { FeedMcpProvider } = (await import(pathToFileURL(mcpProviderModulePath).href)) as {
-    FeedMcpProvider: new (...args: any[]) => any;
   };
 
   const restore = installHttpFetchMock();
   try {
     const http = new FeedHttpProvider({ baseUrl: "http://fixture-feed.local", apiBasePath: "/api/v1" });
-    const mcp = new FeedMcpProvider({ serverName: "fixture", callTool: mockMcpCall });
+    const instrument = await http.getInstrument("600887");
+    assert.equal(instrument.code, "600887");
+    assert.equal(instrument.name, "伊利股份");
 
-    const [hInstrument, mInstrument] = await Promise.all([
-      http.getInstrument("600887"),
-      mcp.getInstrument("600887"),
-    ]);
-    assert.deepEqual(hInstrument, mInstrument, "instrument mismatch");
+    const quote = await http.getQuote("600887");
+    assert.equal(quote.code, "600887");
+    assert.equal(quote.price, 28.5);
 
-    const [hQuote, mQuote] = await Promise.all([http.getQuote("600887"), mcp.getQuote("600887")]);
-    assert.deepEqual(hQuote, mQuote, "quote mismatch");
+    const klines = await http.getKlines({ code: "600887", period: "day" });
+    assert.ok(klines.length > 0, "klines should not be empty");
 
-    const [hKlines, mKlines] = await Promise.all([
-      http.getKlines({ code: "600887", period: "day" }),
-      mcp.getKlines({ code: "600887", period: "day" }),
-    ]);
-    assert.deepEqual(hKlines, mKlines, "klines mismatch");
+    const financial = await http.getFinancialSnapshot("600887", "2024");
+    assert.equal(financial.code, "600887");
+    assert.equal(financial.period, "2024");
 
-    const [hFinancial, mFinancial] = await Promise.all([
-      http.getFinancialSnapshot("600887", "2024"),
-      mcp.getFinancialSnapshot("600887", "2024"),
-    ]);
-    assert.deepEqual(hFinancial, mFinancial, "financial mismatch");
+    const finHist = await http.getFinancialHistory("600887", ["2024", "2023"]);
+    assert.ok(finHist.length >= 2, "financial history should include multiple years");
 
-    const [hFinHist, mFinHist] = await Promise.all([
-      http.getFinancialHistory("600887", ["2024", "2023"]),
-      mcp.getFinancialHistory("600887", ["2024", "2023"]),
-    ]);
-    assert.deepEqual(hFinHist, mFinHist, "financial history mismatch");
+    const actions = await http.getCorporateActions("600887", "2024-01-01", "2024-12-31");
+    assert.ok(actions.length > 0, "corporate actions should not be empty");
 
-    const [hActions, mActions] = await Promise.all([
-      http.getCorporateActions("600887", "2024-01-01", "2024-12-31"),
-      mcp.getCorporateActions("600887", "2024-01-01", "2024-12-31"),
-    ]);
-    assert.deepEqual(hActions, mActions, "corporate actions mismatch");
-
-    const [hCalendar, mCalendar] = await Promise.all([
-      http.getTradingCalendar("CN_A", "2026-01-01", "2026-01-31"),
-      mcp.getTradingCalendar("CN_A", "2026-01-01", "2026-01-31"),
-    ]);
-    assert.deepEqual(hCalendar, mCalendar, "trading calendar mismatch");
+    const calendar = await http.getTradingCalendar("CN_A", "2026-01-01", "2026-01-31");
+    assert.ok(calendar.length > 0, "trading calendar should not be empty");
   } finally {
     restore();
   }
 
-  console.log("[quality] conformance check passed (HTTP/MCP semantic parity on fixture)");
+  console.log("[quality] conformance check passed (HTTP-only fixture)");
 }
 
 void main();

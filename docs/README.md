@@ -8,12 +8,15 @@
 
 - **入口只放一处**：快速上手与命令入口以根目录 `README.md` 为准；**Claude Code** 仓库内指引见根目录 [`CLAUDE.md`](../CLAUDE.md)（与 guides 契约链接一致）
 - **参数只放一处**：CLI 参数、产物路径、续跑规则以 `guides/workflows.md` 为准
-- **架构只放一处**：策略边界与 Stage 语义以 `architecture/strategy-orchestration-architecture.md` 为准
+- **架构只放一处**：V2 对象与依赖以 `architecture/v2-domain-contract.md` 为准；Stage/策略插件历史叙事仍以 `strategy-orchestration-architecture.md` 为补充
 
 ## architecture（结构与编排边界）
 
 | 文档 | 说明 |
 |------|------|
+| [v2-domain-contract.md](./architecture/v2-domain-contract.md) | **V2 真源**：RawDataPack / FeatureSet / PolicyResult / TopicReport / SelectionResult、强依赖约束、run state、profile、证据追踪字段 |
+| [v2-flow-topology.md](./architecture/v2-flow-topology.md) | **V2** 唯一主流程图（四层 + Publisher）；六维=Topic、选股=Selection |
+| [v2-plugin-model.md](./architecture/v2-plugin-model.md) | **V2** Feature/Policy/Topic/Selection 插件契约与命名空间 |
 | [strategy-orchestration-architecture.md](./architecture/strategy-orchestration-architecture.md) | Stage A~E、策略插件、`StrategyPlugin` / `OrchestratorAdapter`、C1/C2 |
 
 ## guides（操作与契约）
@@ -45,4 +48,5 @@
 1. 先读根目录 `README.md`（Claude Code 优先路径与 Slash→CLI 映射）  
 2. 叙事职责：读 [entrypoint-narrative-contract.md](./guides/entrypoint-narrative-contract.md)（**主要在 Claude 使用**、TS 为证据管线）  
 3. 参数与产物：以 [guides/workflows.md](./guides/workflows.md) **与源码**为准（示意图与「当前实现」不一致时，以文档内「当前实现」为准）  
-4. 策略与阶段语义：[strategy-orchestration-architecture.md](./architecture/strategy-orchestration-architecture.md)
+4. V2 对象与拓扑：[v2-domain-contract.md](./architecture/v2-domain-contract.md) → [v2-flow-topology.md](./architecture/v2-flow-topology.md)  
+5. 策略与阶段语义（与 Stage 对照）：[strategy-orchestration-architecture.md](./architecture/strategy-orchestration-architecture.md)

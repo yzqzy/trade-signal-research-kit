@@ -8,6 +8,20 @@
 
 **脚本约定**：仓库根保留用户向命令（如 `pnpm run workflow:run`）；`@trade-signal/research-strategies` 包内统一使用 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史别名）。
 
+## 架构 V2（对象模型与旧 Phase 映射）
+
+**真源文档**（单一语义）：[v2-domain-contract.md](../architecture/v2-domain-contract.md) · [v2-flow-topology.md](../architecture/v2-flow-topology.md) · [v2-plugin-model.md](../architecture/v2-plugin-model.md)。
+
+| V2 层 / 对象 | 与当前实现（Phase / 产物）的粗映射 |
+|--------------|--------------------------------------|
+| RawDataPack | Phase1A/1B/2B 证据与市场包、PDF 抽取缓冲 |
+| FeatureSet | Phase3 因子与估值中间量（逐步抽离为显式特征层） |
+| PolicyResult | `StrategyPlugin` / Phase3 规则决策（如 `policy:turtle`） |
+| TopicReport | `report-polish` 多页 Markdown；六维商业专题 = `topic:business-six-dimension`（`qualitative_*` 写回） |
+| SelectionResult | `screener` 多标的输出；与 Topic **并列**，非 Topic 子分支 |
+
+**分治原则**：策略（Policy）给决策与分数；专题（Topic）只消费 **FeatureSet + PolicyResult** 做解释与发布稿；选股（Selection）走独立分支，可选对 TopN 触发专题渲染。**数据通道**：V2 文档口径为 **HTTP-only**（主链路）。
+
 ## 快速导航
 
 - **先跑起来**：看根目录 `README.md` 的「三种上手」

@@ -1,4 +1,4 @@
-export type Phase1BChannel = "http" | "mcp";
+export type Phase1BChannel = "http";
 
 export interface Phase1BInput {
   stockCode: string;
@@ -8,8 +8,6 @@ export interface Phase1BInput {
   channel?: Phase1BChannel;
   limitPerQuery?: number;
 }
-
-export type McpToolCaller = (toolName: string, args: Record<string, unknown>) => Promise<unknown>;
 
 export interface Phase1BEvidence {
   title: string;

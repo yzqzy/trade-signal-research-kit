@@ -51,6 +51,15 @@ pnpm --filter @trade-signal/research-strategies run run:reports-site-sync -- \
 
 `workflow:run` / `business-analysis:run` 可选 **`--reports-site-dir output/site/reports`**：跑完后追加写入同一聚合目录。
 
+## 架构 V2：`topic_manifest.json` / `publish_only`
+
+- 每次 `reports-site:emit` 在 **run 根目录** 写入 **`topic_manifest.json`**（`manifestVersion: "1.0"`），列出本次写入站点的专题：`v2TopicId`、`siteTopicType`、`entryId`、`sourceMarkdownRelative` 等，供外部工具与 **manifest 驱动发布** 对齐（见 [v2-plugin-model](../architecture/v2-plugin-model.md)）。
+- **仅再发布**：若目录下 **没有** `workflow_manifest.json` / `business_analysis_manifest.json`，但存在合法的 **`topic_manifest.json`**，则 emit 走 **`emitFromTopicManifestOnly`**，按清单中的 `sourceMarkdownRelative` 读取 Markdown 并重写 `entries`（`runProfile: publish_only` 场景）。
+
+## 选股（Selection）侧产物
+
+- `pnpm run screener:run`（包内 `run:screener`）在输出目录额外写入 **`selection_manifest.json`**（V2 `selection_fast` 简化视图，含候选列表与可选 `drillDownTopicIds`）。**不**经 `reports-site:emit` 进入个股专题站，除非后续显式接管线。
+
 ## GitHub Pages（本仓库 · Tag 发布）
 
 本仓库提供 GitHub Actions：推送 **`v*`** 标签后构建 `apps/research-hub` 静态导出并部署到 **GitHub Pages**（与 `trade-signal-docs` 的 `deploy.yml` 模式一致：`upload-pages-artifact` + `deploy-pages`）。

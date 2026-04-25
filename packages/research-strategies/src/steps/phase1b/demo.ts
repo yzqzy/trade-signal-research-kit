@@ -6,7 +6,7 @@ type DemoArgs = {
   stockCode: string;
   companyName: string;
   year?: string;
-  channel: "http" | "mcp";
+  channel: "http";
 };
 
 function parseArgs(argv: string[]): DemoArgs {
@@ -27,37 +27,21 @@ function parseArgs(argv: string[]): DemoArgs {
   const stockCode = values["stock-code"] ?? process.env.PHASE1B_STOCK_CODE ?? "";
   const companyName = values["company-name"] ?? process.env.PHASE1B_COMPANY_NAME ?? "";
   const year = values["year"] ?? process.env.PHASE1B_YEAR;
-  const channel = (values["channel"] ?? "http") as "http" | "mcp";
+  const channel = (values["channel"] ?? "http") as "http";
   if (!stockCode) throw new Error("Missing --stock-code or PHASE1B_STOCK_CODE");
   if (!companyName) throw new Error("Missing --company-name or PHASE1B_COMPANY_NAME");
-  if (!["http", "mcp"].includes(channel)) throw new Error("Invalid --channel, expected http|mcp");
+  if (channel !== "http") throw new Error("Invalid --channel, expected http");
   return { stockCode, companyName, year, channel };
 }
 
 async function main(): Promise<void> {
   initCliEnv();
   const args = parseArgs(process.argv.slice(2));
-  const mcpCallTool =
-    args.channel === "mcp"
-      ? async (_toolName: string, _params: Record<string, unknown>) => ({
-          data: [
-            {
-              title: "MCP mock result",
-              url: "https://example.com/mcp-source",
-              source: "mock-mcp",
-              snippet: "MCP 示例检索结果",
-            },
-          ],
-        })
-      : undefined;
-
   const supplement = await collectPhase1BQualitative({
     stockCode: args.stockCode,
     companyName: args.companyName,
     year: args.year,
     channel: args.channel,
-  }, {
-    mcpCallTool,
   });
 
   console.log("===PHASE1B_JSON===");

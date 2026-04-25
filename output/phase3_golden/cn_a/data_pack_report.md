@@ -9,7 +9,7 @@
 - totalPages: 10
 - sectionsFound: 5/7
 - annexStartPageEstimate: （未估计）
-- extractTime: 2026-04-22T13:23:09.371Z
+- extractTime: 2026-04-24T13:36:50.874Z
 - **pdfTextBackendsUsed**: —
 - **extractQuality.gateVerdict**: `OK`（关键块缺失→**CRITICAL**（编排/终稿硬阻断）；关键块仅低置信→**DEGRADED**（允许在强制 PDF 声明下终稿标「完成」））
 - **allowsFinalNarrativeComplete**: `true`

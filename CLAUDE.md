@@ -23,12 +23,15 @@ Quick slash examples: `/workflow-analysis 600887` · `/business-analysis 600887`
 
 ## Final output boundaries
 
-1. **`/workflow-analysis`** — **Publish-shaped** artifacts: **report-polish** (four Markdown pages + `report_view_model.json`), consumed by **`reports-site:emit`**. It does **not** replace **six-dimension final narrative** write-back.
-2. **`/business-analysis`** — **Six-dimension final narrative** in Claude: `business-analysis-finalize` writes **`qualitative_report.md`** / **`qualitative_d1_d6.md`** per shared criteria (not the same as report-polish pages).
+1. **`/workflow-analysis`** — **Publish-shaped** artifacts: **report-polish** maps to V2 **TopicReport** set (four Markdown pages + `report_view_model.json`), consumed by **`reports-site:emit`**. It does **not** replace **`topic:business-six-dimension`** Claude write-back.
+2. **`/business-analysis`** — **`topic:business-six-dimension`** final narrative in Claude: `business-analysis-finalize` writes **`qualitative_report.md`** / **`qualitative_d1_d6.md`** per shared criteria (not the same as report-polish pages).
 3. **`analysis_report.md`** — Phase3 **rule/audit** report; not the site layout “final page set.”
 
 ## Canonical contracts (read these, do not duplicate here)
 
+- [v2-domain-contract.md](docs/architecture/v2-domain-contract.md) — **V2** five objects, run state, profiles, evidence refs  
+- [v2-flow-topology.md](docs/architecture/v2-flow-topology.md) — **V2** single main flowchart (Feature / Policy / Topic / Selection / Publisher)  
+- [v2-plugin-model.md](docs/architecture/v2-plugin-model.md) — **V2** plugin IDs and contracts  
 - [entrypoint-narrative-contract.md](docs/guides/entrypoint-narrative-contract.md) — entry matrix, CLI vs Claude semantics  
 - [report-polish-narrative-contract.md](docs/guides/report-polish-narrative-contract.md) — report-polish evidence boundaries  
 - [skill-shared-final-narrative-criteria.md](docs/guides/skill-shared-final-narrative-criteria.md) — six-dimension final narrative hard rules  
@@ -62,9 +65,8 @@ More: `pnpm run typecheck`, `pnpm run quality:all`; filter runs e.g. `pnpm --fil
 | Package | Role |
 |---------|------|
 | `schema-core` | Contracts & standard fields |
-| `provider-http` / `provider-mcp` | Data adapters |
+| `provider-http` | Primary data adapter (**HTTP-only** default per V2 docs) |
 | `research-strategies` | Orchestration, CLI, strategies |
-| `reporting` | MD/HTML helpers (not the primary site pipeline) |
 
 ## Skills (pointers)
 

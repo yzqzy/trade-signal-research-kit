@@ -15,7 +15,7 @@ type CliArgs = {
   pdfPath?: string;
   reportUrl?: string;
   category?: string;
-  phase1bChannel?: "http" | "mcp";
+  phase1bChannel?: "http";
   mode?: WorkflowMode;
   strategy?: WorkflowStrategyId;
   strict?: boolean;
@@ -49,7 +49,7 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   const channel = values["phase1b-channel"];
-  if (channel && channel !== "http" && channel !== "mcp") {
+  if (channel && channel !== "http") {
     throw new Error(`Invalid --phase1b-channel: ${channel}`);
   }
 
@@ -85,7 +85,7 @@ function parseArgs(argv: string[]): CliArgs {
     pdfPath: values.pdf,
     reportUrl: values["report-url"],
     category: values.category,
-    phase1bChannel: channel as "http" | "mcp" | undefined,
+    phase1bChannel: channel as "http" | undefined,
     mode,
     strategy,
     strict: flags.has("strict"),

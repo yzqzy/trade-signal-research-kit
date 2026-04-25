@@ -11,18 +11,17 @@
 ## 三层系统结构
 
 ```text
-research-strategies + reporting
+research-strategies
             │
         schema-core
             │
-    ┌───────┴────────┐
- provider-http   provider-mcp
+      provider-http
             │
-      trade-signal-feed
+     trade-signal-feed
 ```
 
 - 研究流程层只消费标准字段，不直接依赖上游原始字段名。
-- 适配器层负责 HTTP/MCP 语义对齐与错误转换。
+- 适配器层负责 HTTP 语义对齐与错误转换。
 - 策略层可替换，流程与报告契约保持稳定。
 
 ## 关键结论

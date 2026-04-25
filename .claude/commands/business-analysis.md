@@ -52,7 +52,7 @@ pnpm run business-analysis:run -- \
   [--report-url "https://..."] \
   [--output-dir "./output/business-analysis/<code>"] \
   [--company-name "可选"] \
-  [--phase1b-channel http|mcp] \
+  [--phase1b-channel http] \
   [--mode standard|turtle-strict] \
   [--strategy turtle|value_v1] \
   [--strict]

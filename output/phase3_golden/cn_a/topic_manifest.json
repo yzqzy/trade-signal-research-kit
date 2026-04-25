@@ -1,0 +1,40 @@
+{
+  "manifestVersion": "1.0",
+  "generatedAt": "2026-04-25T01:28:46.599Z",
+  "publishedAt": "2026-04-24T13:36:50.881Z",
+  "runProfile": "stock_full",
+  "outputLayout": {
+    "code": "600887",
+    "runId": "golden-cn_a"
+  },
+  "topics": [
+    {
+      "v2TopicId": "topic:turtle-strategy-explainer",
+      "siteTopicType": "turtle-strategy",
+      "entryId": "2026-04-24-600887-turtle-aaaaaaaa",
+      "requiredFieldsStatus": "complete",
+      "sourceMarkdownRelative": "run/analysis_report.md"
+    },
+    {
+      "v2TopicId": "topic:valuation",
+      "siteTopicType": "valuation",
+      "entryId": "2026-04-24-600887-valuation-aaaaaaaa",
+      "requiredFieldsStatus": "complete",
+      "sourceMarkdownRelative": "run/valuation_computed.json"
+    },
+    {
+      "v2TopicId": "topic:penetration-return",
+      "siteTopicType": "penetration-return",
+      "entryId": "2026-04-24-600887-penetration-aaaaaaaa",
+      "requiredFieldsStatus": "complete",
+      "sourceMarkdownRelative": "run/analysis_report.md"
+    },
+    {
+      "v2TopicId": "topic:business-six-dimension",
+      "siteTopicType": "business-quality",
+      "entryId": "2026-04-24-600887-biz-quality-aaaaaaaa",
+      "requiredFieldsStatus": "degraded",
+      "sourceMarkdownRelative": "run/analysis_report.md"
+    }
+  ]
+}

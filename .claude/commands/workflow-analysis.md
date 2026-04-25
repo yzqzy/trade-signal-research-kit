@@ -29,7 +29,7 @@ pnpm run workflow:run -- \
   [--report-url "https://..."] \
   [--output-dir "./output/workflow/<code>"] \
   [--run-id "<与 manifest 对齐的 runId>"] \
-  [--phase1b-channel http|mcp] \
+  [--phase1b-channel http] \
   [--strategy turtle|value_v1] \
   [--preflight strict|off]
 ```

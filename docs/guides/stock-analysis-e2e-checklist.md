@@ -22,7 +22,6 @@
 - [ ] `pnpm install`
 - [ ] `pnpm run build`
 - [ ] `FEED_BASE_URL` 可访问
-- [ ] （可选）若使用 MCP，确认 MCP 工具可调用
 
 ## 1. Phase0（可选）年报下载
 
@@ -170,7 +169,7 @@ pnpm run sync:reports-to-app
 - [ ] `output/site/reports/entries/*/content.md` 存在且 `meta.json` 中 `contentFile` 为 `content.md`
 - [ ] `apps/research-hub/public/reports/index.json` 的 `version` 为 `2.0`
 
-## 6. Provider 一致性（HTTP / MCP）
+## 6. Provider 一致性（HTTP）
 
 执行：
 
