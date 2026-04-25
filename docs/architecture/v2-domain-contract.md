@@ -16,7 +16,7 @@
 
 ## 依赖强约束（必须遵守）
 
-1. **TopicReport** 不得从 RawDataPack 直接推导结论；只能消费 **FeatureSet** 与 **PolicyResult**（及显式声明的其它 Topic 摘要）。
+1. **TopicReport** 不得重算策略公式、不得从 RawDataPack 直接推导结论；只能消费 **FeatureSet** 与 **PolicyResult**（及显式声明的其它 Topic 摘要）。
 2. **SelectionResult** 不得直接消费 RawDataPack；必须经过 **FeatureSet → PolicyResult**。
 3. **PolicyResult** 不得依赖 **TopicReport** 的渲染结果（单向：Policy → Topic）。
 4. **发布层（Publisher）** 只消费 **TopicReport** 与发布清单；不得把 Policy/Selection 内部对象原样暴露为站点终稿。

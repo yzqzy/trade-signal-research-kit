@@ -8,7 +8,7 @@
 
 - **入口只放一处**：快速上手与命令入口以根目录 `README.md` 为准；**Claude Code** 仓库内指引见根目录 [`CLAUDE.md`](../CLAUDE.md)（与 guides 契约链接一致）
 - **参数只放一处**：CLI 参数、产物路径、续跑规则以 `guides/workflows.md` 为准
-- **架构只放一处**：V2 对象与依赖以 `architecture/v2-domain-contract.md` 为准；Stage/策略插件历史叙事仍以 `strategy-orchestration-architecture.md` 为补充
+- **架构只放一处**：V2 对象与依赖以 `architecture/v2-domain-contract.md` 为真源；`strategy-orchestration-architecture.md` 为 Stage/策略插件的**操作面**补充，**与 V2 冲突时以 v2-*.md 为准**（见该文「与架构 V2 的关系」节）
 
 ## architecture（结构与编排边界）
 

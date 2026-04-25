@@ -2,6 +2,11 @@
 
 [返回项目首页](../../README.md) · [文档索引](../README.md)
 
+## 与架构 V2 的关系
+
+- **五对象、依赖方向、六维/选股/证据追踪** 以 [v2-domain-contract.md](./v2-domain-contract.md) 与 [v2-flow-topology.md](./v2-flow-topology.md) 为**唯一语义真源**。
+- 本文负责 **Stage A~E、策略插件、OrchestratorAdapter** 等**可执行主链的操作面**叙事；若与 V2 对象表述冲突，**以 v2-*.md 为准**，并应同步回修本文相关段落。
+
 ## 目标
 
 - **Turtle** 是**策略插件**，不是整条流水线的本体；通用流程由 **Stage A~E** 描述。
