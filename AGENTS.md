@@ -36,7 +36,7 @@ Quick slash examples: `/workflow-analysis 600887` · `/business-analysis 600887`
 - [report-polish-narrative-contract.md](docs/guides/report-polish-narrative-contract.md) — report-polish evidence boundaries  
 - [skill-shared-final-narrative-criteria.md](docs/guides/skill-shared-final-narrative-criteria.md) — six-dimension final narrative hard rules  
 - [skill-shared-pdf-gate-semantics.md](docs/guides/skill-shared-pdf-gate-semantics.md) — `data_pack_report` / `gateVerdict` vs completion state  
-- [skill-shared-skill-template.md](docs/guides/skill-shared-skill-template.md) — `.Codex/skills` five-section template  
+- [skill-shared-skill-template.md](docs/guides/skill-shared-skill-template.md) — `.claude/skills` five-section template  
 - [workflows.md](docs/guides/workflows.md) — Stage/Phase, output v2, resume  
 - [reports-site-publish.md](docs/guides/reports-site-publish.md) — site protocol (`content.md` v2)
 
@@ -75,10 +75,12 @@ More: `pnpm run typecheck`, `pnpm run quality:all`; filter runs e.g. `pnpm --fil
 
 ## Skills (pointers)
 
-- `.Codex/skills/workflow-strict/SKILL.md` — strict workflow + **report-polish** checks  
-- `.Codex/skills/business-analysis-finalize/SKILL.md` — six-dimension write-back entry  
-- `.Codex/skills/quality-gates/SKILL.md` — quality gate order  
-- `.Codex/skills/repo-router` + `repo-status` / `repo-submit` — git hygiene  
+技能正文与 [CLAUDE.md](CLAUDE.md) 共用同一路径：仓库 [`.claude/skills/`](.claude/skills/)（与 Claude Code 一致；无单独 `.Codex` 或 `.agents` 目录）。
+
+- `.claude/skills/workflow-strict/SKILL.md` — strict workflow + **report-polish** checks  
+- `.claude/skills/business-analysis-finalize/SKILL.md` — six-dimension write-back entry  
+- `.claude/skills/quality-gates/SKILL.md` — quality gate order  
+- `.claude/skills/repo-status/SKILL.md` / `.claude/skills/repo-submit/SKILL.md` — git 只读 / 确认后提交  
 
 ## Docs index
 

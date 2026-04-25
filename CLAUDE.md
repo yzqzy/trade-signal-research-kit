@@ -75,10 +75,13 @@ More: `pnpm run typecheck`, `pnpm run quality:all`; filter runs e.g. `pnpm --fil
 
 ## Skills (pointers)
 
+- **命令（Slash）** 对应 `.claude/commands/<name>.md`，与聊天中 `/` 后名称一致。  
+- **技能（Skill）** 为 `.claude/skills/<skillName>/SKILL.md`；`SKILL` 前 YAML 的 `name` 与目录名建议保持一致，作稳定 id，避免随意改名以免断链。
+
 - `.claude/skills/workflow-strict/SKILL.md` — strict workflow + **report-polish** checks  
 - `.claude/skills/business-analysis-finalize/SKILL.md` — six-dimension write-back entry  
 - `.claude/skills/quality-gates/SKILL.md` — quality gate order  
-- `.claude/skills/repo-router` + `repo-status` / `repo-submit` — git hygiene  
+- `.claude/skills/repo-status/SKILL.md` / `.claude/skills/repo-submit/SKILL.md` — git 只读 / 确认后提交  
 
 ## Docs index
 

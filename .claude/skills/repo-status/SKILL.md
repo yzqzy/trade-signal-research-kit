@@ -27,4 +27,3 @@ description: "查看 git status、当前分支、最近提交（只读）。"
 ## References
 
 - [Skill 统一模板](../../../docs/guides/skill-shared-skill-template.md)
-- 路由入口：[`repo-router`](../repo-router/SKILL.md)

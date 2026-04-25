@@ -31,7 +31,6 @@ description: "在用户确认后，暂存并提交当前相关更改（conventio
 ## References
 
 - [Skill 统一模板](../../../docs/guides/skill-shared-skill-template.md)
-- 路由入口：[`repo-router`](../repo-router/SKILL.md)
 
 ## Notes
 
