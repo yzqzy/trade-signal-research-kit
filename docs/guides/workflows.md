@@ -6,7 +6,7 @@
 
 本文档以 **Stage（通用编排阶段）** 为真源描述流程；**Phase 0~3** 为当前 CLI/代码中的实现命名，二者一一对应。策略（如 **Turtle / 龟龟**）仅作用于 **Stage E** 及证据投影层，不是整条流水线的名字。详见 [策略与流程解耦](../architecture/strategy-orchestration-architecture.md)。
 
-**脚本约定**：仓库根保留用户向命令（如 `pnpm run workflow:run`）；`@trade-signal/research-strategies` 包内统一使用 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史别名）。
+**脚本约定**：仓库根保留用户向命令（如 `pnpm run workflow:run`）；`@trade-signal/research-runtime` 包内统一使用 **`run:*` / `dev:*` / `quality:*` / `test:*`**（无历史别名）。
 
 ## 架构 V2（对象模型与旧 Phase 映射）
 
@@ -37,10 +37,10 @@
 
 ## 环境变量与 `.env`（CLI 统一初始化）
 
-`@trade-signal/research-strategies` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
+`@trade-signal/research-runtime` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
 
 1. **当前工作目录**下的 `.env`
-2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-strategies` 执行时通常对应**仓库根**的 `.env`）
+2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-runtime` 执行时通常对应**仓库根**的 `.env`）
 
 命中第一个存在的文件后即停止加载。**已在 shell 中 `export` 的变量不会被 `.env` 覆盖**（dotenv 默认行为）。仍需在根 `.env` 或环境中配置 `FEED_BASE_URL` 等，详见各子文档（如 [Phase 0 下载器](./phase0-download.md)）。Phase1B 调用的 `GET /api/v1/stock/report/search` 传 `code`/`year`/`category`/`limit`/`timeRange`/`stockName`/`item`（`category` 为中文多值分号串；`timeRange` 默认 `3y`）；标题过滤仅用 `keyword`（详见 [数据源与 Phase1B](./data-source.md)）。
 
@@ -55,7 +55,7 @@
 - **screener**：在 `--output-dir` 根下写入 `output/screener/<market>/<mode>/<runId>/`（若根为默认 `output`，则完整路径为 `output/screener/...`）。
 - **清单字段**：`workflow_manifest.json` / `business_analysis_manifest.json` 的 `manifestVersion` 为 **`2.0`**，并含 `outputLayout: { version, area, code, runId }`。
 
-源码目录职责见下文「research-strategies 源码目录职责」；策略注册步骤见 [策略与流程解耦](../architecture/strategy-orchestration-architecture.md)。
+源码目录职责见下文「research-runtime 源码目录职责」；策略注册步骤见 [策略与流程解耦](../architecture/strategy-orchestration-architecture.md)。
 
 ### output v2 典型命令对照
 
@@ -145,9 +145,9 @@ Phase1A → Phase1B → Phase3 → ReportPolish → manifest
 
 以下条目是历史 `contract-baseline` 的冻结信息，已并入本文件维护：
 
-- Workflow 编排实现：`packages/research-strategies/src/runtime/workflow/orchestrator.ts`（入口）+ `packages/research-strategies/src/runtime/graph/langgraph/`（LangGraph 内核）
-- Business-analysis 编排：`packages/research-strategies/src/runtime/business-analysis/orchestrator.ts`
-- 严格文案与错误前缀实现：`packages/research-strategies/src/crosscut/preflight/strict-mode-message.ts`
+- Workflow 编排实现：`packages/research-runtime/src/runtime/workflow/orchestrator.ts`（入口）+ `packages/research-runtime/src/runtime/graph/langgraph/`（LangGraph 内核）
+- Business-analysis 编排：`packages/research-runtime/src/runtime/business-analysis/orchestrator.ts`
+- 严格文案与错误前缀实现：`packages/research-runtime/src/crosscut/preflight/strict-mode-message.ts`
 - 质量发布门禁：`pnpm run typecheck`、`pnpm run build`、`pnpm run test:linkage`、`pnpm run quality:all`
 
 ## LangGraph 编排与 Claude Code 协作（分层）
@@ -187,7 +187,7 @@ Phase1A → Phase1B → Phase3 → ReportPolish → manifest
 ## `workflow:run` 与参数
 
 - **Stage A / Phase 0**：`workflow` 内 `--report-url` 触发下载；**`--mode turtle-strict` 且未传 `--pdf`/`--report-url` 时**在 initPrep 内按 Feed 自动发现 PDF 并下载（与 `ensureAnnualPdfOnDisk` 语义一致，失败 fail-fast）。**仅 `--pdf` 不经过 Phase0**。独立 `phase0:download` 可无 `--url`，由 Feed `/stock/report/search` 自动发现 PDF（需 `FEED_BASE_URL`）。详见 [Phase 0 下载器](./phase0-download.md)。
-- **`business-analysis`**：与 workflow 共用同一套 **PDF 解析/下载/缓存**（`packages/research-strategies/src/crosscut/preflight/ensure-annual-pdf.ts`）。无 `--pdf`/`--report-url` 时：**非 `--strict`** 为 **best-effort** 自动发现；**`--strict`** 为强制发现（失败即 `[strict:business-analysis]`）。
+- **`business-analysis`**：与 workflow 共用同一套 **PDF 解析/下载/缓存**（`packages/research-runtime/src/crosscut/preflight/ensure-annual-pdf.ts`）。无 `--pdf`/`--report-url` 时：**非 `--strict`** 为 **best-effort** 自动发现；**`--strict`** 为强制发现（失败即 `[strict:business-analysis]`）。
 - **依赖**：`FEED_BASE_URL`（Phase1A 固定 HTTP Provider）；编排内合成的 `data_pack_market.md` 与手写 golden 用途不同。
 - **Pre-flight**：`--mode turtle-strict` 时，Phase1A 后会校验行情/财报关键字段及市场包是否含 `## §13 Warnings`；亦可用 `--preflight strict` 在 `standard` 下强制开启。`business-analysis --strict` 会同时启用 Pre-flight（`strict`）。
 - **与独立 Phase3（`run:phase3`）差异**：编排不传 `--interim-report-md`。
@@ -229,7 +229,7 @@ pnpm run valuation:run -- \
 pnpm run valuation:run -- --from-manifest "./output/workflow/600887/<runId>/business_analysis_manifest.json"
 ```
 
-- 另见：[Feed 缺口契约](./feed-gap-contract.md)（`## 数据缺口与补齐建议`）。Screener 行为对照：`packages/research-strategies/src/screener/screener-parity.md`。
+- 另见：[Feed 缺口契约](./feed-gap-contract.md)（`## 数据缺口与补齐建议`）。Screener 行为对照：`packages/research-runtime/src/screener/screener-parity.md`。
 
 Claude：`/valuation`（见 `.claude/commands/`）。研报站发布见 [reports-site-publish](./reports-site-publish.md)（`content.md` v2）。
 
@@ -243,9 +243,9 @@ Claude：`/valuation`（见 `.claude/commands/`）。研报站发布见 [reports
 - **D / Phase 2A+2B**：PDF 章节定位与精提取
 - **E / Phase 3**：策略评估（如 Turtle）+ 定量 + 估值 + 报告渲染（确定性规则输出）。**PDF-first 深度定性**在 Claude Code 中执行 `/business-analysis`。
 
-## research-strategies 源码目录职责
+## research-runtime 源码目录职责
 
-`packages/research-strategies/src/` 当前按“运行时 + 固定流程 + 横切能力”组织：
+`packages/research-runtime/src/` 当前按“运行时 + 固定流程 + 横切能力”组织：
 
 | 目录 | 职责 |
 |------|------|
@@ -275,18 +275,18 @@ Claude：`/valuation`（见 `.claude/commands/`）。研报站发布见 [reports
   - 章节键：`P2`、`P3`、`P4`、`P6`、`P13`、`MDA`、`SUB`
 - 章节值：`PdfSectionBlock`（`title/content/pageFrom/pageTo`）
 
-Phase2A CLI（research-strategies）：
+Phase2A CLI（research-runtime）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:phase2a-extract -- \
+pnpm --filter @trade-signal/research-runtime run run:phase2a-extract -- \
   --pdf "./cache/reports/SH600519/600519_2024_年报.pdf" \
   --output "./output/pdf_sections.json"
 ```
 
-Phase2B CLI（research-strategies，输出 5+1 `data_pack_report.md`，不含 MDA）：
+Phase2B CLI（research-runtime，输出 5+1 `data_pack_report.md`，不含 MDA）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:phase2b-render -- \
+pnpm --filter @trade-signal/research-runtime run run:phase2b-render -- \
   --pdf "./cache/reports/SH600519/600519_2024_年报.pdf" \
   --phase2a-output "./output/pdf_sections.json" \
   --output "./output/data_pack_report.md"
@@ -295,15 +295,15 @@ pnpm --filter @trade-signal/research-strategies run run:phase2b-render -- \
 如果已经有 `pdf_sections.json`，可直接渲染：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:phase2b-render -- \
+pnpm --filter @trade-signal/research-runtime run run:phase2b-render -- \
   --sections "./output/pdf_sections.json" \
   --output "./output/data_pack_report.md"
 ```
 
-Phase3 CLI（research-strategies）：
+Phase3 CLI（research-runtime）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:phase3 -- \
+pnpm --filter @trade-signal/research-runtime run run:phase3 -- \
   --market-md "./output/phase3_golden/cn_a/data_pack_market.md" \
   --report-md "./output/phase3_golden/cn_a/data_pack_report.md" \
   --output-dir "./output"
@@ -319,7 +319,7 @@ pnpm --filter @trade-signal/research-strategies run run:phase3 -- \
 Workflow CLI（一键串联）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:workflow -- \
+pnpm --filter @trade-signal/research-runtime run run:workflow -- \
   --code 600887 \
   --year 2024 \
   --pdf "./references/tmp/1216664083.pdf" \
@@ -350,7 +350,7 @@ pnpm run workflow:run -- \
 - 主要产物：`phase1a_data_pack.json`、`data_pack_market.md`、`phase1b_qualitative.{json,md}`、`phase1b_evidence_quality.json`、可选 `pdf_sections.json` / `data_pack_report.md`、可选 `pdf_sections_interim.json` / `data_pack_report_interim.md`、`valuation_computed.json`、`analysis_report.{md,html}`、`phase3_preflight.md`、`workflow_manifest.json`
 - 编排侧：`workflow_graph_checkpoint.json`（续跑快照）与 `workflow_manifest.json` 的 `orchestration` 扩展字段（`engine`、`strategyId`、`runId`、`threadId`、`completedStages`）。续跑：`--resume-from-stage B|D`（**必须** `--output-dir` 指向已有 run 根目录 `.../workflow/<code>/<runId>/`；`D` 会跳过 Stage B）。程序化调用对应字段为 `RunWorkflowInput.resumeFromStage`。
 - Feed 与续跑环境说明见 [数据源与字段契约](./data-source.md)。
-- Phase2 分区/渲染契约烟测（需先 `pnpm run build`）：`pnpm --filter @trade-signal/research-strategies run test:phase2`
+- Phase2 分区/渲染契约烟测（需先 `pnpm run build`）：`pnpm --filter @trade-signal/research-runtime run test:phase2`
 
 Business analysis CLI（Stage E 前停）：
 
@@ -365,7 +365,7 @@ pnpm run business-analysis:run -- \
 Screener CLI（独立策略域，与 Stage E 并行存在）：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:screener -- \
+pnpm --filter @trade-signal/research-runtime run run:screener -- \
   --market CN_A \
   --mode standalone \
   --input-json "./output/screener_samples/cn_a_universe.json" \
@@ -373,7 +373,7 @@ pnpm --filter @trade-signal/research-strategies run run:screener -- \
 ```
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run run:screener -- \
+pnpm --filter @trade-signal/research-runtime run run:screener -- \
   --market HK \
   --mode composed \
   --input-json "./output/screener_samples/hk_universe.json" \
@@ -398,10 +398,10 @@ pnpm run quality:all
 或分项：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run quality:conformance
-pnpm --filter @trade-signal/research-strategies run quality:contract
-pnpm --filter @trade-signal/research-strategies run quality:regression -- --suite hk
-pnpm --filter @trade-signal/research-strategies run quality:phase3-golden -- --suite cn_a
+pnpm --filter @trade-signal/research-runtime run quality:conformance
+pnpm --filter @trade-signal/research-runtime run quality:contract
+pnpm --filter @trade-signal/research-runtime run quality:regression -- --suite hk
+pnpm --filter @trade-signal/research-runtime run quality:phase3-golden -- --suite cn_a
 ```
 
 说明：`contract` 使用 `output/phase3_golden/cn_a/`；`regression` / `phase3-golden` 支持 `--suite cn_a|hk|all`（`quality:all` 默认 `all`）。详见 [数据源与字段契约](./data-source.md)。

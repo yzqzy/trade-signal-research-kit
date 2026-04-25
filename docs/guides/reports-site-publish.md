@@ -13,7 +13,7 @@
 
 | 组件 | 职责 |
 |------|------|
-| `trade-signal-schema-kit`（`@trade-signal/research-strategies`） | 从单次 `workflow` / `business-analysis` run 归一化生成 `output/site/reports/**` |
+| `trade-signal-research-kit`（`@trade-signal/research-runtime`） | 从单次 `workflow` / `business-analysis` run 归一化生成 `output/site/reports/**` |
 | `apps/research-hub`（`@trade-signal/research-hub`） | 消费 `public/reports/**`，静态导出 `/reports` 列表与详情（详情页 **仅 Markdown 渲染**） |
 
 ## 目录协议（`site/reports`）
@@ -29,14 +29,14 @@
 
 ## 常用命令
 
-在 **schema-kit 仓库根**：
+在 **本 monorepo 仓库根**（`trade-signal-research-kit` / 本地目录名可不同）：
 
 ```bash
 # 从已有 run 目录聚合写入 output/site/reports（并重建 views/index）
 pnpm run reports-site:emit -- --run-dir output/workflow/600941/<runId>
 
 # 仅重建索引（entries 已存在）
-pnpm --filter @trade-signal/research-strategies run run:reports-site-emit -- --reindex-only
+pnpm --filter @trade-signal/research-runtime run run:reports-site-emit -- --reindex-only
 
 # 同步到本仓库 apps/research-hub/public/reports（默认）
 pnpm run sync:reports-to-app
@@ -45,7 +45,7 @@ pnpm run sync:reports-to-app
 pnpm run sync:reports-to-docs
 
 # 自定义目标目录
-pnpm --filter @trade-signal/research-strategies run run:reports-site-sync -- \
+pnpm --filter @trade-signal/research-runtime run run:reports-site-sync -- \
   --target-dir /path/to/any/public/reports
 ```
 

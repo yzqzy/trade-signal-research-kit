@@ -42,7 +42,7 @@ pnpm run phase0:download -- \
 发布到 npm 后也可使用 `npx`（统一命令 `ts-phase0-download`）：
 
 ```bash
-npx --package @trade-signal/research-strategies ts-phase0-download \
+npx --package @trade-signal/research-runtime ts-phase0-download \
   --url "https://stockn.xueqiu.com/path/to/report.pdf" \
   --stock-code "SH600519" \
   --category "年报" \

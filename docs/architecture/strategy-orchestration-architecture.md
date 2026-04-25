@@ -11,7 +11,7 @@
 ## 三层系统结构
 
 ```text
-research-strategies
+research-runtime
             │
         schema-core
             │
@@ -74,7 +74,7 @@ research-strategies
 
 ## 接口边界
 
-### `StrategyPlugin`（实现见 `packages/research-strategies/src/strategy/contracts.ts`）
+### `StrategyPlugin`（实现见 `packages/research-runtime/src/strategy/contracts.ts`）
 
 ```ts
 export interface StrategyPlugin {
@@ -103,20 +103,20 @@ export interface OrchestratorAdapter {
 
 ## Monorepo 目录与边界（与当前仓库对齐）
 
-- `packages/research-strategies/src/runtime/`：对外用例编排与 LangGraph 运行时
-- `packages/research-strategies/src/steps/phase*`：阶段执行器（Phase0~Phase3）
-- `packages/research-strategies/src/strategy/`：`contracts.ts`、`registry.ts`、平行策略目录（如 `turtle/`、`value-v1/`）
-- `packages/research-strategies/src/adapters/`：外部能力适配（如 websearch）
-- `packages/research-strategies/src/crosscut/`：preflight、normalization、structured-inputs、feed-gap
-- `packages/research-strategies/src/contracts/`：跨层契约类型（如 `workflow-run-types.ts` / `RunWorkflowInput`）
-- `packages/research-strategies/src/cli/`：Node CLI 入口（`run:*` 脚本指向构建产物）
+- `packages/research-runtime/src/runtime/`：对外用例编排与 LangGraph 运行时
+- `packages/research-runtime/src/steps/phase*`：阶段执行器（Phase0~Phase3）
+- `packages/research-runtime/src/strategy/`：`contracts.ts`、`registry.ts`、平行策略目录（如 `turtle/`、`value-v1/`）
+- `packages/research-runtime/src/adapters/`：外部能力适配（如 websearch）
+- `packages/research-runtime/src/crosscut/`：preflight、normalization、structured-inputs、feed-gap
+- `packages/research-runtime/src/contracts/`：跨层契约类型（如 `workflow-run-types.ts` / `RunWorkflowInput`）
+- `packages/research-runtime/src/cli/`：Node CLI 入口（`run:*` 脚本指向构建产物）
 - `packages/core-schema/`（包名 `@trade-signal/schema-core`）：通用契约，**不放策略私有字段**
 
 ## 新增策略接入流程（非 Turtle）
 
 1. **定义策略 ID 与版本**，实现 `StrategyPlugin`（`supports` / `evaluate` / 可选 `render`）。
 2. **实现 C2**：将策略所需的证据槽位从 C1 输出投影为策略上下文（不与 C1 混写）。
-3. **注册策略**：在 `packages/research-strategies/src/strategy/registry.ts` 将 `strategyId` 映射到插件实现；编排层仅解析 ID（CLI 已支持 `--strategy <id>`，与 `--mode` 等参数共存演进）。
+3. **注册策略**：在 `packages/research-runtime/src/strategy/registry.ts` 将 `strategyId` 映射到插件实现；编排层仅解析 ID（CLI 已支持 `--strategy <id>`，与 `--mode` 等参数共存演进）。
 4. **契约对齐**：仅使用标准字段；需要新字段时走 **schema-core 变更**，而非在插件内引用 feed 原始键。
 5. **质量门禁**：通用门（conformance / contract / regression / golden）照跑；策略专有规则单独目录或 manifest（按 `strategyId` 分类）。
 
@@ -136,11 +136,11 @@ export interface OrchestratorAdapter {
 
 ## 新增策略接入操作清单
 
-1. 新建 `packages/research-strategies/src/strategy/<your-id>/plugin.ts`，导出 `createXxxStrategyPlugin(): StrategyPlugin`。  
-2. 在 `packages/research-strategies/src/contracts/workflow-run-types.ts` 扩展 `WorkflowStrategyId` 联合类型。  
-3. 在 `packages/research-strategies/src/strategy/registry.ts` 注册 `resolveWorkflowStrategyPlugin` 分支。  
-4. 在 `packages/research-strategies/src/cli/workflow.ts` 扩展 `--strategy` 白名单。  
-5. 在 `packages/research-strategies/src/quality/strategy-plugin-smoke.ts` 补最小 smoke 用例。  
+1. 新建 `packages/research-runtime/src/strategy/<your-id>/plugin.ts`，导出 `createXxxStrategyPlugin(): StrategyPlugin`。  
+2. 在 `packages/research-runtime/src/contracts/workflow-run-types.ts` 扩展 `WorkflowStrategyId` 联合类型。  
+3. 在 `packages/research-runtime/src/strategy/registry.ts` 注册 `resolveWorkflowStrategyPlugin` 分支。  
+4. 在 `packages/research-runtime/src/cli/workflow.ts` 扩展 `--strategy` 白名单。  
+5. 在 `packages/research-runtime/src/quality/strategy-plugin-smoke.ts` 补最小 smoke 用例。  
 6. 运行回归：`pnpm run typecheck && pnpm run build && pnpm run test:linkage && pnpm run quality:all`。
 
 ## 与现状兼容说明

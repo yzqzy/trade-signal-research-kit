@@ -2,7 +2,7 @@
 
 参考：`references/projects/Turtle_investment_framework/scripts/screener_core.py`、`screener_config.py`、`tests/test_screener.py`（逻辑参考，数据源以本仓 feed / 自选 universe 为准）。
 
-| 能力域 | 参考实现 (Python) | TS (`packages/research-strategies/src/screener`) | 状态 |
+| 能力域 | 参考实现 (Python) | TS (`packages/research-runtime/src/screener`) | 状态 |
 |--------|-------------------|--------------------------------------------------|------|
 | Tier1 全市场快照 | 脚本内合并多表 | 由上游 **universe JSON**（或 HTTP feed）提供等价字段 | 已对齐（数据契约） |
 | ST/PT/退市 名称过滤 | `_tier1_filter` | `cn-a.ts` 同名正则 | 已对齐 |

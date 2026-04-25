@@ -7,8 +7,11 @@
     "paths": {
       "@trade-signal/schema-core": ["./packages/core-schema/src/index.ts"],
       "@trade-signal/provider-http": ["./packages/provider-http/src/index.ts"],
+      "@trade-signal/research-runtime": [
+        "./packages/research-runtime/src/index.ts"
+      ],
       "@trade-signal/research-strategies": [
-        "./packages/research-strategies/src/index.ts"
+        "./packages/research-runtime/src/index.ts"
       ]
     },
     "declaration": true,

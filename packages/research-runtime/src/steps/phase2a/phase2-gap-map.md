@@ -27,6 +27,6 @@
 
 ## 回归与验收
 
-- `pnpm --filter @trade-signal/research-strategies run test:phase2`：分区与评分单测
+- `pnpm --filter @trade-signal/research-runtime run test:phase2`：分区与评分单测
 - `pnpm run test:linkage`：Phase2B 渲染契约
 - `pnpm run quality:all`：全链路不变

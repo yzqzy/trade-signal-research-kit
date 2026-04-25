@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 选股器契约烟测（内存 fixture，不依赖外部 feed）。
- * `pnpm run build && pnpm --filter @trade-signal/research-strategies run test:screener`
+ * `pnpm run build && pnpm --filter @trade-signal/research-runtime run test:screener`
  */
 import { initCliEnv } from "../lib/init-cli-env.js";
 import assert from "node:assert/strict";

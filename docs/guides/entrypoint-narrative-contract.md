@@ -2,7 +2,7 @@
 
 [返回文档索引](../README.md) · [流程真源](./workflows.md)
 
-本仓库与参考项目（`references/projects/Turtle_investment_framework`）对齐：**确定性证据管线由 TypeScript/CLI 执行；六维定性终稿与叙事收口在 Claude Code（Slash / Skills / 会话内 Agent）完成。**`@trade-signal/research-strategies` **不包含**直连 Anthropic/OpenAI 等模型厂商 HTTP/SDK 的「自动叙事」能力。
+本仓库与参考项目（`references/projects/Turtle_investment_framework`）对齐：**确定性证据管线由 TypeScript/CLI 执行；六维定性终稿与叙事收口在 Claude Code（Slash / Skills / 会话内 Agent）完成。**`@trade-signal/research-runtime` **不包含**直连 Anthropic/OpenAI 等模型厂商 HTTP/SDK 的「自动叙事」能力。
 
 ## 术语
 

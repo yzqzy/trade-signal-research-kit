@@ -69,8 +69,8 @@ jobs:
       - name: Emit and sync reports (optional)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_dir != '' }}
         run: |
-          pnpm --filter @trade-signal/research-strategies run run:reports-site-emit -- --run-dir "${{ github.event.inputs.run_dir }}"
-          pnpm --filter @trade-signal/research-strategies run run:reports-site-sync
+          pnpm --filter @trade-signal/research-runtime run run:reports-site-emit -- --run-dir "${{ github.event.inputs.run_dir }}"
+          pnpm --filter @trade-signal/research-runtime run run:reports-site-sync
 
       - name: Build research-hub static export
         run: pnpm --filter @trade-signal/research-hub run build

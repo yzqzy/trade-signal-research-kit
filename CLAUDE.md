@@ -4,7 +4,7 @@ Guidance for **Claude Code** (claude.ai/code) in this repo. **Rules live in `doc
 
 ## Project snapshot
 
-`trade-signal-schema-kit` is a TypeScript research stack for **A-share and HK** stocks: data collection, optional annual PDF extraction, external evidence, strategy/valuation (Phase3), and **Markdown-first** site publishing.
+`trade-signal-research-kit` is a TypeScript research stack for **A-share and HK** stocks: data collection, optional annual PDF extraction, external evidence, strategy/valuation (Phase3), and **Markdown-first** site publishing.
 
 - **TS / CLI**: deterministic pipelines only; **no** in-repo Anthropic/OpenAI HTTP/SDK for “auto narrative.”
 - **Two final-artifact paths** (do not conflate): see **Final output boundaries** below.
@@ -53,7 +53,7 @@ pnpm run reports-site:emit -- --run-dir ./output/workflow/<code>/<runId>
 pnpm run sync:reports-to-app
 ```
 
-More: `pnpm run typecheck`, `pnpm run quality:all`; filter runs e.g. `pnpm --filter @trade-signal/research-strategies run run:workflow` — see [workflows.md](docs/guides/workflows.md).
+More: `pnpm run typecheck`, `pnpm run quality:all`; filter runs e.g. `pnpm --filter @trade-signal/research-runtime run run:workflow` — see [workflows.md](docs/guides/workflows.md).
 
 ## Quality and safety notes
 
@@ -66,7 +66,7 @@ More: `pnpm run typecheck`, `pnpm run quality:all`; filter runs e.g. `pnpm --fil
 |---------|------|
 | `schema-core` | Contracts & standard fields |
 | `provider-http` | Primary data adapter (**HTTP-only** default per V2 docs) |
-| `research-strategies` | Orchestration, CLI, strategies |
+| `research-runtime` | Orchestration, CLI, strategies |
 
 ## Skills (pointers)
 

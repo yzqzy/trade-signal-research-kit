@@ -38,24 +38,24 @@ function runRule(root: string, rule: GuardRule): void {
 
 function main(): void {
   const cwd = process.cwd();
-  const root = path.basename(cwd) === "research-strategies" ? path.resolve(cwd, "../..") : cwd;
+  const root = path.basename(cwd) === "research-runtime" ? path.resolve(cwd, "../..") : cwd;
   const rules: GuardRule[] = [
     {
       packageName: "research-contracts",
       forbiddenImportRe:
-        /from\s+["']@trade-signal\/research-(registry|pipelines|adapters|strategies)["']/u,
+        /from\s+["']@trade-signal\/research-(registry|pipelines|adapters|runtime)["']/u,
     },
     {
       packageName: "research-registry",
-      forbiddenImportRe: /from\s+["']@trade-signal\/research-(pipelines|adapters|strategies)["']/u,
+      forbiddenImportRe: /from\s+["']@trade-signal\/research-(pipelines|adapters|runtime)["']/u,
     },
     {
       packageName: "research-adapters",
-      forbiddenImportRe: /from\s+["']@trade-signal\/research-(pipelines|registry|strategies)["']/u,
+      forbiddenImportRe: /from\s+["']@trade-signal\/research-(pipelines|registry|runtime)["']/u,
     },
     {
       packageName: "research-pipelines",
-      forbiddenImportRe: /from\s+["']@trade-signal\/research-strategies["']/u,
+      forbiddenImportRe: /from\s+["']@trade-signal\/research-runtime["']/u,
     },
   ];
   for (const r of rules) runRule(root, r);

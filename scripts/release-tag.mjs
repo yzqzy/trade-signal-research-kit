@@ -37,7 +37,7 @@ function writeJson(p, obj) {
 function show() {
   const r = readJson(paths.rootPkg);
   const h = readJson(paths.hubPkg);
-  console.log(`trade-signal-schema-kit: ${r.version}`);
+  console.log(`trade-signal-research-kit: ${r.version}`);
   console.log(`@trade-signal/research-hub: ${h.version}`);
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Phase1B 证据质量指标烟测（无需外网）。
- * `pnpm run build && pnpm --filter @trade-signal/research-strategies run test:phase1b-quality`
+ * `pnpm run build && pnpm --filter @trade-signal/research-runtime run test:phase1b-quality`
  */
 import { initCliEnv } from "../lib/init-cli-env.js";
 import assert from "node:assert/strict";

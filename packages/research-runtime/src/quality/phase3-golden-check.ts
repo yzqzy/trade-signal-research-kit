@@ -18,7 +18,7 @@ type GoldenManifest = Record<string, ManifestEntry>;
 function resolveRepoRoot(): string {
   const cwd = process.cwd();
   const base = path.basename(cwd);
-  if (base === "research-strategies") {
+  if (base === "research-runtime") {
     return path.resolve(cwd, "../..");
   }
   return cwd;

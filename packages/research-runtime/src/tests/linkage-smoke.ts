@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 链路级烟测（不替代 quality:all）：市场包结构、2B 含 MDA、D1~D6 契约稿。
- * 运行：`pnpm run build && pnpm --filter @trade-signal/research-strategies run test:linkage`
+ * 运行：`pnpm run build && pnpm --filter @trade-signal/research-runtime run test:linkage`
  */
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { shellQuoteArg } from "../lib/shell-quote-arg.js";

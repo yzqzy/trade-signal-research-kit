@@ -1,4 +1,6 @@
-# trade-signal-schema-kit
+# trade-signal-research-kit
+
+> **命名说明**：本仓库根 `package.json` 名为 `trade-signal-research-kit`；核心可执行/编排包为 `@trade-signal/research-runtime`。`@trade-signal/research-strategies` 在 `tsconfig` 中仍作为短期 import 路径别名，指向同一代码，便于渐进迁移。
 
 面向 A 股与港股的 **TypeScript 研究编排框架**：统一字段契约（`schema-core`）+ **HTTP Feed Provider** + 编排（采集、PDF 提取、外部证据、策略评估、估值、发布）。**V2 默认数据通道为 HTTP-only**（主链路语义与门禁以 HTTP 为准）。
 

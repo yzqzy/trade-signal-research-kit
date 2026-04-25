@@ -86,10 +86,10 @@ PoC（概念验证）用最小成本验证关键假设：**这条路线在真实
 
 ## Monorepo 形态
 
-**不建议拆仓**，保持 monorepo：`schema-core`、`provider-*`、`research-strategies` 契约边界已清晰；当前主要缺口在编排机制而非仓库形态。
+**不建议拆仓**，保持 monorepo：`schema-core`、`provider-*`、`research-runtime` 契约边界已清晰；当前主要缺口在编排机制而非仓库形态。
 
 简化建议：
 
 - 继续冻结 `apps/screener-web`，聚焦 CLI 主链路
-- Agent 编排落在 `research-strategies` 内独立模块
+- Agent 编排落在 `research-runtime` 内独立模块
 - 文档以 `docs/README.md` 为索引入口，避免多入口漂移

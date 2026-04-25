@@ -53,7 +53,7 @@
 
 ## Phase1A（结构化采集）调用方式
 
-- 聚合入口：`@trade-signal/research-strategies` 的 `collectPhase1ADataPack(provider, input)`
+- 聚合入口：`@trade-signal/research-runtime` 的 `collectPhase1ADataPack(provider, input)`
 - 标准输出：`DataPackMarket`（最小必含 `instrument/quote/klines`）
 - 可选输出：`financialSnapshot/corporateActions/tradingCalendar`
 - 降级策略：`optionalFailure: "ignore" | "throw"`（默认 `ignore`，即可选项失败时省略该字段）
@@ -65,7 +65,7 @@
 示例（伪代码）：
 
 ```ts
-import { collectPhase1ADataPack } from "@trade-signal/research-strategies";
+import { collectPhase1ADataPack } from "@trade-signal/research-runtime";
 import { createFeedHttpProviderFromEnv } from "@trade-signal/provider-http";
 
 const provider = createFeedHttpProviderFromEnv();
@@ -149,7 +149,7 @@ HTTP 场景（AI/Agent）：
 - **phase3-golden**：`pnpm run quality:phase3-golden`（默认 `--suite all`）  
   - 依次校验 `output/phase3_golden/<suite>/run/golden_manifest.json` 清单内各文件的 **sha256 + 字节数**。也可用 `--manifest <path>` 指定单个 manifest（忽略 `--suite`）。
 
-**依赖**：`contract`、`regression`、`phase3-golden` 均要求仓库内已存在 `output/phase3_golden/cn_a/` 与 `output/phase3_golden/hk/`（及其中 `run/` 基线）。本仓库已跟踪该目录；若你本地缺失（例如误删 `output/`），在根目录执行：`pnpm --filter @trade-signal/research-strategies run build` 后 `pnpm --filter @trade-signal/research-strategies run gen:phase3-golden` 可重新生成同名基线。
+**依赖**：`contract`、`regression`、`phase3-golden` 均要求仓库内已存在 `output/phase3_golden/cn_a/` 与 `output/phase3_golden/hk/`（及其中 `run/` 基线）。本仓库已跟踪该目录；若你本地缺失（例如误删 `output/`），在根目录执行：`pnpm --filter @trade-signal/research-runtime run build` 后 `pnpm --filter @trade-signal/research-runtime run gen:phase3-golden` 可重新生成同名基线。
 
 **港股说明**：`hk` 黄金样例用于回归一致性；港股侧与 A 股同等深度的业务语义与专项验证 **暂未实现**，后续里程碑会单独补齐。
 
@@ -173,8 +173,8 @@ HTTP 场景（AI/Agent）：
 Smoke：
 
 ```bash
-pnpm --filter @trade-signal/research-strategies run build
-pnpm --filter @trade-signal/research-strategies run run:websearch-smoke -- --query "牧原股份 回购" --limit 3
+pnpm --filter @trade-signal/research-runtime run build
+pnpm --filter @trade-signal/research-runtime run run:websearch-smoke -- --query "牧原股份 回购" --limit 3
 ```
 
 ## 最小实操与排障

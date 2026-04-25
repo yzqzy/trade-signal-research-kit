@@ -21,8 +21,8 @@ async function main(): Promise<void> {
       [
         "缺少 Phase3 黄金基线文件（常见原因：新 clone 后尚未生成，或本地删除了 output/phase3_golden）。",
         `期望路径：\n  ${marketPackPath}\n  ${valuationPath}`,
-        "修复：在仓库根执行 `pnpm --filter @trade-signal/research-strategies run build` 后执行",
-        "`pnpm --filter @trade-signal/research-strategies run gen:phase3-golden`，再将生成目录纳入提交（若你维护 fork）。",
+        "修复：在仓库根执行 `pnpm --filter @trade-signal/research-runtime run build` 后执行",
+        "`pnpm --filter @trade-signal/research-runtime run gen:phase3-golden`，再将生成目录纳入提交（若你维护 fork）。",
         "说明见 docs/guides/data-source.md。",
       ].join("\n"),
     );

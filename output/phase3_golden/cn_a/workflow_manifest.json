@@ -13,8 +13,8 @@
     "runId": "golden-cn_a"
   },
   "outputs": {
-    "marketPackPath": "/Users/heora/workspace_trade_signal/trade-signal-schema-kit/output/phase3_golden/cn_a/data_pack_market.md",
-    "reportMarkdownPath": "/Users/heora/workspace_trade_signal/trade-signal-schema-kit/output/phase3_golden/cn_a/run/analysis_report.md",
-    "valuationPath": "/Users/heora/workspace_trade_signal/trade-signal-schema-kit/output/phase3_golden/cn_a/run/valuation_computed.json"
+    "marketPackPath": "/Users/heora/workspace_trade_signal/trade-signal-research-kit/output/phase3_golden/cn_a/data_pack_market.md",
+    "reportMarkdownPath": "/Users/heora/workspace_trade_signal/trade-signal-research-kit/output/phase3_golden/cn_a/run/analysis_report.md",
+    "valuationPath": "/Users/heora/workspace_trade_signal/trade-signal-research-kit/output/phase3_golden/cn_a/run/valuation_computed.json"
   }
 }

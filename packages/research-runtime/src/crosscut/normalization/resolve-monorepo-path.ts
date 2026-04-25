@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-/** `pnpm --filter` 运行脚本时 cwd 常为 packages/research-strategies */
+/** `pnpm --filter` 运行脚本时 cwd 常为 packages/research-runtime */
 export function isResearchStrategiesPackageCwd(): boolean {
-  return path.basename(process.cwd()) === "research-strategies";
+  return path.basename(process.cwd()) === "research-runtime";
 }
 
 function resolveFromRepoRoot(relativePath: string): string {

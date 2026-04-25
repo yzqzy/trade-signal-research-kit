@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Phase2A 分区/关键词契约烟测（无需真实 PDF）。
- * `pnpm run build && pnpm --filter @trade-signal/research-strategies run test:phase2`
+ * `pnpm run build && pnpm --filter @trade-signal/research-runtime run test:phase2`
  */
 import { initCliEnv } from "../lib/init-cli-env.js";
 import assert from "node:assert/strict";

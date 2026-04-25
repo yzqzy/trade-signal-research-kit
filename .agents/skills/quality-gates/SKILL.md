@@ -16,8 +16,8 @@ description: "质量门禁：conformance → contract → regression → phase3-
 
 1. `pnpm run quality:all`（或按仓库文档拆分步骤）。
 2. `pnpm run test:linkage`（链路结构烟测）。
-3. 按需：`pnpm --filter @trade-signal/research-strategies run quality:regression -- --suite hk|cn_a|all`。
-4. 按需：`pnpm --filter @trade-signal/research-strategies run quality:phase3-golden -- --suite cn_a`。
+3. 按需：`pnpm --filter @trade-signal/research-runtime run quality:regression -- --suite hk|cn_a|all`。
+4. 按需：`pnpm --filter @trade-signal/research-runtime run quality:phase3-golden -- --suite cn_a`。
 
 ## Pass / Block Criteria
 
@@ -29,7 +29,7 @@ description: "质量门禁：conformance → contract → regression → phase3-
 ## References
 
 - [Skill 统一模板](../../../docs/guides/skill-shared-skill-template.md)
-- 根目录 `package.json`：`quality:all`、`test:linkage`；`@trade-signal/research-strategies`：`quality:regression`、`quality:phase3-golden`
+- 根目录 `package.json`：`quality:all`、`test:linkage`；`@trade-signal/research-runtime`：`quality:regression`、`quality:phase3-golden`
 - **顺序（与 `quality:all` 一致）**：conformance → contract → regression → phase3-golden
 - **套件路径**：`cn_a` → `output/phase3_golden/cn_a/`；`hk` → `output/phase3_golden/hk/`；`all` → 两者依次
 - 更新 golden 后：同步 `run/golden_manifest.json` 与基线文件，再跑 `pnpm run quality:all`

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Phase1A：财务快照锚定日期 + strict preflight 烟测（无需外网）。
- * `pnpm run build && pnpm --filter @trade-signal/research-strategies run test:phase1a-strict`
+ * `pnpm run build && pnpm --filter @trade-signal/research-runtime run test:phase1a-strict`
  */
 import assert from "node:assert/strict";
 

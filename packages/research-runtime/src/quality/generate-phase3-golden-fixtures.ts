@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * 生成并写入 `output/phase3_golden/{cn_a,hk}/` 契约与回归基线（离线合成数据，不访问 Feed）。
- * 运行：先 `pnpm --filter @trade-signal/research-strategies run build`，再
- * `pnpm --filter @trade-signal/research-strategies run gen:phase3-golden`
+ * 运行：先 `pnpm --filter @trade-signal/research-runtime run build`，再
+ * `pnpm --filter @trade-signal/research-runtime run gen:phase3-golden`
  */
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { createHash } from "node:crypto";
@@ -21,7 +21,7 @@ import {
 
 function resolveRepoRoot(): string {
   const cwd = process.cwd();
-  return path.basename(cwd) === "research-strategies" ? path.resolve(cwd, "../..") : cwd;
+  return path.basename(cwd) === "research-runtime" ? path.resolve(cwd, "../..") : cwd;
 }
 
 async function checksum(filePath: string): Promise<{ sha256: string; bytes: number }> {

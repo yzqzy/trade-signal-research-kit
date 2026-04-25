@@ -13,7 +13,7 @@
 | 发布级 HTML（KPI/Verdict/参数面板） | `dashboard.html` + `report_to_html.py` | 定性侧保留 `@trade-signal/reporting` 的 dashboard HTML **生成函数**（供独立预览）；**编排主链路**为 Markdown + 研报站 `content.md` v2 | **策略替代** | 定性 HTML 烟测 `renderQualitativeDashboardHtml`；主站见 `reports-site-publish` |
 | Feed 缺口契约（分级+模板+命令建议） | 部分隐含在脚本 | `feed-gap-contract.ts` + 固定小节 **`## 数据缺口与补齐建议`** | **本轮补齐** | 跑 `business-analysis` / `workflow` 后人工检视小节 |
 | 同业对标 / 周期定位数据层 | 外采/宽表 | **无静默补采**；由缺口规则提示「需 feed 扩展」 | **Feed-first**：仅缺口与指引 | 报告内小节 + 契约测试 |
-| Screener Tier1/2 + 导出 | `screener_core.py` 等 | `packages/research-strategies/src/screener/*`、`screener-parity.md` | **已对齐 CLI/契约**（见 parity 文档） | `pnpm run test:screener` |
+| Screener Tier1/2 + 导出 | `screener_core.py` 等 | `packages/research-runtime/src/screener/*`、`screener-parity.md` | **已对齐 CLI/契约**（见 parity 文档） | `pnpm run test:screener` |
 | Screener Web UI | 参考若有 Web | `apps/screener-web` | **冻结 / 待独立规划** | 不阻断本轮 |
 | Notebook / 交互 | Jupyter 等 | CLI + Markdown + Claude 会话收口叙事 | **策略替代**（非逐行复刻） | E2E checklist |
 | 质量门禁 | pytest 等 | `quality:conformance|contract|regression|phase3-golden` | **已具备** | `pnpm run quality:all` |
