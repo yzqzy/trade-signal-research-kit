@@ -22,6 +22,7 @@ import { renderQualitativeD1D6Scaffold } from './d1-d6-scaffold.js';
 import { appendFeedGapSection, evaluateFeedDataGaps } from '../../crosscut/feed-gap/feed-gap-contract.js';
 import type { DataPackMarket } from '@trade-signal/schema-core';
 import { validateFinalNarrativeMarkdown } from './final-narrative-status.js';
+import { resolveAnnualFiscalYear } from '../../crosscut/fiscal-year.js';
 
 export type RunBusinessAnalysisInput = RunWorkflowInput & {
   /** 与 workflow turtle-strict 一致：要求可解析的年报 PDF（可经自动发现 + Phase0 下载） */
@@ -44,8 +45,7 @@ export interface BusinessAnalysisArtifacts {
 }
 
 function asYear(value?: string): string {
-  if (value && /^\d{4}$/.test(value)) return value;
-  return String(new Date().getFullYear() - 1);
+  return resolveAnnualFiscalYear(value);
 }
 
 function excerptDataPackReport(md: string, maxChars: number): string {
@@ -125,16 +125,22 @@ export async function runBusinessAnalysis(
   await mkdir(runRoot, { recursive: true });
 
   const normalizedCode = normalizeCodeForFeed(input.code);
+  const requestedYear = asYear(input.year);
   const ensuredPdf = await ensureAnnualPdfOnDisk({
     normalizedCode,
-    fiscalYear: asYear(input.year),
+    fiscalYear: requestedYear,
     category: input.category ?? '年报',
     outputRunDir: runRoot,
     pdfPath: input.pdfPath,
     reportUrl: input.reportUrl,
     discoverPolicy: strict ? 'strict' : 'best_effort',
+    allowFiscalYearFallback: !input.year?.trim(),
     discoveryErrorStyle: 'business-analysis',
   });
+  const effectiveYear = ensuredPdf.fiscalYearResolved ?? requestedYear;
+  const effectiveWorkflowFields = input.year?.trim()
+    ? workflowFields
+    : { ...workflowFields, year: effectiveYear };
 
   if (strict) {
     const hasPdf = Boolean(ensuredPdf.pdfPath?.trim());
@@ -145,7 +151,7 @@ export async function runBusinessAnalysis(
   }
 
   const pipeline = await executeWorkflowDataPipeline({
-    ...workflowFields,
+    ...effectiveWorkflowFields,
     runId: threadId,
     outputDir: parentDir,
     pdfPath: ensuredPdf.pdfPath ?? input.pdfPath,
@@ -233,7 +239,7 @@ export async function runBusinessAnalysis(
   const pdfForSuggest = pipeline.pdfPath ?? ensuredPdf.pdfPath;
   const manifestInput: Record<string, unknown> = {
     code: pipeline.normalizedCode,
-    year: input.year,
+    year: effectiveYear,
     strict: Boolean(strict),
     mode: input.mode,
     strategy: input.strategy ?? 'turtle',
@@ -319,7 +325,7 @@ export async function runBusinessAnalysis(
         suggestedNextCommand: `pnpm run valuation:run -- --from-manifest "${manifestPath}"`,
         suggestedWorkflowFullCommand: buildSuggestedWorkflowFullCommand({
           code: pipeline.normalizedCode,
-          year: input.year,
+          year: effectiveYear,
           strategy: input.strategy ?? 'turtle',
           pdfPath: pdfForSuggest,
           reportUrl: reportUrlForOutputs,

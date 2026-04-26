@@ -75,6 +75,13 @@ type StockQuotePayload = {
   timestamp?: string;
 };
 
+type StockListPayload = {
+  total?: number;
+  diff?: Array<StockDetailPayload & StockQuotePayload & { f152?: number; marketId?: number }>;
+  data?: Array<StockDetailPayload & StockQuotePayload & { f152?: number; marketId?: number }>;
+  list?: Array<StockDetailPayload & StockQuotePayload & { f152?: number; marketId?: number }>;
+};
+
 type KlineRecord =
   | {
       date?: string;
@@ -232,6 +239,18 @@ const asNumber = (value: unknown): number | undefined => {
     if (Number.isFinite(parsed)) return parsed;
   }
   return undefined;
+};
+
+const isTransientFeedError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /socket hang up|ECONNRESET|fetch failed/i.test(message);
+};
+
+const eastmoneyScaledNumber = (value: unknown, scale: unknown): number | undefined => {
+  const n = asNumber(value);
+  if (n === undefined) return undefined;
+  const s = asNumber(scale);
+  return s !== undefined && s > 0 && s < 10 ? n / 10 ** s : n;
 };
 
 const pickTimestamp = (...values: Array<unknown>): string => {
@@ -406,8 +425,22 @@ export class FeedHttpProvider implements MarketDataProvider {
     }
   }
 
+  private async getStockListFallback(code: string): Promise<(StockDetailPayload & StockQuotePayload & { f152?: number; marketId?: number }) | undefined> {
+    const payload = await this.request<StockListPayload>("/stock/list", { codes: code });
+    const rows = payload.diff ?? payload.data ?? payload.list ?? [];
+    return rows[0];
+  }
+
   async getInstrument(code: string): Promise<Instrument> {
-    const payload = await this.request<StockDetailPayload>(`/stock/detail/${encodeURIComponent(code)}`);
+    let payload: StockDetailPayload;
+    try {
+      payload = await this.request<StockDetailPayload>(`/stock/detail/${encodeURIComponent(code)}`);
+    } catch (error) {
+      if (!isTransientFeedError(error)) throw error;
+      const fallback = await this.getStockListFallback(code);
+      if (!fallback) throw error;
+      payload = fallback;
+    }
     return {
       code: payload.code ?? payload.secucode ?? code,
       market: inferMarket(payload.code ?? payload.secucode ?? code),
@@ -421,13 +454,21 @@ export class FeedHttpProvider implements MarketDataProvider {
 
   async getQuote(code: string): Promise<Quote> {
     // 与 `getInstrument` 同源：`/stock/indicator/realtime` 为估值/市值类字段，不含最新价。
-    const payload = await this.request<StockDetailPayload & StockQuotePayload>(
-      `/stock/detail/${encodeURIComponent(code)}`,
-    );
+    let payload: StockDetailPayload & StockQuotePayload & { f152?: number };
+    try {
+      payload = await this.request<StockDetailPayload & StockQuotePayload>(
+        `/stock/detail/${encodeURIComponent(code)}`,
+      );
+    } catch (error) {
+      if (!isTransientFeedError(error)) throw error;
+      const fallback = await this.getStockListFallback(code);
+      if (!fallback) throw error;
+      payload = fallback;
+    }
     return {
       code: payload.code ?? payload.secucode ?? code,
-      price: asNumber(payload.newPrice ?? payload.price ?? payload.latestPrice) ?? 0,
-      changePct: asNumber(payload.changeRate ?? payload.changePct),
+      price: eastmoneyScaledNumber(payload.newPrice ?? payload.price ?? payload.latestPrice, payload.f152) ?? 0,
+      changePct: eastmoneyScaledNumber(payload.changeRate ?? payload.changePct, payload.f152),
       volume: asNumber(payload.volume ?? payload.amount),
       timestamp: pickTimestamp(payload.quoteTime, payload.updateTime, payload.timestamp),
     };
@@ -440,13 +481,22 @@ export class FeedHttpProvider implements MarketDataProvider {
     to?: string;
     adj?: "none" | "forward" | "backward";
   }): Promise<KlineBar[]> {
-    const payload = await this.request<KlinePayload>("/stock/kline", {
-      code: input.code,
-      period: input.period,
-      fqt: PERIOD_TO_FQT[input.adj ?? "forward"],
-      from: input.from,
-      to: input.to,
-    });
+    let payload: KlinePayload;
+    try {
+      payload = await this.request<KlinePayload>("/stock/kline", {
+        code: input.code,
+        period: input.period,
+        fqt: PERIOD_TO_FQT[input.adj ?? "forward"],
+        from: input.from,
+        to: input.to,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/socket hang up|ECONNRESET|fetch failed/i.test(message)) {
+        return [];
+      }
+      throw error;
+    }
     const records = payload.klines ?? payload.data ?? [];
     return records
       .map((record) => parseKlineRecord(record))

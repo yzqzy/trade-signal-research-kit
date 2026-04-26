@@ -42,6 +42,46 @@ function clip(md: string, max: number): string {
   return `${t.slice(0, max).trim()}\n\n> …… 已截断；全文见同目录证据文件。`;
 }
 
+function stripLeadingDanglingPunctuation(md: string): string {
+  return md.trim().replace(/^[：:、，,\s]+/u, "").trim();
+}
+
+function extractMarketPackSection(md: string, headingRe: RegExp): string | undefined {
+  const m = md.match(headingRe);
+  if (!m || m.index === undefined) return undefined;
+  const rest = md.slice(m.index);
+  const next = rest.slice(m[0].length).search(/^##\s+/mu);
+  return (next >= 0 ? rest.slice(0, m[0].length + next) : rest).trim();
+}
+
+function renderFinancialTrendAppendix(marketPackMarkdown: string): string {
+  const sections = [
+    extractMarketPackSection(marketPackMarkdown, /^##\s+§3\s+利润表[^\n]*\n/mu),
+    extractMarketPackSection(marketPackMarkdown, /^##\s+§4\s+资产负债表[^\n]*\n/mu),
+    extractMarketPackSection(marketPackMarkdown, /^##\s+§5\s+现金流量表[^\n]*\n/mu),
+    extractMarketPackSection(marketPackMarkdown, /^##\s+§17\s+衍生指标[^\n]*\n/mu),
+  ].filter((x): x is string => Boolean(x));
+  return sections.length > 0
+    ? sections.join("\n\n")
+    : "_关键财务趋势表未能从市场包解析；请查看 data_pack_market.md。_";
+}
+
+function renderValuationDataLimits(vm: ReportViewModelV1): string {
+  const rows = [
+    "| 项目 | 当前状态 | 处理方式 |",
+    "|:-----|:---------|:---------|",
+  ];
+  rows.push("| 行业标签 | 不在估值 view model 中作为稳定字段发布 | 不直接用于估值倍数溢价；同业与行业判断仅作辅助。 |");
+  rows.push(`| 无风险利率 | ${fmtNum(vm.market.riskFreeRate)}% | 若为默认值，WACC/Ke 敏感性需保守解读。 |`);
+  if (vm.market.warningsCount > 0) {
+    rows.push(`| 市场包 warnings | ${vm.market.warningsCount} 项 | 估值置信度按证据边界降级。 |`);
+  }
+  if (vm.valuation.consistency === "low") {
+    rows.push("| 方法一致性 | low | 估值结论以区间和交叉验证为主，不把单一 DCF 点位当确定目标价。 |");
+  }
+  return rows.join("\n");
+}
+
 function evidenceTable(vm: ReportViewModelV1): string {
   const e = vm.evidence;
   const rows: string[] = [
@@ -169,11 +209,11 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, _buffers: Re
     "",
     "## 穿透回报率分析",
     "",
-    `粗算 R=${fmtPct(vm.phase3.factor2?.R)}，门槛 II=${fmtPct(vm.phase3.factor2?.II)}；精算 GG=${fmtPct(vm.phase3.factor3?.GG)}。完整计算链见 [穿透回报率定量分析](./penetration_return.md)。`,
+    `粗算 R=${fmtPct(vm.phase3.factor2?.R)}，门槛 II=${fmtPct(vm.phase3.factor2?.II)}；精算 GG=${fmtPct(vm.phase3.factor3?.GG)}。完整计算链见本站“穿透回报率定量分析”Topic。`,
     "",
     "## 估值与定价",
     "",
-    `估值方法数 ${vm.valuation.methodCount}，综合估值 ${fmtNum(vm.valuation.weightedAverage)}，一致性 ${vm.valuation.consistency ?? "—"}。完整方法与敏感性见 [估值分析](./valuation.md)。`,
+    `估值方法数 ${vm.valuation.methodCount}，综合估值 ${fmtNum(vm.valuation.weightedAverage)}，一致性 ${vm.valuation.consistency ?? "—"}。完整方法与敏感性见本站“估值分析”Topic。`,
     "",
     "## 投资论点卡（Thesis Card）",
     "",
@@ -385,9 +425,9 @@ export function renderPenetrationReturnMarkdown(vm: ReportViewModelV1, buffers: 
     "",
     "## Phase3 因子摘录（审计用）",
     "",
-    f2 ? clip(f2, 6000) : "_未匹配到因子2摘录；以结构化 Phase3 输出为准。_",
+    f2 ? clip(stripLeadingDanglingPunctuation(f2), 6000) : "_未匹配到因子2摘录；以结构化 Phase3 输出为准。_",
     "",
-    f3 ? clip(f3, 6000) : "_未匹配到因子3摘录；以结构化 Phase3 输出为准。_",
+    f3 ? clip(stripLeadingDanglingPunctuation(f3), 6000) : "_未匹配到因子3摘录；以结构化 Phase3 输出为准。_",
     "",
     "## 附录：证据索引",
     "",
@@ -451,9 +491,13 @@ export function renderValuationTopicMarkdown(vm: ReportViewModelV1, buffers: Rep
     "- 自由现金流、分红、Capex、营运资本和监管事件是估值最敏感的证据项。",
     "- 估值模型涉及主观假设，不构成投资建议。",
     "",
-    "## 附录：关键财务数据趋势",
+    "## 九、数据限制与置信边界",
     "",
-    clip(buffers.marketPackMarkdown, 8000),
+    renderValuationDataLimits(vm),
+    "",
+    "## 附录：关键财务趋势",
+    "",
+    renderFinancialTrendAppendix(buffers.marketPackMarkdown),
     "",
     "## 附录：证据索引",
     "",

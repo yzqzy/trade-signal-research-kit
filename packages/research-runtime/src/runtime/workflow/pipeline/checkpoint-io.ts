@@ -14,6 +14,7 @@ export type WorkflowCheckpointFile = {
   snapshot: Pick<
     WorkflowRunState,
     | "normalizedCode"
+    | "effectiveYear"
     | "outputDir"
     | "pdfPath"
     | "reportUrlResolved"

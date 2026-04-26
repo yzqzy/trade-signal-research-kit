@@ -23,6 +23,7 @@ import { runPreflightAfterPhase1A, type PreflightLevel } from "../../../crosscut
 import { OUTPUT_LAYOUT_VERSION, resolveWorkflowDefaultRunDirectory } from "../../../contracts/output-layout-v2.js";
 import { normalizeCodeForFeed } from "../../../crosscut/normalization/normalize-stock-code.js";
 import { resolveOutputPath } from "../../../crosscut/normalization/resolve-monorepo-path.js";
+import { resolveAnnualFiscalYear } from "../../../crosscut/fiscal-year.js";
 import {
   strictPreflightPhase3Abort,
   strictPreflightPhase3SupplementNeeded,
@@ -33,8 +34,7 @@ import { readWorkflowCheckpoint, writeWorkflowCheckpoint, type WorkflowCheckpoin
 import type { WorkflowRunState } from "./run-state.js";
 
 function asYear(value?: string): string {
-  if (value && /^\d{4}$/.test(value)) return value;
-  return String(new Date().getFullYear() - 1);
+  return resolveAnnualFiscalYear(value);
 }
 
 async function writeText(filePath: string, content: string): Promise<void> {
@@ -69,6 +69,7 @@ async function persistCheckpoint(
     completedStages,
     snapshot: {
       normalizedCode: state.normalizedCode,
+      effectiveYear: state.effectiveYear,
       outputDir: state.outputDir,
       pdfPath: state.pdfPath,
       reportUrlResolved: state.reportUrlResolved,
@@ -146,7 +147,7 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
   }
 
   const to = input.to ?? new Date().toISOString().slice(0, 10);
-  const from = input.from ?? `${asYear(input.year)}-01-01`;
+  let from = input.from ?? `${asYear(input.year)}-01-01`;
 
   let pdfPath = state.pdfPath ?? input.pdfPath;
   let reportUrlResolved = state.reportUrlResolved ?? input.reportUrl;
@@ -180,6 +181,7 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
       runId: cp.runId,
       threadId: cp.threadId,
       normalizedCode: cp.snapshot.normalizedCode ?? normalizedCode,
+      effectiveYear: cp.snapshot.effectiveYear ?? asYear(input.year),
       outputDir: cp.snapshot.outputDir ?? outputDir,
       interimReportMarkdown: cp.snapshot.interimReportMarkdown ?? interimReportMarkdown,
       phase2aInterimJsonPath: cp.snapshot.phase2aInterimJsonPath ?? phase2aInterimJsonPath,
@@ -215,9 +217,10 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
     return merged;
   }
 
+  const requestedYear = asYear(input.year);
   const ensuredPdf = await ensureAnnualPdfOnDisk({
     normalizedCode,
-    fiscalYear: asYear(input.year),
+    fiscalYear: requestedYear,
     category: input.category ?? "年报",
     outputRunDir: outputDir,
     pdfPath,
@@ -226,15 +229,21 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
       !pdfPath?.trim() && !reportUrlResolved?.trim() && input.mode === "turtle-strict"
         ? "strict"
         : "never",
+    allowFiscalYearFallback: !input.year?.trim(),
     discoveryErrorStyle: "workflow-strict",
   });
   pdfPath = ensuredPdf.pdfPath ?? pdfPath;
   reportUrlResolved = ensuredPdf.reportUrlResolved ?? reportUrlResolved;
+  const effectiveYear = ensuredPdf.fiscalYearResolved ?? requestedYear;
+  const effectiveInput = input.year?.trim() ? input : { ...input, year: effectiveYear };
+  from = input.from ?? `${effectiveYear}-01-01`;
 
   const next: Partial<WorkflowRunState> = {
+    input: effectiveInput,
     runId,
     threadId,
     normalizedCode,
+    effectiveYear,
     outputDir,
     interimReportMarkdown,
     phase2aInterimJsonPath,
@@ -249,7 +258,7 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
   await persistCheckpoint(outputDir, runId, threadId, mergedStages, {
     ...state,
     ...next,
-    input,
+    input: effectiveInput,
     completedStages: mergedStages,
   } as WorkflowRunState);
   return next;
@@ -257,6 +266,7 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
 
 export async function nodeStageB(state: WorkflowRunState): Promise<Partial<WorkflowRunState>> {
   const input = state.input;
+  const effectiveYear = state.effectiveYear ?? asYear(input.year);
   const normalizedCode = state.normalizedCode!;
   const outputDir = state.outputDir!;
   const from = state.from!;
@@ -268,7 +278,7 @@ export async function nodeStageB(state: WorkflowRunState): Promise<Partial<Workf
     from,
     to,
     period: "day",
-    year: asYear(input.year),
+    year: effectiveYear,
   });
   const phase1aJsonPath = path.join(outputDir, "phase1a_data_pack.json");
   await writeText(phase1aJsonPath, JSON.stringify(phase1a, null, 2));
@@ -351,6 +361,7 @@ export async function nodeStageD(state: WorkflowRunState): Promise<Partial<Workf
 
 export async function nodeStageC(state: WorkflowRunState): Promise<Partial<WorkflowRunState>> {
   const input = state.input;
+  const effectiveYear = state.effectiveYear ?? asYear(input.year);
   const normalizedCode = state.normalizedCode!;
   const outputDir = state.outputDir!;
 
@@ -358,7 +369,7 @@ export async function nodeStageC(state: WorkflowRunState): Promise<Partial<Workf
     {
       stockCode: normalizedCode,
       companyName: state.resolvedCompanyName!,
-      year: asYear(input.year),
+      year: effectiveYear,
       channel: input.phase1bChannel ?? "http",
     },
     {},

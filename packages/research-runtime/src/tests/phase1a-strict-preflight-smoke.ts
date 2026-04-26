@@ -7,11 +7,16 @@ import assert from "node:assert/strict";
 
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { runPreflightAfterPhase1A } from "../crosscut/preflight/preflight.js";
+import { resolveAnnualFiscalYear } from "../crosscut/fiscal-year.js";
 import { resolveFinancialSnapshotPeriod } from "../steps/phase1a/collector.js";
 import type { DataPackMarket } from "@trade-signal/schema-core";
 
 function main(): void {
   initCliEnv();
+
+  assert.equal(resolveAnnualFiscalYear(undefined, new Date("2026-04-26T00:00:00Z")), "2024");
+  assert.equal(resolveAnnualFiscalYear(undefined, new Date("2026-05-01T00:00:00Z")), "2025");
+  assert.equal(resolveAnnualFiscalYear("2023", new Date("2026-04-26T00:00:00Z")), "2023");
 
   assert.equal(resolveFinancialSnapshotPeriod({ code: "x", year: "2024" }), "2024-12-31");
   assert.equal(

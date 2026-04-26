@@ -158,6 +158,37 @@ function parseConfidenceFromReportMd(md: string): ConfidenceState {
   return "unknown";
 }
 
+type ValuationQualitySummary = {
+  activeMethodCount: number;
+  consistency?: string;
+  coefficientOfVariation?: number;
+};
+
+function parseValuationQuality(rawJson: string | undefined): ValuationQualitySummary | undefined {
+  if (!rawJson?.trim()) return undefined;
+  try {
+    const v = JSON.parse(rawJson) as {
+      methods?: Array<{ value?: number | null }>;
+      crossValidation?: { consistency?: string; coefficientOfVariation?: number };
+    };
+    return {
+      activeMethodCount: (v.methods ?? []).filter((m) => typeof m.value === "number" && Number.isFinite(m.value)).length,
+      consistency: v.crossValidation?.consistency,
+      coefficientOfVariation: v.crossValidation?.coefficientOfVariation,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function deriveValuationConfidence(base: ConfidenceState, q: ValuationQualitySummary | undefined): ConfidenceState {
+  if (!q) return base === "unknown" ? "unknown" : "low";
+  if (q.activeMethodCount < 2) return "low";
+  if (q.consistency === "low") return "medium";
+  if (typeof q.coefficientOfVariation === "number" && q.coefficientOfVariation > 40) return "medium";
+  return base === "unknown" ? "medium" : base;
+}
+
 function buildEntryId(date: string, codeDigits: string, topic: ReportTopicType, runShort: string): string {
   const slug = TOPIC_ENTRY_SLUG[topic];
   return `${date}-${codeDigits}-${slug}-${runShort}`;
@@ -303,7 +334,7 @@ function deriveBusinessAnalysisConfidence(input: {
 
 function evidenceStatusLabel(evidence: EvidenceRetrievalSummary): string {
   if (evidence.webSearchLimited && evidence.missingItems.length > 0) {
-    return "官方源已优先检索；开放信息补充受限，部分关键项仍未形成可确认候选证据";
+    return "官方源已优先检索；部分开放信息未形成关键反证";
   }
   if (evidence.hasCriticalGap) return "关键合规项存在证据缺口";
   if (evidence.webSearchUsed) return "官方源与开放信息补充已形成候选证据";
@@ -326,7 +357,7 @@ function renderQualitySnapshot(input: {
     `| 最终置信度 | ${input.confidence} |`,
     `| PDF gate | ${gate}；低置信关键块：${low} |`,
     `| 监管证据状态 | ${evidenceStatusLabel(input.evidence)} |`,
-    `| 证据完整度 | ${input.evidence.missingItems.length > 0 ? `存在缺口：${input.evidence.missingItems.join("、")}` : "关键项已形成候选证据"} |`,
+    `| 证据完整度 | ${input.evidence.missingItems.length > 0 ? "存在需补充核验项，详见文末证据质量表" : "关键项已形成候选证据"} |`,
   ].join("\n");
 }
 
@@ -399,13 +430,22 @@ function renderEvidenceQualitySection(input: {
   ];
   const gate = input.pdfQuality.gateVerdict ?? "UNKNOWN";
   const low = input.pdfQuality.lowConfidenceCritical?.length ? input.pdfQuality.lowConfidenceCritical.join("、") : "无";
-  const missing = input.pdfQuality.missingCritical?.length ? input.pdfQuality.missingCritical.join("、") : "无";
-  rows.push(`| PDF 抽取 | gate=${gate}；低置信关键块=${low}；缺失关键块=${missing} |`);
+  const missingPdf = input.pdfQuality.missingCritical?.length ? input.pdfQuality.missingCritical.join("、") : "无";
+  rows.push(`| PDF 抽取 | gate=${gate}；低置信关键块=${low}；缺失关键块=${missingPdf} |`);
   rows.push(`| 人工复核优先级 | ${input.pdfQuality.humanReviewPriority?.length ? input.pdfQuality.humanReviewPriority.join("、") : "无"} |`);
   rows.push(`| 外部证据检索 | ${evidenceStatusLabel(input.evidence)} |`);
-  rows.push(`| 开放信息补充 | ${input.evidence.webSearchUsed ? (input.evidence.webSearchLimited ? "已尝试，部分查询受限；不作为监管事件主证据" : "已尝试并完成；不作为监管事件主证据") : "未启用或未触发"} |`);
-  rows.push(`| 仍需补链 | ${input.evidence.missingItems.length ? input.evidence.missingItems.join("、") : "无"} |`);
+  rows.push(`| 开放信息补充 | ${input.evidence.webSearchUsed ? (input.evidence.webSearchLimited ? "未形成关键反证；不作为监管事件主证据" : "已形成候选线索；不作为监管事件主证据") : "未启用或未触发"} |`);
+  const missingEvidence = input.evidence.missingItems.length ? input.evidence.missingItems.join("、") : "无";
+  rows.push(`| 未形成确认候选 | ${missingEvidence} |`);
+  rows.push("| 结论边界 | 未形成确认候选不等于事实不存在；若用于法律/合规尽调，应补充交易所、证监会、市场监管、司法与食品安全专用源。 |");
   return rows.join("\n");
+}
+
+function stripExistingEvidenceQualitySection(markdown: string): string {
+  return markdown
+    .replace(/^##\s+证据质量与限制\s*\n[\s\S]*?(?=^##\s+附录：证据索引\s*$|^##\s+证据缺口清单|^##\s+D[1-6]\b|(?![\s\S]))/imu, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function renderBusinessAnalysisPublishedMarkdown(input: {
@@ -422,7 +462,7 @@ function renderBusinessAnalysisPublishedMarkdown(input: {
     ),
   );
   const d = stripFinalStatusLine(input.qualitativeD1D6Markdown);
-  const qSplit = splitEvidenceAppendix(q);
+  const qSplit = splitEvidenceAppendix(stripExistingEvidenceQualitySection(q));
   const dSplit = splitEvidenceAppendix(d);
   const sections = [qSplit.body.replace(/^(# .+?\n(?:> .+?\n)?)/u, `$1\n${renderQualitySnapshot(input)}\n`)];
   if (input.finalNarrativeStatus === "complete" && dSplit.body && !hasD1D6Sections(qSplit.body)) {
@@ -541,6 +581,9 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const hasPolishValuation = Boolean(polishValuationPath && (await pathExists(polishValuationPath)));
 
   const manifestRel = path.relative(siteDir, manifestPath);
+  const valuationRawJson =
+    hasValuationJson && valuationPath ? await readFile(valuationPath, "utf-8") : undefined;
+  const valuationConfidence = deriveValuationConfidence(confidence, parseValuationQuality(valuationRawJson));
 
   const topics: Array<{
     topic: ReportTopicType;
@@ -662,7 +705,7 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       publishedAt,
       sourceRunId,
       requiredFieldsStatus: t.status,
-      confidenceState: confidence,
+      confidenceState: t.topic === "valuation" ? valuationConfidence : confidence,
       contentFile: "content.md",
       sourceManifestPath: manifestRel,
     };

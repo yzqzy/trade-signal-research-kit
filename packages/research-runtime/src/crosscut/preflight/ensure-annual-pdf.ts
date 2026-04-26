@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { discoverPhase0ReportUrlFromFeed } from "../../steps/phase0/discover-report-url.js";
 import { runPhase0DownloadAndCache } from "../../steps/phase0/downloader.js";
+import { Phase0NoDataError } from "../../steps/phase0/phase0-errors.js";
 import {
   strictBusinessAnalysisDiscoveryFailed,
   strictWorkflowStrictDiscoveryFailed,
@@ -19,6 +20,11 @@ export interface EnsureAnnualPdfOnDiskParams {
   pdfPath?: string;
   reportUrl?: string;
   discoverPolicy: AnnualPdfDiscoverPolicy;
+  /**
+   * 未显式传 --year 时，strict/best-effort 自动发现可从默认年度向前回退。
+   * 典型场景：运行日已到 2026，但 2025 年报尚未披露，应自动落到 2024 年报并同步 Phase1A 财报锚点。
+   */
+  allowFiscalYearFallback?: boolean;
   /** strict 发现失败时的错误文案前缀 */
   discoveryErrorStyle: "business-analysis" | "workflow-strict";
 }
@@ -26,6 +32,7 @@ export interface EnsureAnnualPdfOnDiskParams {
 export interface EnsureAnnualPdfOnDiskResult {
   pdfPath?: string;
   reportUrlResolved?: string;
+  fiscalYearResolved?: string;
 }
 
 function formatDiscoveryError(
@@ -45,48 +52,65 @@ export async function ensureAnnualPdfOnDisk(
 ): Promise<EnsureAnnualPdfOnDiskResult> {
   const category = params.category?.trim() || "年报";
   const saveDir = path.join(params.outputRunDir, "reports", params.normalizedCode);
+  const requestedYear = params.fiscalYear.trim();
 
   let pdf = params.pdfPath?.trim() ? path.resolve(params.pdfPath.trim()) : undefined;
   let reportUrlResolved = params.reportUrl?.trim() || undefined;
 
   if (pdf) {
-    return { pdfPath: pdf, reportUrlResolved };
+    return { pdfPath: pdf, reportUrlResolved, fiscalYearResolved: requestedYear };
   }
 
   if (reportUrlResolved) {
     const downloaded = await runPhase0DownloadAndCache({
       code: params.normalizedCode,
       reportUrl: reportUrlResolved,
-      fiscalYear: params.fiscalYear,
+      fiscalYear: requestedYear,
       category,
       saveDir,
     });
-    return { pdfPath: downloaded.filePath, reportUrlResolved };
+    return { pdfPath: downloaded.filePath, reportUrlResolved, fiscalYearResolved: requestedYear };
   }
 
   if (params.discoverPolicy === "never") {
     return {};
   }
 
+  const candidateYears = [requestedYear];
+  if (params.allowFiscalYearFallback && /^\d{4}$/.test(requestedYear)) {
+    const y = Number(requestedYear);
+    candidateYears.push(String(y - 1), String(y - 2));
+  }
+
   let discoveredUrl: string | undefined;
-  try {
-    discoveredUrl = await discoverPhase0ReportUrlFromFeed({
-      stockCode: params.normalizedCode,
-      fiscalYear: params.fiscalYear,
-      category,
-    });
-  } catch (error: unknown) {
-    const detail = error instanceof Error ? error.message : String(error);
-    if (params.discoverPolicy === "strict") {
-      throw new Error(formatDiscoveryError(params.discoveryErrorStyle, detail));
+  let discoveredYear = requestedYear;
+  let lastNoData: string | undefined;
+  for (const year of Array.from(new Set(candidateYears))) {
+    try {
+      discoveredUrl = await discoverPhase0ReportUrlFromFeed({
+        stockCode: params.normalizedCode,
+        fiscalYear: year,
+        category,
+      });
+      discoveredYear = year;
+      break;
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (error instanceof Phase0NoDataError && params.allowFiscalYearFallback) {
+        lastNoData = detail;
+        continue;
+      }
+      if (params.discoverPolicy === "strict") {
+        throw new Error(formatDiscoveryError(params.discoveryErrorStyle, detail));
+      }
+      return {};
     }
-    return {};
   }
 
   if (!discoveredUrl?.trim()) {
     if (params.discoverPolicy === "strict") {
       throw new Error(
-        formatDiscoveryError(params.discoveryErrorStyle, "未发现可用的年报 PDF 链接"),
+        formatDiscoveryError(params.discoveryErrorStyle, lastNoData ?? "未发现可用的年报 PDF 链接"),
       );
     }
     return {};
@@ -96,9 +120,9 @@ export async function ensureAnnualPdfOnDisk(
   const downloaded = await runPhase0DownloadAndCache({
     code: params.normalizedCode,
     reportUrl: reportUrlResolved,
-    fiscalYear: params.fiscalYear,
+    fiscalYear: discoveredYear,
     category,
     saveDir,
   });
-  return { pdfPath: downloaded.filePath, reportUrlResolved };
+  return { pdfPath: downloaded.filePath, reportUrlResolved, fiscalYearResolved: discoveredYear };
 }

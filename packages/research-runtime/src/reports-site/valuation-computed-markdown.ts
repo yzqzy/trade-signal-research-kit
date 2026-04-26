@@ -118,7 +118,7 @@ export function renderValuationComputedMarkdownFromJson(rawJson: string): string
   }
 
   lines.push(
-    "> **说明**：上表与 `valuation_computed.json` 数值一致；若需机器交换或离线核对，请直接打开本 run 目录下的 **`valuation_computed.json`**。",
+    "> **说明**：上表由本次 run 的结构化估值结果生成；站点正文以表格为准，原始 JSON 仅作为发布链路的内部证据文件。",
     "",
   );
 

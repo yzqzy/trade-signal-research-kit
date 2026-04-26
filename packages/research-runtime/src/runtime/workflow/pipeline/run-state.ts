@@ -13,6 +13,8 @@ export interface WorkflowRunState {
   threadId?: string;
   completedStages?: string[];
   normalizedCode?: string;
+  /** strict 自动发现年报后解析出的财报年度；用于 Phase1A/Phase1B 锚点，避免无 --year 时误取运行年度。 */
+  effectiveYear?: string;
   outputDir?: string;
   interimReportMarkdown?: string;
   phase2aInterimJsonPath?: string;

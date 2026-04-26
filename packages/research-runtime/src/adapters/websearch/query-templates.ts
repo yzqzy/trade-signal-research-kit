@@ -1,4 +1,5 @@
 import type { Phase1BInput } from "../../steps/phase1b/types.js";
+import { resolveAnnualFiscalYear } from "../../crosscut/fiscal-year.js";
 
 export const PHASE1B_WEB_SEARCH_ITEMS = new Set<string>(["行业监管动态", "回购计划"]);
 
@@ -17,7 +18,7 @@ export function buildPhase1bWebSearchQueries(
 ): { primary: string[]; fallback: string[] } {
   const name = (input.companyName ?? "").trim();
   const code = (input.stockCode ?? "").trim();
-  const y = (input.year?.trim() && /^\d{4}$/.test(input.year.trim()) ? input.year.trim() : String(new Date().getFullYear() - 1));
+  const y = resolveAnnualFiscalYear(input.year);
 
   if (item === "违规/处罚记录") {
     return {
