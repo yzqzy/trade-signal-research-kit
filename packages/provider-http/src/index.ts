@@ -11,6 +11,8 @@ import type {
   OperationsInsightSnapshot,
   PeerComparableCollection,
   Quote,
+  RegulatoryEvent,
+  RegulatoryEventCollection,
   TradingCalendar,
 } from "@trade-signal/schema-core";
 
@@ -187,9 +189,20 @@ type FeedGovernanceEventsPayload = {
     severity?: string;
     publishedAt?: string;
     happenedAt?: string;
+    eventDate?: string;
+    sourceOrg?: string;
     url?: string;
   }>;
   highSeverityCount?: number;
+};
+
+type FeedRegulatoryEventsPayload = {
+  source?: string;
+  exchange?: string;
+  eventKinds?: string[];
+  total?: number;
+  sources?: RegulatoryEventCollection["sources"];
+  events?: RegulatoryEvent[];
 };
 
 type FeedOperationsInsightPayload = {
@@ -613,6 +626,12 @@ export class FeedHttpProvider implements MarketDataProvider {
       dedupe?: boolean;
       dropPlaceholders?: boolean;
       preferSeverity?: boolean;
+      source?: "aggregate" | "cninfo" | "sse";
+      startDate?: string;
+      endDate?: string;
+      sseExtType?: "1" | "2" | "3" | "inquiry" | "periodic_inquiry" | "reorg_review" | "all";
+      sseBoardType?: "0" | "4" | "main" | "star" | "all";
+      stockName?: string;
     },
   ): Promise<GovernanceEventCollection> {
     const payload = await this.request<FeedGovernanceEventsPayload>(
@@ -626,15 +645,21 @@ export class FeedHttpProvider implements MarketDataProvider {
           input?.dropPlaceholders !== undefined ? String(input.dropPlaceholders) : undefined,
         preferSeverity:
           input?.preferSeverity !== undefined ? String(input.preferSeverity) : undefined,
+        source: input?.source,
+        startDate: input?.startDate,
+        endDate: input?.endDate,
+        sseExtType: input?.sseExtType,
+        sseBoardType: input?.sseBoardType,
+        stockName: input?.stockName,
       },
     );
     const events = (payload.events ?? []).map<GovernanceNegativeEvent>((e) => ({
       category: e.category === "regulatory" ? "regulatory" : "governance_negative",
       summary: e.summary ?? e.title ?? "（无摘要）",
       severity: toGovSeverity(e.severity),
-      happenedAt: e.happenedAt ?? e.publishedAt,
+      happenedAt: e.happenedAt ?? e.eventDate ?? e.publishedAt,
       evidenceUrl: e.url,
-      sourceLabel: payload.source ?? "feed_governance",
+      sourceLabel: e.sourceOrg ?? payload.source ?? "feed_governance",
     }));
     return {
       source: payload.source ?? "feed_governance",
@@ -642,6 +667,44 @@ export class FeedHttpProvider implements MarketDataProvider {
       highSeverityCount:
         payload.highSeverityCount ??
         events.filter((event) => event.severity === "high").length,
+    };
+  }
+
+  async getRegulatoryEvents(
+    code: string,
+    input?: {
+      source?: "aggregate" | "cninfo" | "sse" | "szse" | "bse";
+      exchange?: "auto" | "sse" | "szse" | "bse" | "all";
+      eventKinds?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+      keyword?: string;
+      stockName?: string;
+    },
+  ): Promise<RegulatoryEventCollection> {
+    const payload = await this.request<FeedRegulatoryEventsPayload>("/stock/regulatory/events", {
+      code,
+      source: input?.source,
+      exchange: input?.exchange,
+      eventKinds: input?.eventKinds,
+      startDate: input?.startDate,
+      endDate: input?.endDate,
+      page: input?.page !== undefined ? String(input.page) : undefined,
+      limit: input?.limit !== undefined ? String(input.limit) : undefined,
+      keyword: input?.keyword,
+      stockName: input?.stockName,
+    });
+    return {
+      source: payload.source ?? input?.source ?? "aggregate",
+      exchange: payload.exchange ?? input?.exchange ?? "auto",
+      eventKinds: Array.isArray(payload.eventKinds)
+        ? payload.eventKinds
+        : (input?.eventKinds?.split(",").map((item) => item.trim()).filter(Boolean) ?? []),
+      total: payload.total ?? payload.events?.length ?? 0,
+      events: Array.isArray(payload.events) ? payload.events : [],
+      sources: payload.sources,
     };
   }
 
@@ -671,9 +734,9 @@ export class FeedHttpProvider implements MarketDataProvider {
       category: e.category === "regulatory" ? "regulatory" : "governance_negative",
       summary: e.summary ?? e.title ?? "（无摘要）",
       severity: toGovSeverity(e.severity),
-      happenedAt: e.happenedAt ?? e.publishedAt,
+      happenedAt: e.happenedAt ?? e.eventDate ?? e.publishedAt,
       evidenceUrl: e.url,
-      sourceLabel: payload.source ?? "feed_operations_insight",
+      sourceLabel: e.sourceOrg ?? payload.source ?? "feed_operations_insight",
     }));
     return {
       source: payload.source ?? "feed_operations_insight",

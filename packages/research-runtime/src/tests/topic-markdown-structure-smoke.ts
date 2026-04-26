@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { validateFinalNarrativeMarkdown } from "../runtime/business-analysis/final-narrative-status.js";
+import { PHASE1B_WEB_SEARCH_ITEMS } from "../adapters/websearch/query-templates.js";
 import {
   emitSiteReportsFromRun,
   findPublishedMarkdownQualityViolations,
@@ -340,6 +341,9 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
 }
 
 function assertPhase1BRetrievalPresentation(): void {
+  assert.equal(PHASE1B_WEB_SEARCH_ITEMS.has("违规/处罚记录"), false);
+  assert.equal(PHASE1B_WEB_SEARCH_ITEMS.has("行业监管动态"), true);
+
   const md = renderPhase1BMarkdown({
     stockCode: "600887",
     companyName: "测试公司",
@@ -364,7 +368,8 @@ function assertPhase1BRetrievalPresentation(): void {
     section8: [],
     section10: [],
   });
-  assert.match(md, /外部检索受限，已回退 Feed，仍未形成可确认候选证据/);
+  assert.match(md, /官方源与开放信息补充检索均未形成可确认候选证据/);
+  assert.doesNotMatch(md, /回退 Feed|WebSearch 受限/);
 
   const filtered = filterPhase1BHighSensitivityEvidencesForTest("违规/处罚记录", [
     {

@@ -32,9 +32,11 @@ export type Phase1BRetrievalDiagnostics = {
   webSearchQueriesTried?: string[];
   /** WebSearch 全空或异常时的可读原因 */
   webSearchFailureReason?: string;
+  /** WebSearch 因官方源优先、限流停止等原因未执行 */
+  webSearchSkippedReason?: string;
   /** 门禁层备注（URL 非法、时间不可解析等） */
   webSearchGateNotes?: string[];
-  /** WebSearch 无命中或失败后，是否回退 Feed `/stock/report/search` */
+  /** WebSearch 无命中或失败后，是否已使用官方源检索 */
   feedFallbackUsed?: boolean;
   /** Feed 回退后的有效证据数量 */
   feedEvidenceCount?: number;

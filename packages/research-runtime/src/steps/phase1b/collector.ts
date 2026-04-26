@@ -52,6 +52,26 @@ type FeedSearchResponse = {
   message?: string;
 };
 
+type FeedRegulatoryEventHit = FeedSearchHit & {
+  eventDate?: string;
+  sourceOrg?: string;
+  eventType?: string;
+  sourceType?: string;
+  companyCode?: string;
+  companyName?: string;
+  evidenceUrl?: string;
+  source?: string;
+};
+
+type FeedRegulatoryEventsResponse = {
+  success?: boolean;
+  source?: string;
+  total?: number;
+  events?: FeedRegulatoryEventHit[];
+  data?: { events?: FeedRegulatoryEventHit[] } | FeedRegulatoryEventHit[];
+  message?: string;
+};
+
 type FeedSearchQuery = {
   catalog: ExternalEvidenceCatalog;
   item: string;
@@ -145,6 +165,15 @@ function normalizeHitsFromUnknown(payload: unknown): FeedSearchHit[] {
   return normalizeHits(payload as FeedSearchResponse);
 }
 
+function normalizeRegulatoryEventHits(payload: FeedRegulatoryEventsResponse): FeedRegulatoryEventHit[] {
+  if (Array.isArray(payload.events)) return payload.events;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (payload.data && typeof payload.data === "object" && Array.isArray(payload.data.events)) {
+    return payload.data.events;
+  }
+  return [];
+}
+
 function toEvidence(hit: FeedSearchHit): Phase1BEvidence | undefined {
   if (!hit.url) return undefined;
   return {
@@ -153,6 +182,20 @@ function toEvidence(hit: FeedSearchHit): Phase1BEvidence | undefined {
     source: hit.source,
     publishedAt: hit.publishedAt,
     snippet: hit.snippet ?? hit.summary ?? hit.content,
+  };
+}
+
+function regulatoryEventToEvidence(hit: FeedRegulatoryEventHit): Phase1BEvidence | undefined {
+  const url = hit.url ?? hit.evidenceUrl;
+  if (!url) return undefined;
+  const source = hit.sourceOrg ?? hit.source ?? hit.sourceType;
+  const label = [hit.eventType, hit.summary ?? hit.snippet].filter(Boolean).join("；");
+  return {
+    title: hit.title ?? hit.summary ?? "未命名治理事件",
+    url,
+    source,
+    publishedAt: hit.eventDate ?? hit.publishedAt,
+    snippet: label || hit.title,
   };
 }
 
@@ -225,6 +268,58 @@ export function filterPhase1BHighSensitivityEvidencesForTest(
 
 function isWebSearchLimited(reason: string | undefined): boolean {
   return /rate[_ -]?limit|限流|quota|too many/i.test(reason ?? "");
+}
+
+function envPositiveInt(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(Math.max(concurrency, 1), items.length) }, async () => {
+    for (;;) {
+      const index = next;
+      next += 1;
+      if (index >= items.length) return;
+      out[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+function createLimiter(concurrency: number): <T>(task: () => Promise<T>) => Promise<T> {
+  let active = 0;
+  const queue: Array<() => void> = [];
+  const runNext = () => {
+    if (active >= concurrency) return;
+    const next = queue.shift();
+    if (next) next();
+  };
+  return async <T>(task: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const run = async () => {
+        active += 1;
+        try {
+          resolve(await task());
+        } catch (error) {
+          reject(error);
+        } finally {
+          active -= 1;
+          runNext();
+        }
+      };
+      queue.push(run);
+      runNext();
+    });
 }
 
 function enrichRetrievalDiagnosticsAfterFeed(
@@ -327,6 +422,42 @@ async function searchFeedSection8Tiered(
   return { evidences: broad, diagnostics: { variantKeywordsTried, zeroHitBroadFallbackUsed } };
 }
 
+async function searchFeedRegulatoryEvents(
+  options: FeedSearchClientOptions,
+  input: Phase1BInput,
+): Promise<Phase1BEvidence[]> {
+  const base = options.baseUrl.replace(/\/+$/, "");
+  const apiBasePath = (options.apiBasePath ?? "/api/v1").replace(/\/+$/, "");
+  const url = new URL(`${base}${apiBasePath}/stock/regulatory/events`);
+  const limit = input.limitPerQuery ?? 5;
+
+  url.searchParams.set("code", input.stockCode);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("source", "aggregate");
+  url.searchParams.set("exchange", "auto");
+  url.searchParams.set("eventKinds", "inquiry,regulatory_measure,discipline");
+  const name = input.companyName?.trim();
+  if (name) url.searchParams.set("stockName", name);
+
+  const response = await fetch(url, {
+    headers: {
+      ...(options.apiKey ? { "x-api-key": options.apiKey } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Feed regulatory events failed: HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as FeedRegulatoryEventsResponse;
+  if (payload.success === false) {
+    throw new Error(payload.message || "Feed regulatory events failed with success=false");
+  }
+  return normalizeRegulatoryEventHits(payload)
+    .map(regulatoryEventToEvidence)
+    .filter((item): item is Phase1BEvidence => Boolean(item));
+}
+
 async function searchFeed(
   options: FeedSearchClientOptions,
   input: Phase1BInput,
@@ -393,23 +524,69 @@ export async function collectExternalEvidenceC1(
   }> = [];
   const clientOptions = resolveFeedSearchClientOptionsFromEnv(options);
   const limit = input.limitPerQuery ?? 5;
-  const resolved = await Promise.all(
-    queries.map(async (query) => {
+  const fetchConcurrency = envPositiveInt("PHASE1B_FETCH_CONCURRENCY", 3);
+  const webSearchConcurrency = envPositiveInt("WEB_SEARCH_CONCURRENCY", 1);
+  const webSearchLimiter = createLimiter(webSearchConcurrency);
+  let webSearchStoppedByRateLimit = false;
+  const regulatoryWebFallback = process.env.PHASE1B_REGULATORY_WEB_FALLBACK === "1";
+  const resolved = await mapWithConcurrency(
+    queries,
+    fetchConcurrency,
+    async (query) => {
       let diagnostics: Section8RetrievalDiag | undefined;
       let evidences: Phase1BEvidence[] = [];
       const useWeb = Boolean(webProvider && webCfg && PHASE1B_WEB_SEARCH_ITEMS.has(query.item));
 
       if (useWeb && webProvider && webCfg) {
-        const web = await tryWebSearchForPhase1bItem(webProvider, webCfg, input, query.item);
-        diagnostics = mergeRetrievalDiagnostics(diagnostics, web.diagnostics);
-        if (web.evidences.length > 0) {
-          evidences = web.evidences;
+        if (webSearchStoppedByRateLimit) {
+          diagnostics = mergeRetrievalDiagnostics(diagnostics, {
+            webSearchSkippedReason: "此前开放信息补充检索触发限流，本轮后续开放检索已停止，优先使用官方源",
+          });
+        } else {
+          const web = await webSearchLimiter(() => tryWebSearchForPhase1bItem(webProvider, webCfg, input, query.item));
+          diagnostics = mergeRetrievalDiagnostics(diagnostics, web.diagnostics);
+          if (isWebSearchLimited(web.diagnostics.webSearchFailureReason)) {
+            webSearchStoppedByRateLimit = true;
+          }
+          if (web.evidences.length > 0) {
+            evidences = web.evidences;
+          }
+        }
+      }
+
+      if (query.item === "行业监管动态") {
+        try {
+          const regulatory = await searchFeedRegulatoryEvents(clientOptions, input);
+          evidences = [...regulatory, ...evidences];
+        } catch {
+          // 行业监管仍有政策/行业检索兜底，公司监管事件源失败不阻断本条目。
         }
       }
 
       if (evidences.length === 0) {
         let usedFeedFallback = false;
-        if (query.catalog === "8") {
+        if (query.item === "违规/处罚记录") {
+          try {
+            evidences = await searchFeedRegulatoryEvents(clientOptions, input);
+          } catch (error) {
+            evidences = [];
+            diagnostics = mergeRetrievalDiagnostics(diagnostics, {
+              feedFallbackUsed: true,
+              feedEvidenceCount: 0,
+              evidenceRetrievalStatus: "feed_empty",
+              webSearchSkippedReason:
+                error instanceof Error ? `官方监管事件接口失败：${error.message}` : "官方监管事件接口失败",
+            });
+          }
+          if (evidences.length === 0 && regulatoryWebFallback && webProvider && webCfg && !webSearchStoppedByRateLimit) {
+            const web = await webSearchLimiter(() => tryWebSearchForPhase1bItem(webProvider, webCfg, input, query.item));
+            diagnostics = mergeRetrievalDiagnostics(diagnostics, web.diagnostics);
+            if (isWebSearchLimited(web.diagnostics.webSearchFailureReason)) {
+              webSearchStoppedByRateLimit = true;
+            }
+            evidences = web.evidences;
+          }
+        } else if (query.catalog === "8") {
           const tiered = await searchFeedSection8Tiered(clientOptions, input, query);
           evidences = tiered.evidences;
           diagnostics = mergeRetrievalDiagnostics(diagnostics, tiered.diagnostics);
@@ -429,7 +606,7 @@ export async function collectExternalEvidenceC1(
         diagnostics = { ...(diagnostics ?? {}), aiRerankApplied: false };
       }
       return { query, evidences, diagnostics };
-    }),
+    },
   );
   results.push(...resolved);
 

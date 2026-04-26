@@ -303,11 +303,11 @@ function deriveBusinessAnalysisConfidence(input: {
 
 function evidenceStatusLabel(evidence: EvidenceRetrievalSummary): string {
   if (evidence.webSearchLimited && evidence.missingItems.length > 0) {
-    return "外部检索受限，已回退 Feed；部分关键项仍未形成可确认候选证据";
+    return "官方源已优先检索；开放信息补充受限，部分关键项仍未形成可确认候选证据";
   }
   if (evidence.hasCriticalGap) return "关键合规项存在证据缺口";
-  if (evidence.webSearchUsed) return "WebSearch / Feed 已形成候选证据";
-  return "Feed 已形成候选证据";
+  if (evidence.webSearchUsed) return "官方源与开放信息补充已形成候选证据";
+  return "官方源已形成候选证据";
 }
 
 function renderQualitySnapshot(input: {
@@ -403,7 +403,7 @@ function renderEvidenceQualitySection(input: {
   rows.push(`| PDF 抽取 | gate=${gate}；低置信关键块=${low}；缺失关键块=${missing} |`);
   rows.push(`| 人工复核优先级 | ${input.pdfQuality.humanReviewPriority?.length ? input.pdfQuality.humanReviewPriority.join("、") : "无"} |`);
   rows.push(`| 外部证据检索 | ${evidenceStatusLabel(input.evidence)} |`);
-  rows.push(`| WebSearch | ${input.evidence.webSearchUsed ? (input.evidence.webSearchLimited ? "已尝试，但部分查询受限并回退 Feed" : "已尝试并完成") : "未启用"} |`);
+  rows.push(`| 开放信息补充 | ${input.evidence.webSearchUsed ? (input.evidence.webSearchLimited ? "已尝试，部分查询受限；不作为监管事件主证据" : "已尝试并完成；不作为监管事件主证据") : "未启用或未触发"} |`);
   rows.push(`| 仍需补链 | ${input.evidence.missingItems.length ? input.evidence.missingItems.join("、") : "无"} |`);
   return rows.join("\n");
 }

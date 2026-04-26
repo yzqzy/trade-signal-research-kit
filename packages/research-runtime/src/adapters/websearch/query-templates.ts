@@ -1,6 +1,6 @@
 import type { Phase1BInput } from "../../steps/phase1b/types.js";
 
-export const PHASE1B_WEB_SEARCH_ITEMS = new Set<string>(["违规/处罚记录", "行业监管动态", "回购计划"]);
+export const PHASE1B_WEB_SEARCH_ITEMS = new Set<string>(["行业监管动态", "回购计划"]);
 
 function clip100(s: string): string {
   const t = s.trim();

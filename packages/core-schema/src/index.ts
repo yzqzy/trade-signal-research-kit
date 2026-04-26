@@ -152,6 +152,21 @@ export interface MarketDataProvider {
       preferSeverity?: boolean;
     },
   ): Promise<GovernanceEventCollection>;
+  /** P4：官方监管/问询/处分事件聚合（feed 优先，可选能力） */
+  getRegulatoryEvents?(
+    code: string,
+    input?: {
+      source?: "aggregate" | "cninfo" | "sse" | "szse" | "bse";
+      exchange?: "auto" | "sse" | "szse" | "bse" | "all";
+      eventKinds?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+      keyword?: string;
+      stockName?: string;
+    },
+  ): Promise<RegulatoryEventCollection>;
   /** P2-Lite：运营与管理洞察聚合（可选能力） */
   getOperationsInsight?(
     code: string,
@@ -404,6 +419,32 @@ export interface GovernanceEventCollection {
   source: string;
   events: GovernanceNegativeEvent[];
   highSeverityCount: number;
+}
+
+export interface RegulatoryEvent {
+  eventType: string;
+  eventDate?: string;
+  sourceOrg: string;
+  title: string;
+  summary?: string;
+  url?: string;
+  companyCode: string;
+  companyName?: string;
+  severity: GovernanceEventSeverity;
+  periodScope?: string;
+  source: "cninfo" | "sse" | "szse" | "bse";
+  sourceType: "exchange_inquiry" | "exchange_measure" | "exchange_discipline" | "announcement";
+  rawType?: string;
+  dedupeKey?: string;
+}
+
+export interface RegulatoryEventCollection {
+  source: string;
+  exchange: string;
+  eventKinds: string[];
+  events: RegulatoryEvent[];
+  total: number;
+  sources?: Record<string, { status: "ok" | "skipped" | "degraded"; total: number; note?: string }>;
 }
 
 export interface OperationsInsightSnapshot {
