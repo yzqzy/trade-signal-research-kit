@@ -235,7 +235,7 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
     if (!Number.isFinite(cash) || cash <= 0) continue;
     const y = yearFromDate(action.exDate) ?? yearFromDate(action.recordDate);
     if (!y) continue;
-    if (!dividendsByYear.has(y)) dividendsByYear.set(y, cash);
+    dividendsByYear.set(y, safeNum(dividendsByYear.get(y), 0) + cash);
   }
   const dpsFor = (y: string) => {
     const s = byYear.get(y) ?? latest;

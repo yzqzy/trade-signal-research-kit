@@ -185,60 +185,7 @@ export function runPhase3Strict(input: RunPhase3StrictInput): Phase3ExecutionRes
   // Factor2
   const f2 = runFactor2(ctx.marketPack, f1b);
   appendCheckpoint(ctx, `因子2: ${f2.passed ? "通过" : f2.reason}`);
-  if (!f2.passed) {
-    const factor2Reason =
-      f2.rejectType === "S4"
-        ? "因子2-S4（穿透收益率不足）｜研报结论：回报率显著低于门槛"
-        : f2.reason ?? "因子2否决";
-    const thresholdCompare =
-      f2.R !== undefined && f2.II !== undefined
-        ? [
-            `- **粗算穿透回报率 R**：${f2.R.toFixed(2)}%`,
-            `- **门槛 II**（max(3.5%, Rf+2%)）：${f2.II.toFixed(2)}%`,
-            `- **Rf（无风险）**：${(ctx.marketPack.rf ?? 2.5).toFixed(2)}%（用于 R 与 Rf 比较）`,
-            f2.rejectType ? `- **否决类型**：${f2.rejectType}` : "",
-          ]
-            .filter(Boolean)
-            .join("\n")
-        : undefined;
-    const formulaSummary = [
-      "- 穿透收益率口径：`R = I / 市值`。",
-      "- 门槛口径：`II = max(3.5%, rf + 2%)`。",
-      "- S4 触发条件：`R < II`。",
-    ].join("\n");
-    const humanReason =
-      f2.R !== undefined && f2.II !== undefined
-        ? `这次不是程序异常，而是前置筛选结束。因为穿透收益率 R=${f2.R.toFixed(2)}% 低于门槛（II=${f2.II.toFixed(2)}%，Rf=${(ctx.marketPack.rf ?? 2.5).toFixed(2)}%），因此不再进入后续因子计算。`
-        : "这次不是程序异常，而是前置筛选结束。主因是穿透收益率不足，未满足策略最低门槛。";
-    const report = buildRejectReport(
-      ctx.marketPack.code,
-      ctx.marketPack.name,
-      factor2Reason,
-      ctx.checkpoints,
-      {
-        thresholdCompare,
-        humanReason,
-        formulaSummary,
-        executedFactors: ["因子1A", "因子1B", "因子2"],
-        skippedFactors: ["因子3", "因子4"],
-      },
-    );
-    return {
-      valuation: {
-        code: ctx.marketPack.code,
-        generatedAt: new Date().toISOString(),
-        methods: [],
-      },
-      report,
-      decision: "avoid",
-      confidence: "medium",
-      reportMode: "reject",
-      factor1A: f1a,
-      factor1B: f1b,
-      factor2: f2,
-      methods: [],
-    };
-  }
+  if (!f2.passed) appendCheckpoint(ctx, "因子2未达门槛：策略结论保持回避，但继续产出精算、估值和证据页供复核。");
 
   // Factor3
   const f3 = runFactor3(ctx.marketPack, f1b, f2);
@@ -296,8 +243,9 @@ export function runPhase3Strict(input: RunPhase3StrictInput): Phase3ExecutionRes
     })),
   });
 
-  const decision = decisionFromFactor4(f4.position, f4.passed);
-  const confidence = confidenceFromContext(ctx, f3.extrapolationTrust);
+  const decision = f2.passed ? decisionFromFactor4(f4.position, f4.passed) : "avoid";
+  const confidenceRaw = confidenceFromContext(ctx, f3.extrapolationTrust);
+  const confidence: Confidence = !f2.passed && confidenceRaw === "high" ? "medium" : confidenceRaw;
   const report: AnalysisReport = {
     meta: {
       code: ctx.marketPack.code,

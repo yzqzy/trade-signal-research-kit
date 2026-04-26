@@ -125,9 +125,11 @@ type FeedStockDetailResponse = {
   data?: {
     name?: string;
     stockName?: string;
+    list?: Array<{ name?: string; stockName?: string }>;
   };
   name?: string;
   stockName?: string;
+  list?: Array<{ name?: string; stockName?: string }>;
 };
 
 async function tryFetchStockName(params: {
@@ -138,25 +140,38 @@ async function tryFetchStockName(params: {
 }): Promise<string | undefined> {
   const base = params.baseUrl.replace(/\/+$/, "");
   const apiBasePath = params.apiBasePath.replace(/\/+$/, "");
-  const endpointPath = `/stock/detail/${encodeURIComponent(params.stockCode)}`;
-  const url = new URL(`${base}${apiBasePath}${endpointPath}`);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        ...(params.apiKey ? { "x-api-key": params.apiKey } : {}),
-      },
-    });
-    if (!response.ok) return undefined;
-    const payload = (await response.json()) as FeedStockDetailResponse;
+  const headers = {
+    ...(params.apiKey ? { "x-api-key": params.apiKey } : {}),
+  };
+  const pickName = (payload: FeedStockDetailResponse): string | undefined => {
+    const first = payload.data?.list?.[0] ?? payload.list?.[0];
     const stockName =
       payload.data?.name?.trim() ||
       payload.data?.stockName?.trim() ||
+      first?.name?.trim() ||
+      first?.stockName?.trim() ||
       payload.name?.trim() ||
       payload.stockName?.trim();
     return stockName || undefined;
-  } catch {
-    return undefined;
+  };
+  const urls = [
+    new URL(`${base}${apiBasePath}/stock/detail/${encodeURIComponent(params.stockCode)}`),
+    new URL(`${base}${apiBasePath}/stock/search?keyword=${encodeURIComponent(params.stockCode)}`),
+  ];
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers,
+      });
+      if (!response.ok) continue;
+      const payload = (await response.json()) as FeedStockDetailResponse;
+      const stockName = pickName(payload);
+      if (stockName) return stockName;
+    } catch {
+      // try next resolver
+    }
   }
+  return undefined;
 }
 
 const PHASE0_DISCOVERY_HINT =

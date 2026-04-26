@@ -45,6 +45,12 @@ function anchorFiscalYearFromSnapshot(fallback: number, fin?: { period?: string 
   return fallback;
 }
 
+function resolveCorporateActionsFrom(input: CollectPhase1AInput, fallbackFrom: string): string {
+  const y = input.year?.match(/^20\d{2}$/)?.[0] ?? input.financialPeriod?.match(/20\d{2}/)?.[0];
+  if (!y) return fallbackFrom;
+  return `${Number(y) - 4}-01-01`;
+}
+
 async function loadOptional<T>(
   enabled: boolean,
   optionalFailure: "ignore" | "throw",
@@ -88,13 +94,14 @@ export async function collectPhase1ADataPack(
   const includeTradingCalendar = input.includeTradingCalendar ?? true;
 
   const financialSnapshotPeriod = resolveFinancialSnapshotPeriod(input);
+  const corporateActionsFrom = resolveCorporateActionsFrom(input, from);
 
   const [financialSnapshot, corporateActions, tradingCalendar] = await Promise.all([
     loadOptional(includeFinancialSnapshot, optionalFailure, () =>
       provider.getFinancialSnapshot(input.code, financialSnapshotPeriod),
     ),
     loadOptional(includeCorporateActions, optionalFailure, () =>
-      provider.getCorporateActions(input.code, from, to),
+      provider.getCorporateActions(input.code, corporateActionsFrom, to),
     ),
     loadOptional(includeTradingCalendar, optionalFailure, () =>
       provider.getTradingCalendar(input.calendarMarket ?? instrument.market, from, to),

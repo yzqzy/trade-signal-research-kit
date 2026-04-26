@@ -191,7 +191,8 @@ function ddmMethod(financials: Phase3FinancialYear[], ke: number): ValuationMeth
     return { method: "DDM", note: "insufficient dividend history" };
   }
   const latest = dps[0];
-  const g = Math.min(((cagr(dps) ?? 0.03) * 100), ke - 1);
+  const rawGrowth = (cagr(dps) ?? 0.03) * 100;
+  const g = Math.min(Math.max(rawGrowth, 0), 3.5, ke - 2);
   if (g <= 0 || g >= ke) {
     return { method: "DDM", note: "invalid growth/ke relationship" };
   }
@@ -200,7 +201,7 @@ function ddmMethod(financials: Phase3FinancialYear[], ke: number): ValuationMeth
     method: "DDM",
     value,
     range: { conservative: value * 0.9, central: value, optimistic: value * 1.1 },
-    assumptions: { latestDps: latest, g, ke },
+    assumptions: { latestDps: latest, rawGrowth, g, ke },
   };
 }
 
