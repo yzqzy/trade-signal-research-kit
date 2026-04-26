@@ -24,8 +24,28 @@ export type Phase1aInstrumentSummary = {
   currency?: string;
 };
 
+export type PeerComparableSummaryV1 = {
+  code: string;
+  name?: string;
+  industryName?: string;
+  year?: string;
+  revenueAllYear?: number;
+  parentNiAllYear?: number;
+  parentNi3Q?: number;
+  marketCap1Q?: number;
+  marketCap4Q?: number;
+};
+
 export type Phase1aSummaryV1 = {
   instrument?: Phase1aInstrumentSummary;
+  peerComparablePool?: {
+    source?: string;
+    industryName?: string;
+    sortColumn?: string;
+    peerCodes: string[];
+    peers: PeerComparableSummaryV1[];
+    note?: string;
+  };
   /** 其它数值型摘要可逐步扩展；未知保持空 */
   notes?: string[];
 };
@@ -39,6 +59,11 @@ export type MarketPackSummaryV1 = {
   price?: number;
   marketCap?: number;
   totalShares?: number;
+  peTtm?: number;
+  pePercentile?: number;
+  peP25?: number;
+  peP50?: number;
+  peP75?: number;
   /** 来自市场包中的无风险利率（若解析到） */
   riskFreeRate?: number;
   warningsCount: number;

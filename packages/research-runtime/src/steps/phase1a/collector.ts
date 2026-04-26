@@ -107,7 +107,7 @@ export async function collectPhase1ADataPack(
       provider.getTradingCalendar(input.calendarMarket ?? instrument.market, from, to),
     ),
   ]);
-  const [industryCycleSnapshot, peerComparablePool, governanceEventCollection] = await Promise.all([
+  const [industryCycleSnapshot, peerComparablePool, governanceEventCollection, companyOperationsSnapshot] = await Promise.all([
     loadOptional(
       typeof provider.getIndustryCycleSnapshot === "function",
       optionalFailure,
@@ -116,12 +116,17 @@ export async function collectPhase1ADataPack(
     loadOptional(
       typeof provider.getPeerComparablePool === "function",
       optionalFailure,
-      () => provider.getPeerComparablePool!(input.code, { year: input.year, topN: 5 }),
+      () => provider.getPeerComparablePool!(input.code, { year: input.year, topN: 10 }),
     ),
     loadOptional(
       typeof provider.getGovernanceEvents === "function",
       optionalFailure,
       () => provider.getGovernanceEvents!(input.code, { year: input.year, limit: 10, timeRange: "3y" }),
+    ),
+    loadOptional(
+      typeof provider.getCompanyOperations === "function",
+      optionalFailure,
+      () => provider.getCompanyOperations!(input.code, { year: input.year, topN: 10 }),
     ),
   ]);
   const historicalPeSeries = await loadOptional(
@@ -163,5 +168,6 @@ export async function collectPhase1ADataPack(
     industryCycleSnapshot,
     peerComparablePool,
     governanceEventCollection,
+    companyOperationsSnapshot,
   };
 }

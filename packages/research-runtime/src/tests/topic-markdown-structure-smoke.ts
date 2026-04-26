@@ -119,8 +119,10 @@ function assertTopicStructures(): void {
   assert.doesNotMatch(rendered.businessQualityMarkdown, /https?:\/\//);
   assert.match(rendered.penetrationReturnMarkdown, /## STEP 0 数据校验与口径锚定/);
   assert.match(rendered.penetrationReturnMarkdown, /## STEP 11 交叉验证与可信度评级/);
-  assert.match(rendered.valuationMarkdown, /## 六、反向估值：当前价格隐含了什么？/);
-  assert.match(rendered.valuationMarkdown, /## 八、关键假设与风险提示/);
+  assert.match(rendered.valuationMarkdown, /## 五、DCF 敏感性矩阵/);
+  assert.match(rendered.valuationMarkdown, /## 七、PE Band 历史分位区间/);
+  assert.match(rendered.valuationMarkdown, /## 十、反向估值：当前价格隐含了什么？/);
+  assert.match(rendered.valuationMarkdown, /## 十二、关键假设与风险提示/);
 }
 
 function assertFinalNarrativeValidation(): void {

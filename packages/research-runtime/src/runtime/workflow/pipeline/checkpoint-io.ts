@@ -41,6 +41,10 @@ export type WorkflowCheckpointFile = {
     | "businessQualityMarkdownPath"
     | "penetrationReturnMarkdownPath"
     | "valuationTopicMarkdownPath"
+    | "businessFinalizeHandoffJsonPath"
+    | "businessFinalizeHandoffMarkdownPath"
+    | "suggestedBusinessAnalysisCommand"
+    | "businessNarrativeStatus"
     | "manifestPath"
   >;
 };

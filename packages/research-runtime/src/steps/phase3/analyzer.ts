@@ -39,6 +39,13 @@ function decisionFromFactor4(position: string, passed: boolean): Phase3Decision 
   return "watch";
 }
 
+function isMarginalFactor2Miss(ctx: Phase3Context, f2: { passed: boolean; R?: number; II?: number }, f3?: { GG?: number }, f4?: { trapRisk?: string }): boolean {
+  if (f2.passed || f2.R === undefined || f2.II === undefined) return false;
+  const gap = f2.II - f2.R;
+  const rf = ctx.marketPack.rf ?? 2.5;
+  return gap > 0 && gap <= 0.25 && f2.R >= rf && (f3?.GG ?? 0) >= f2.II && f4?.trapRisk === "low";
+}
+
 function confidenceFromContext(ctx: Phase3Context, trust?: "high" | "medium" | "low"): Confidence {
   const highWarnings = ctx.marketPack.warnings.filter((w) => w.level === "high").length;
   const dataComplete = Boolean(ctx.marketPack.financials[0]?.netProfit !== undefined && ctx.marketPack.financials[0]?.ocf !== undefined);
@@ -228,6 +235,9 @@ export function runPhase3Strict(input: RunPhase3StrictInput): Phase3ExecutionRes
     marketCap: ctx.marketPack.marketCap,
     totalShares: ctx.marketPack.totalShares,
     peTtm: ctx.marketPack.peTtm,
+    peP25: ctx.marketPack.peP25,
+    peP50: ctx.marketPack.peP50,
+    peP75: ctx.marketPack.peP75,
     debt: ctx.marketPack.financials[0]?.interestBearingDebt,
     cash: ctx.marketPack.financials[0]?.cash,
     riskFreeRate: ctx.marketPack.rf,
@@ -243,7 +253,11 @@ export function runPhase3Strict(input: RunPhase3StrictInput): Phase3ExecutionRes
     })),
   });
 
-  const decision = f2.passed ? decisionFromFactor4(f4.position, f4.passed) : "avoid";
+  const decision = f2.passed
+    ? decisionFromFactor4(f4.position, f4.passed)
+    : isMarginalFactor2Miss(ctx, f2, f3, f4)
+      ? "watch"
+      : "avoid";
   const confidenceRaw = confidenceFromContext(ctx, f3.extrapolationTrust);
   const confidence: Confidence = !f2.passed && confidenceRaw === "high" ? "medium" : confidenceRaw;
   const report: AnalysisReport = {

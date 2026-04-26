@@ -213,12 +213,23 @@ function peBandMethod(input: Phase3MarketInput, financials: Phase3FinancialYear[
   if (!currentPe || currentPe <= 0 || eps.length === 0) {
     return { method: "PE_BAND", note: "insufficient pe/eps" };
   }
-  const peSeries = [currentPe * 0.65, currentPe * 0.85, currentPe, currentPe * 1.15, currentPe * 1.35].sort(
-    (a, b) => a - b,
-  );
+  const peSeries =
+    input.peP25 && input.peP50 && input.peP75
+      ? [input.peP25, input.peP50, input.peP75].sort((a, b) => a - b)
+      : [currentPe * 0.65, currentPe * 0.85, currentPe, currentPe * 1.15, currentPe * 1.35].sort(
+          (a, b) => a - b,
+        );
   const epsNorm = avg(eps.slice(0, 3)) ?? eps[0];
   const medianPe = percentile(peSeries, 50);
   const value = medianPe * epsNorm;
+  const assumptions: Record<string, string | number> = {
+    currentPe,
+    epsNorm,
+    peMedian: medianPe,
+  };
+  if (input.peP25 !== undefined) assumptions.peP25 = input.peP25;
+  if (input.peP50 !== undefined) assumptions.peP50 = input.peP50;
+  if (input.peP75 !== undefined) assumptions.peP75 = input.peP75;
   return {
     method: "PE_BAND",
     value,
@@ -227,11 +238,7 @@ function peBandMethod(input: Phase3MarketInput, financials: Phase3FinancialYear[
       central: value,
       optimistic: percentile(peSeries, 75) * epsNorm,
     },
-    assumptions: {
-      currentPe,
-      epsNorm,
-      peMedian: medianPe,
-    },
+    assumptions,
   };
 }
 

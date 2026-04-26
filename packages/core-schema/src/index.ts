@@ -111,6 +111,9 @@ export interface HistoricalPeSeries {
   percentile?: number;
   mean?: number;
   median?: number;
+  p25?: number;
+  p50?: number;
+  p75?: number;
   min?: number;
   minDate?: string;
   max?: number;
@@ -196,6 +199,11 @@ export interface MarketDataProvider {
       timeRange?: "3m" | "6m" | "1y" | "3y" | "5y";
     },
   ): Promise<OperationsInsightSnapshot>;
+  /** 公司经营画像（F10 主营/题材/行业/同业池聚合，可选能力） */
+  getCompanyOperations?(
+    code: string,
+    input?: { year?: string; topN?: number },
+  ): Promise<CompanyOperationsSnapshot>;
 }
 
 export type CapabilityStatus = "supported" | "partial" | "unsupported";
@@ -240,6 +248,8 @@ export interface DataPackMarket {
   governanceEventCollection?: GovernanceEventCollection;
   /** P2-Lite：运营与管理洞察聚合（若 provider 支持） */
   operationsInsightSnapshot?: OperationsInsightSnapshot;
+  /** 公司经营画像（若 provider 支持） */
+  companyOperationsSnapshot?: CompanyOperationsSnapshot;
 }
 
 export type Phase2SectionConfidence = "high" | "medium" | "low";
@@ -416,10 +426,24 @@ export interface IndustryCycleSnapshot {
   signals: IndustryCycleSignal[];
 }
 
+export interface PeerComparableItem {
+  code: string;
+  name?: string;
+  industryName?: string;
+  year?: string;
+  revenueAllYear?: number;
+  parentNiAllYear?: number;
+  parentNi3Q?: number;
+  marketCap1Q?: number;
+  marketCap4Q?: number;
+}
+
 export interface PeerComparableCollection {
   source: string;
   industryName: string;
   peerCodes: string[];
+  peers?: PeerComparableItem[];
+  sortColumn?: string;
   note?: string;
 }
 
@@ -476,4 +500,33 @@ export interface OperationsInsightSnapshot {
   earningsGuidance?: Array<Record<string, unknown>>;
   businessHighlights?: Array<Record<string, unknown>>;
   themeSignals?: Array<Record<string, unknown>>;
+  companyOperations?: CompanyOperationsSnapshot;
+}
+
+export interface CompanyOperationSignal {
+  label: string;
+  category: "business_structure" | "operating_metric" | "shareholder_return" | "theme" | "industry";
+  summary: string;
+  source: string;
+  confidence: "high" | "medium" | "low";
+}
+
+export interface CompanyOperationsSnapshot {
+  source: string;
+  status: "pass" | "degraded";
+  missingFields: string[];
+  degradeReasons: string[];
+  businessHighlights?: Array<Record<string, unknown>>;
+  themeSignals?: Array<Record<string, unknown>>;
+  industryInfo?: Record<string, unknown>;
+  boardInfo?: Record<string, unknown>;
+  peerComparablePool?: PeerComparableCollection;
+  signals: CompanyOperationSignal[];
+  signalGroups?: {
+    businessStructure?: CompanyOperationSignal[];
+    operatingMetrics?: CompanyOperationSignal[];
+    shareholderReturns?: CompanyOperationSignal[];
+    themes?: CompanyOperationSignal[];
+    industry?: CompanyOperationSignal[];
+  };
 }

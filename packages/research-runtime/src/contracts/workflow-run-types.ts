@@ -53,6 +53,8 @@ export interface WorkflowArtifacts {
   businessQualityMarkdownPath?: string;
   penetrationReturnMarkdownPath?: string;
   valuationTopicMarkdownPath?: string;
+  businessFinalizeHandoffJsonPath?: string;
+  businessFinalizeHandoffMarkdownPath?: string;
 }
 
 export interface WorkflowDataPipelineResult {

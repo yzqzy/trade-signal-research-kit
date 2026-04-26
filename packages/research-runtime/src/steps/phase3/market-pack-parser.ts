@@ -88,6 +88,10 @@ export function parseDataPackMarket(markdown: string): DataPackMarketParsed {
   const marketCap = toNumber(markdown.match(/(?:最新市值|总市值)[^\d-]*(-?\d[\d,]*(?:\.\d+)?)/)?.[1]);
   const totalShares = toNumber(markdown.match(/(?:总股本|股本)[^\d-]*(-?\d[\d,]*(?:\.\d+)?)/)?.[1]);
   const peTtm = toNumber(markdown.match(/(?:PE\s*TTM|当前\s*PE|市盈率\s*TTM)[^\d-]*(-?\d[\d,]*(?:\.\d+)?)/iu)?.[1]);
+  const pePercentile = toNumber(markdown.match(/历史\s*PE\s*分位[^\d-]*(-?\d[\d,]*(?:\.\d+)?)/iu)?.[1]);
+  const peP25 = toNumber(markdown.match(/历史\s*PE\s*分位点[^\n]*P25[=：]\s*(-?\d[\d,]*(?:\.\d+)?)/iu)?.[1]);
+  const peP50 = toNumber(markdown.match(/历史\s*PE\s*分位点[^\n]*P50[=：]\s*(-?\d[\d,]*(?:\.\d+)?)/iu)?.[1]);
+  const peP75 = toNumber(markdown.match(/历史\s*PE\s*分位点[^\n]*P75[=：]\s*(-?\d[\d,]*(?:\.\d+)?)/iu)?.[1]);
   const industry = markdown.match(/行业[:：]\s*(.+)/)?.[1]?.trim();
   const warnings = parseWarnings(markdown);
   const financials = parseFinancialRows(markdown);
@@ -103,6 +107,10 @@ export function parseDataPackMarket(markdown: string): DataPackMarketParsed {
     marketCap,
     totalShares,
     peTtm,
+    pePercentile,
+    peP25,
+    peP50,
+    peP75,
     industry,
     warnings,
     financials,

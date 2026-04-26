@@ -93,6 +93,8 @@ function readPhase1aSummary(raw: string): ReportViewModelV1["phase1a"] {
   try {
     const j = JSON.parse(raw) as Record<string, unknown>;
     const inst = j.instrument as Record<string, unknown> | undefined;
+    const peerPool = j.peerComparablePool as Record<string, unknown> | undefined;
+    const peersRaw = Array.isArray(peerPool?.peers) ? (peerPool.peers as Array<Record<string, unknown>>) : [];
     if (!inst) return { notes: ["TODO：phase1a_data_pack.json 缺少 instrument 节点。"] };
     return {
       instrument: {
@@ -101,6 +103,30 @@ function readPhase1aSummary(raw: string): ReportViewModelV1["phase1a"] {
         market: typeof inst.market === "string" ? inst.market : undefined,
         currency: typeof inst.currency === "string" ? inst.currency : undefined,
       },
+      peerComparablePool: peerPool
+        ? {
+            source: typeof peerPool.source === "string" ? peerPool.source : undefined,
+            industryName: typeof peerPool.industryName === "string" ? peerPool.industryName : undefined,
+            sortColumn: typeof peerPool.sortColumn === "string" ? peerPool.sortColumn : undefined,
+            peerCodes: Array.isArray(peerPool.peerCodes)
+              ? peerPool.peerCodes.filter((c): c is string => typeof c === "string")
+              : peersRaw.map((p) => p.code).filter((c): c is string => typeof c === "string"),
+            peers: peersRaw
+              .filter((p) => typeof p.code === "string")
+              .map((p) => ({
+                code: p.code as string,
+                name: typeof p.name === "string" ? p.name : undefined,
+                industryName: typeof p.industryName === "string" ? p.industryName : undefined,
+                year: p.year !== undefined ? String(p.year) : undefined,
+                revenueAllYear: typeof p.revenueAllYear === "number" ? p.revenueAllYear : undefined,
+                parentNiAllYear: typeof p.parentNiAllYear === "number" ? p.parentNiAllYear : undefined,
+                parentNi3Q: typeof p.parentNi3Q === "number" ? p.parentNi3Q : undefined,
+                marketCap1Q: typeof p.marketCap1Q === "number" ? p.marketCap1Q : undefined,
+                marketCap4Q: typeof p.marketCap4Q === "number" ? p.marketCap4Q : undefined,
+              })),
+            note: typeof peerPool.note === "string" ? peerPool.note : undefined,
+          }
+        : undefined,
     };
   } catch {
     return { notes: ["TODO：phase1a_data_pack.json 非合法 JSON。"] };
@@ -143,6 +169,11 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
     price: parsedMarket.price,
     marketCap: parsedMarket.marketCap,
     totalShares: parsedMarket.totalShares,
+    peTtm: parsedMarket.peTtm,
+    pePercentile: parsedMarket.pePercentile,
+    peP25: parsedMarket.peP25,
+    peP50: parsedMarket.peP50,
+    peP75: parsedMarket.peP75,
     riskFreeRate: parsedMarket.rf,
     warningsCount: parsedMarket.warnings?.length ?? 0,
   };

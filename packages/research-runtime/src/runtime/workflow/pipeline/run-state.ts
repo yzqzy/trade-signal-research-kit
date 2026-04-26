@@ -45,6 +45,10 @@ export interface WorkflowRunState {
   businessQualityMarkdownPath?: string;
   penetrationReturnMarkdownPath?: string;
   valuationTopicMarkdownPath?: string;
+  businessFinalizeHandoffJsonPath?: string;
+  businessFinalizeHandoffMarkdownPath?: string;
+  suggestedBusinessAnalysisCommand?: string;
+  businessNarrativeStatus?: "needs_final_narrative" | "complete_available" | "blocked";
   manifestPath?: string;
   preflightEffective?: PreflightLevel;
   resumeLoaded?: boolean;

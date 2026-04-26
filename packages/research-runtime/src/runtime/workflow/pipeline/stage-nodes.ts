@@ -16,6 +16,7 @@ import { renderPhase2BDataPackReport } from "../../../steps/phase2b/renderer.js"
 import { renderPhase3Markdown } from "../../../steps/phase3/report-renderer.js";
 import { composeReportViewModel } from "../../../steps/phase3/report-polish/compose-report-view-model.js";
 import { renderAllReportPolishMarkdowns } from "../../../steps/phase3/report-polish/render-report-polish-markdown.js";
+import type { ReportPolishComposeBuffers, ReportViewModelV1 } from "../../../steps/phase3/report-polish/report-view-model.js";
 import { appendFeedGapSection, evaluateFeedDataGaps } from "../../../crosscut/feed-gap/feed-gap-contract.js";
 import { resolveWorkflowStrategyPlugin } from "../../../strategy/registry.js";
 import { evaluatePhase3Preflight } from "../../../crosscut/preflight/phase3-preflight.js";
@@ -49,6 +50,109 @@ async function readUtf8Optional(filePath?: string): Promise<string | undefined> 
   } catch {
     return undefined;
   }
+}
+
+function shellQuote(value: string): string {
+  return JSON.stringify(value);
+}
+
+function buildSuggestedBusinessAnalysisCommand(state: WorkflowRunState, outputDir: string): string {
+  const parts = [
+    "pnpm",
+    "run",
+    "business-analysis:run",
+    "--",
+    "--code",
+    state.normalizedCode ?? state.input.code,
+    "--strict",
+  ];
+  const year = state.effectiveYear ?? state.input.year;
+  if (year) parts.push("--year", year);
+  const reportUrl = state.reportUrlResolved ?? state.input.reportUrl;
+  if (reportUrl) parts.push("--report-url", reportUrl);
+  if (state.runId) parts.push("--run-id", state.runId);
+  parts.push("--output-dir", path.resolve(outputDir, "..", "..", "..", "business-analysis", state.normalizedCode ?? state.input.code));
+  return parts.map((p) => (/[^\w@%+=:,./-]/.test(p) ? shellQuote(p) : p)).join(" ");
+}
+
+function collectKeywordHits(text: string, keywords: string[], limit = 10): string[] {
+  const lines = text
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 8 && keywords.some((kw) => line.includes(kw)));
+  return Array.from(new Set(lines)).slice(0, limit).map((line) => (line.length > 180 ? `${line.slice(0, 180)}...` : line));
+}
+
+function buildCompanySpecificInsights(vm: ReportViewModelV1, buffers: ReportPolishComposeBuffers): Record<string, unknown> {
+  const annualHits = collectKeywordHits(buffers.dataPackReportMarkdown, [
+    "主营",
+    "移动",
+    "宽带",
+    "DICT",
+    "算力",
+    "ARPU",
+    "5G",
+    "资本开支",
+    "分红",
+    "派息",
+  ]);
+  const marketHits = collectKeywordHits(buffers.marketPackMarkdown, ["DPS", "分红", "派息", "Capex", "资本开支", "PE", "同业"]);
+  return {
+    sourcePriority: ["data_pack_report.md", "data_pack_market.md", "Feed peerComparablePool TopN", "phase1b_qualitative.md"],
+    operatingSignalHits: annualHits,
+    marketSignalHits: marketHits,
+    peerComparablePool: vm.phase1a.peerComparablePool ?? {
+      peers: [],
+      note: "Feed 同业池未形成结构化结果；不固定或伪造同行。",
+    },
+    gaps:
+      annualHits.length === 0
+        ? ["年报包未抽取到主营/ARPU/5G/宽带/资本开支等公司专属片段，需要补 F10 或年报章节索引。"]
+        : [],
+  };
+}
+
+function renderBusinessFinalizeHandoffMarkdown(input: {
+  vm: ReportViewModelV1;
+  workflowRunDir: string;
+  suggestedCommand: string;
+  handoffJsonPath: string;
+}): string {
+  const { vm, workflowRunDir, suggestedCommand, handoffJsonPath } = input;
+  return [
+    `# ${vm.displayCompanyName ?? vm.market.name ?? vm.normalizedCode}（${vm.normalizedCode}）商业质量成稿 Handoff`,
+    "",
+    "> workflow 已生成商业质量结构化预览；完整六维研报需由 Claude Code / Codex 等 AI 会话按 business-analysis-finalize 规范写回。",
+    "",
+    "## 建议命令",
+    "",
+    "```bash",
+    suggestedCommand,
+    "```",
+    "",
+    "## 写回要求",
+    "",
+    "- 生成 `qualitative_report.md` 与 `qualitative_d1_d6.md`。",
+    "- D1-D6 每章必须有公司专属叙事、关键表格、证据引用和证据质量边界。",
+    "- 发布层规则：business-analysis complete 覆盖 workflow degraded，workflow 商业预览不得冒充完整六维研报。",
+    "",
+    "## 输入材料",
+    "",
+    `- workflow run：\`${workflowRunDir}\``,
+    `- handoff JSON：\`${path.relative(workflowRunDir, handoffJsonPath)}\``,
+    `- report view model：\`${vm.evidence.phase1aJsonRelative ? "report_view_model.json" : "report_view_model.json"}\``,
+    `- 市场包：\`${vm.evidence.dataPackMarketMdRelative}\``,
+    `- 年报包：\`${vm.evidence.dataPackReportMdRelative ?? "未生成"}\``,
+    `- Phase1B：\`${vm.evidence.phase1bQualitativeMdRelative}\``,
+    `- 估值 JSON：\`${vm.evidence.valuationComputedJsonRelative}\``,
+    "",
+    "## 同业对标来源",
+    "",
+    vm.phase1a.peerComparablePool?.peers.length
+      ? `Feed 自动同业池 TopN，行业=${vm.phase1a.peerComparablePool.industryName ?? "—"}，排序=${vm.phase1a.peerComparablePool.sortColumn ?? "—"}。`
+      : "Feed 同业池未形成结构化结果；成稿不得固定写入预设同行，应在缺口清单披露。",
+    "",
+  ].join("\n");
 }
 
 function mergeCompletedStages(state: WorkflowRunState, stage: string): string[] {
@@ -96,6 +200,10 @@ async function persistCheckpoint(
       businessQualityMarkdownPath: state.businessQualityMarkdownPath,
       penetrationReturnMarkdownPath: state.penetrationReturnMarkdownPath,
       valuationTopicMarkdownPath: state.valuationTopicMarkdownPath,
+      businessFinalizeHandoffJsonPath: state.businessFinalizeHandoffJsonPath,
+      businessFinalizeHandoffMarkdownPath: state.businessFinalizeHandoffMarkdownPath,
+      suggestedBusinessAnalysisCommand: state.suggestedBusinessAnalysisCommand,
+      businessNarrativeStatus: state.businessNarrativeStatus,
       manifestPath: state.manifestPath,
     },
   };
@@ -208,6 +316,10 @@ export async function nodeInitPrep(state: WorkflowRunState): Promise<Partial<Wor
       businessQualityMarkdownPath: cp.snapshot.businessQualityMarkdownPath,
       penetrationReturnMarkdownPath: cp.snapshot.penetrationReturnMarkdownPath,
       valuationTopicMarkdownPath: cp.snapshot.valuationTopicMarkdownPath,
+      businessFinalizeHandoffJsonPath: cp.snapshot.businessFinalizeHandoffJsonPath,
+      businessFinalizeHandoffMarkdownPath: cp.snapshot.businessFinalizeHandoffMarkdownPath,
+      suggestedBusinessAnalysisCommand: cp.snapshot.suggestedBusinessAnalysisCommand,
+      businessNarrativeStatus: cp.snapshot.businessNarrativeStatus,
       manifestPath: cp.snapshot.manifestPath,
       completedStages: resumedStages,
       resumeLoaded: true,
@@ -522,12 +634,60 @@ export async function nodeReportPolish(state: WorkflowRunState): Promise<Partial
   const businessQualityMarkdownPath = path.join(outputDir, "business_quality.md");
   const penetrationReturnMarkdownPath = path.join(outputDir, "penetration_return.md");
   const valuationTopicMarkdownPath = path.join(outputDir, "valuation.md");
+  const businessFinalizeHandoffJsonPath = path.join(outputDir, "business_finalize_handoff.json");
+  const businessFinalizeHandoffMarkdownPath = path.join(outputDir, "business_finalize_handoff.md");
+  const businessTopic = viewModel.topicReports.find((t) => t.topicId === "topic:business-six-dimension");
+  const businessNarrativeStatus =
+    businessTopic?.qualityStatus === "complete"
+      ? "complete_available"
+      : businessTopic?.qualityStatus === "blocked"
+        ? "blocked"
+        : "needs_final_narrative";
+  const suggestedBusinessAnalysisCommand = buildSuggestedBusinessAnalysisCommand(state, outputDir);
+  const companySpecificInsights = buildCompanySpecificInsights(viewModel, buffers);
+  const handoffPayload = {
+    schema: "business_finalize_handoff",
+    version: "1.0",
+    generatedAt: new Date().toISOString(),
+    code: state.normalizedCode,
+    runId: state.runId,
+    workflowRunDir: outputDir,
+    status: businessNarrativeStatus,
+    aiSessionInstruction:
+      "由 Claude Code / Codex 等 AI 会话执行 business-analysis-finalize，生成 qualitative_report.md 与 qualitative_d1_d6.md。",
+    suggestedBusinessAnalysisCommand,
+    publishRule: "business-analysis complete overrides workflow degraded",
+    inputs: {
+      reportUrl: state.reportUrlResolved ?? state.input.reportUrl,
+      pdfPath: state.pdfPath,
+      phase1aJsonPath: state.phase1aJsonPath,
+      marketPackPath: state.marketPackPath,
+      phase1bMarkdownPath: state.phase1bMarkdownPath,
+      dataPackReportPath: state.phase2bMarkdownPath,
+      valuationPath: state.valuationPath,
+      reportViewModelPath,
+      turtleOverviewMarkdownPath,
+      valuationMarkdownPath: valuationTopicMarkdownPath,
+    },
+    peerComparablePool: viewModel.phase1a.peerComparablePool,
+    companySpecificInsights,
+  };
 
   await writeText(reportViewModelPath, JSON.stringify(viewModel, null, 2));
   await writeText(turtleOverviewMarkdownPath, rendered.turtleOverviewMarkdown);
   await writeText(businessQualityMarkdownPath, rendered.businessQualityMarkdown);
   await writeText(penetrationReturnMarkdownPath, rendered.penetrationReturnMarkdown);
   await writeText(valuationTopicMarkdownPath, rendered.valuationMarkdown);
+  await writeText(businessFinalizeHandoffJsonPath, JSON.stringify(handoffPayload, null, 2));
+  await writeText(
+    businessFinalizeHandoffMarkdownPath,
+    renderBusinessFinalizeHandoffMarkdown({
+      vm: viewModel,
+      workflowRunDir: outputDir,
+      suggestedCommand: suggestedBusinessAnalysisCommand,
+      handoffJsonPath: businessFinalizeHandoffJsonPath,
+    }),
+  );
 
   const next: Partial<WorkflowRunState> = {
     reportViewModelPath,
@@ -535,6 +695,10 @@ export async function nodeReportPolish(state: WorkflowRunState): Promise<Partial
     businessQualityMarkdownPath,
     penetrationReturnMarkdownPath,
     valuationTopicMarkdownPath,
+    businessFinalizeHandoffJsonPath,
+    businessFinalizeHandoffMarkdownPath,
+    suggestedBusinessAnalysisCommand,
+    businessNarrativeStatus,
     completedStages: ["reportPolish"],
   };
   const mergedStages = mergeCompletedStages(state, "reportPolish");
@@ -569,6 +733,11 @@ export async function nodeFinalizeManifest(state: WorkflowRunState): Promise<Par
   const businessQualityMarkdownPath = state.businessQualityMarkdownPath;
   const penetrationReturnMarkdownPath = state.penetrationReturnMarkdownPath;
   const valuationTopicMarkdownPath = state.valuationTopicMarkdownPath;
+  const businessFinalizeHandoffJsonPath = state.businessFinalizeHandoffJsonPath;
+  const businessFinalizeHandoffMarkdownPath = state.businessFinalizeHandoffMarkdownPath;
+  const businessNarrativeStatus = state.businessNarrativeStatus ?? "needs_final_narrative";
+  const suggestedBusinessAnalysisCommand =
+    state.suggestedBusinessAnalysisCommand ?? buildSuggestedBusinessAnalysisCommand(state, outputDir);
   const reportUrlResolved = state.reportUrlResolved;
 
   const marketRelW = path.relative(outputDir, marketPackPath) || "data_pack_market.md";
@@ -606,6 +775,8 @@ export async function nodeFinalizeManifest(state: WorkflowRunState): Promise<Par
       businessQualityMarkdownPath,
       penetrationReturnMarkdownPath,
       valuationMarkdownPath: valuationTopicMarkdownPath,
+      businessFinalizeHandoffJsonPath,
+      businessFinalizeHandoffMarkdownPath,
     },
     pipeline: {
       valuation: {
@@ -624,6 +795,14 @@ export async function nodeFinalizeManifest(state: WorkflowRunState): Promise<Par
               : {}),
         },
         note: "workflow 已输出完整 Phase3 报告；如需单独刷新估值摘要可运行 valuation:run 并传入相同 market/report 路径。",
+      },
+      businessNarrative: {
+        status: businessNarrativeStatus,
+        handoffPath: businessFinalizeHandoffMarkdownPath
+          ? path.relative(outputDir, businessFinalizeHandoffMarkdownPath) || "business_finalize_handoff.md"
+          : undefined,
+        suggestedBusinessAnalysisCommand,
+        publishRule: "business-analysis complete overrides workflow degraded",
       },
     },
     orchestration: {

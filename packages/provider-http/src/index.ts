@@ -1,5 +1,6 @@
 import type {
   CorporateAction,
+  CompanyOperationsSnapshot,
   FinancialSnapshot,
   GovernanceEventCollection,
   GovernanceNegativeEvent,
@@ -122,6 +123,9 @@ type HistoricalPePayload = {
   percentile?: number;
   mean?: number;
   median?: number;
+  p25?: number;
+  p50?: number;
+  p75?: number;
   min?: number;
   minDate?: string;
   max?: number;
@@ -209,9 +213,17 @@ type FeedIndustryCyclePayload = {
 type FeedPeerPoolPayload = {
   industryName?: string;
   source?: string;
+  sortColumn?: string;
   peers?: Array<{
     code?: string;
     name?: string;
+    industryName?: string;
+    year?: string | number;
+    revenueAllYear?: number;
+    parentNiAllYear?: number;
+    parentNi3Q?: number;
+    marketCap1Q?: number;
+    marketCap4Q?: number;
   }>;
 };
 
@@ -251,7 +263,13 @@ type FeedOperationsInsightPayload = {
     earningsGuidance?: Array<Record<string, unknown>>;
     businessHighlights?: Array<Record<string, unknown>>;
     themeSignals?: Array<Record<string, unknown>>;
+    companyOperations?: FeedCompanyOperationsPayload;
   };
+};
+
+type FeedCompanyOperationsPayload = CompanyOperationsSnapshot & {
+  code?: string;
+  secuCode?: string;
 };
 
 const PERIOD_TO_FQT: Record<"none" | "forward" | "backward", "none" | "pre" | "after"> = {
@@ -558,6 +576,9 @@ export class FeedHttpProvider implements MarketDataProvider {
       percentile: asNumber(payload.percentile ?? stats.percentile),
       mean: asNumber(payload.mean ?? stats.mean),
       median: asNumber(payload.median ?? stats.median),
+      p25: asNumber(payload.p25 ?? stats.p25),
+      p50: asNumber(payload.p50 ?? stats.p50),
+      p75: asNumber(payload.p75 ?? stats.p75),
       min: asNumber(payload.min ?? stats.min),
       minDate: payload.minDate ?? stats.minDate,
       max: asNumber(payload.max ?? stats.max),
@@ -712,6 +733,20 @@ export class FeedHttpProvider implements MarketDataProvider {
       source: payload.source ?? "feed_peer_pool",
       industryName: payload.industryName ?? "未知行业",
       peerCodes: peers.map((p) => p.code).filter((c): c is string => Boolean(c)),
+      sortColumn: payload.sortColumn,
+      peers: peers
+        .filter((p) => p.code)
+        .map((p) => ({
+          code: p.code as string,
+          name: p.name,
+          industryName: p.industryName,
+          year: p.year !== undefined ? String(p.year) : undefined,
+          revenueAllYear: asNumber(p.revenueAllYear),
+          parentNiAllYear: asNumber(p.parentNiAllYear),
+          parentNi3Q: asNumber(p.parentNi3Q),
+          marketCap1Q: asNumber(p.marketCap1Q),
+          marketCap4Q: asNumber(p.marketCap4Q),
+        })),
       note:
         peers.length > 0
           ? `feed 同业池返回 ${peers.length} 条样本`
@@ -876,6 +911,39 @@ export class FeedHttpProvider implements MarketDataProvider {
       earningsGuidance: payload.data?.earningsGuidance ?? [],
       businessHighlights: payload.data?.businessHighlights ?? [],
       themeSignals: payload.data?.themeSignals ?? [],
+      companyOperations: payload.data?.companyOperations
+        ? this.normalizeCompanyOperations(payload.data.companyOperations)
+        : undefined,
+    };
+  }
+
+  async getCompanyOperations(
+    code: string,
+    input?: { year?: string; topN?: number },
+  ): Promise<CompanyOperationsSnapshot> {
+    const payload = await this.request<FeedCompanyOperationsPayload>(
+      `/stock/company/operations/${encodeURIComponent(code)}`,
+      {
+        year: input?.year,
+        topN: input?.topN !== undefined ? String(input.topN) : undefined,
+      },
+    );
+    return this.normalizeCompanyOperations(payload);
+  }
+
+  private normalizeCompanyOperations(payload: FeedCompanyOperationsPayload): CompanyOperationsSnapshot {
+    return {
+      source: payload.source ?? "eastmoney_f10_company_operations_v1",
+      status: payload.status === "pass" ? "pass" : "degraded",
+      missingFields: Array.isArray(payload.missingFields) ? payload.missingFields : [],
+      degradeReasons: Array.isArray(payload.degradeReasons) ? payload.degradeReasons : [],
+      businessHighlights: Array.isArray(payload.businessHighlights) ? payload.businessHighlights : [],
+      themeSignals: Array.isArray(payload.themeSignals) ? payload.themeSignals : [],
+      industryInfo: payload.industryInfo,
+      boardInfo: payload.boardInfo,
+      peerComparablePool: payload.peerComparablePool,
+      signals: Array.isArray(payload.signals) ? payload.signals : [],
+      signalGroups: payload.signalGroups,
     };
   }
 

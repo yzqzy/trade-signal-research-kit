@@ -198,6 +198,7 @@ export function buildQualitativeMarketStructuredSnapshot(input: {
         source: feedPeers.source || "feed_peer_pool",
         peerCodes:
           feedPeers.peerCodes.length > 0 ? feedPeers.peerCodes : fallbackPeerCodes,
+        peers: feedPeers.peers ?? [],
         note:
           feedPeers.note ||
           (feedPeers.peerCodes.length > 0

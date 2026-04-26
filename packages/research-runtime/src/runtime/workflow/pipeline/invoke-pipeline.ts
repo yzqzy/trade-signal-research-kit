@@ -78,6 +78,8 @@ export function mapStateToWorkflowArtifacts(state: WorkflowRunState): WorkflowAr
     businessQualityMarkdownPath: state.businessQualityMarkdownPath,
     penetrationReturnMarkdownPath: state.penetrationReturnMarkdownPath,
     valuationTopicMarkdownPath: state.valuationTopicMarkdownPath,
+    businessFinalizeHandoffJsonPath: state.businessFinalizeHandoffJsonPath,
+    businessFinalizeHandoffMarkdownPath: state.businessFinalizeHandoffMarkdownPath,
   };
 }
 

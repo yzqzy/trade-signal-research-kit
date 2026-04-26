@@ -22,6 +22,10 @@ function fmt(n: number, digits = 2): string {
   return n.toFixed(digits);
 }
 
+function fmtMaybe(n: number | undefined, digits = 2): string {
+  return typeof n === "number" && Number.isFinite(n) ? fmt(n, digits) : "—";
+}
+
 function snapshotYearLabel(s: FinancialSnapshot): string {
   return yearFromPeriod(s.period);
 }
@@ -314,6 +318,7 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
   const tradingDays = dataPack.tradingCalendar?.filter((d) => d.isTradingDay).length ?? 0;
   const peTtm = latestHistoricalPe(dataPack);
   const peStats = dataPack.historicalPeSeries;
+  const peP50 = peStats?.p50 ?? peStats?.median;
   if (klines.length === 0) {
     warnLines.push(
       "- [数据完整性|中|规则=kline_bars_count_0] K 线返回 0 根；可能是浏览器上下文不可用或直连 fallback 失败，请检查 feed /stock/kline diagnostics。",
@@ -321,6 +326,56 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
   }
 
   const industryLabel = instrument.industry?.trim() || "未知（待 feed 行业字段或 Phase1B 补充）";
+  const peerPool = dataPack.peerComparablePool;
+  const peerRows = peerPool?.peers ?? [];
+  const peerSection =
+    peerRows.length > 0
+      ? [
+          "## §9P 同业可比池（Feed TopN）",
+          "",
+          `- 来源：${peerPool?.source ?? "feed_peer_pool"}；行业：${peerPool?.industryName ?? industryLabel}；排序：${peerPool?.sortColumn ?? "默认"}；样本数：${peerRows.length}`,
+          "",
+          "| 代码 | 名称 | 行业 | 年度 | 营收 | 归母净利润 | 3Q归母净利润 | 1Q市值 | 4Q市值 |",
+          "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+          ...peerRows.map(
+            (p) =>
+              `| ${p.code} | ${p.name ?? "—"} | ${p.industryName ?? "—"} | ${p.year ?? "—"} | ${fmtMaybe(p.revenueAllYear)} | ${fmtMaybe(p.parentNiAllYear)} | ${fmtMaybe(p.parentNi3Q)} | ${fmtMaybe(p.marketCap1Q)} | ${fmtMaybe(p.marketCap4Q)} |`,
+          ),
+          "",
+        ]
+      : [
+          "## §9P 同业可比池（Feed TopN）",
+          "",
+          "> Feed 同业池未形成结构化结果；后续商业质量终稿只能写缺口，不得固定或伪造同行名单。",
+          "",
+        ];
+  const companyOps = dataPack.companyOperationsSnapshot;
+  const opGroups = companyOps?.signalGroups;
+  const companyOpsSection = [
+    "## §9O 公司经营画像（Feed F10）",
+    "",
+    companyOps
+      ? `- 来源：${companyOps.source}；状态：${companyOps.status}；缺口：${companyOps.missingFields.join("、") || "无"}`
+      : "> Feed 公司经营画像未形成结构化结果；business-analysis-finalize 应回退年报 data_pack 与 Phase1B。",
+    "",
+    "| 模块 | 候选信号数 | 用途 |",
+    "| --- | ---: | --- |",
+    `| 主营结构 | ${opGroups?.businessStructure?.length ?? 0} | D1 赚钱逻辑、收入结构、业务拆分 |`,
+    `| 经营指标 | ${opGroups?.operatingMetrics?.length ?? 0} | D1/D5 ARPU、用户、资本开支等经营变量 |`,
+    `| 股东回报 | ${opGroups?.shareholderReturns?.length ?? 0} | D4/D5 分红、派息、回购政策验证 |`,
+    `| 核心题材 | ${opGroups?.themes?.length ?? 0} | D2/D3 行业趋势与业务转型线索 |`,
+    "",
+    ...(companyOps?.signals?.length
+      ? [
+          "| 类别 | 标签 | 摘要 |",
+          "| --- | --- | --- |",
+          ...companyOps.signals
+            .slice(0, 12)
+            .map((s) => `| ${s.category} | ${s.label} | ${String(s.summary ?? "—").replace(/\|/g, "/")} |`),
+          "",
+        ]
+      : []),
+  ];
 
   const pRev = latest.parentRevenue;
   const pNp = latest.parentNetProfit;
@@ -389,6 +444,7 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
     `- 总股本：${fmt(totalSharesMm)} 百万股`,
     `- PE TTM：${peTtm !== undefined ? fmt(peTtm) : "缺失"}`,
     `- 历史 PE 分位：${peStats?.percentile !== undefined ? `${fmt(peStats.percentile)}%` : "缺失"}`,
+    `- 历史 PE 分位点：P25=${peStats?.p25 !== undefined ? fmt(peStats.p25) : "缺失"}；P50=${peP50 !== undefined ? fmt(peP50) : "缺失"}；P75=${peStats?.p75 !== undefined ? fmt(peStats.p75) : "缺失"}`,
     `- 无风险利率：${rf.toFixed(2)}%${rfEnv ? "（来自环境变量）" : "（默认占位）"}`,
     "",
     "## §2 风险提示",
@@ -435,6 +491,8 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
     `- 行业标签：${industryLabel}`,
     "> 竞争格局摘要建议由 Phase1B §8 或研报检索补齐。",
     "",
+    ...peerSection,
+    ...companyOpsSection,
     "## §10 分红融资与资本运作",
     `- 采样期内企业行动条数：${dataPack.corporateActions?.length ?? 0}`,
     "",

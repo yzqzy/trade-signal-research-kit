@@ -46,6 +46,10 @@ export interface DataPackMarketParsed {
   marketCap?: number;
   totalShares?: number;
   peTtm?: number;
+  pePercentile?: number;
+  peP25?: number;
+  peP50?: number;
+  peP75?: number;
   industry?: string;
   warnings: WarningEntry[];
   financials: FinancialYearData[];
@@ -62,6 +66,9 @@ export interface Phase3MarketInput {
   marketCap?: number;
   totalShares?: number;
   peTtm?: number;
+  peP25?: number;
+  peP50?: number;
+  peP75?: number;
   pb?: number;
   beta?: number;
   riskFreeRate?: number;
