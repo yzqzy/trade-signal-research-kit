@@ -331,7 +331,7 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
   const peerSection =
     peerRows.length > 0
       ? [
-          "## §9P 同业可比池（Feed TopN）",
+          "## §9P 同业可比池（自动 TopN）",
           "",
           `- 来源：${peerPool?.source ?? "feed_peer_pool"}；行业：${peerPool?.industryName ?? industryLabel}；排序：${peerPool?.sortColumn ?? "默认"}；样本数：${peerRows.length}`,
           "",
@@ -344,19 +344,19 @@ export function buildMarketPackMarkdown(code: string, dataPack: DataPackMarket):
           "",
         ]
       : [
-          "## §9P 同业可比池（Feed TopN）",
+          "## §9P 同业可比池（自动 TopN）",
           "",
-          "> Feed 同业池未形成结构化结果；后续商业质量终稿只能写缺口，不得固定或伪造同行名单。",
+          "> 自动同业池未形成结构化结果；后续商业质量成稿只能写缺口，不得固定或伪造同行名单。",
           "",
         ];
   const companyOps = dataPack.companyOperationsSnapshot;
   const opGroups = companyOps?.signalGroups;
   const companyOpsSection = [
-    "## §9O 公司经营画像（Feed F10）",
+    "## §9O 公司经营画像",
     "",
     companyOps
       ? `- 来源：${companyOps.source}；状态：${companyOps.status}；缺口：${companyOps.missingFields.join("、") || "无"}`
-      : "> Feed 公司经营画像未形成结构化结果；business-analysis-finalize 应回退年报 data_pack 与 Phase1B。",
+      : "> 公司经营画像未形成结构化结果；成稿应回退年报摘录与外部证据。",
     "",
     "| 模块 | 候选信号数 | 用途 |",
     "| --- | ---: | --- |",

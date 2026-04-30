@@ -5,6 +5,8 @@ type ValuationJson = {
   methods?: Array<{
     method?: string;
     value?: number;
+    fairValue?: number;
+    note?: string;
     range?: { conservative?: number; central?: number; optimistic?: number };
     assumptions?: Record<string, string | number>;
   }>;
@@ -37,6 +39,32 @@ function parseValuationJson(raw: string): ValuationJson {
 
 function methodByName(v: ValuationJson, method: string) {
   return v.methods?.find((m) => m.method === method);
+}
+
+function methodValue(m: ReturnType<typeof methodByName>): number | undefined {
+  if (!m) return undefined;
+  if (typeof m.value === "number" && Number.isFinite(m.value)) return m.value;
+  if (typeof m.fairValue === "number" && Number.isFinite(m.fairValue)) return m.fairValue;
+  if (typeof m.range?.central === "number" && Number.isFinite(m.range.central)) return m.range.central;
+  return undefined;
+}
+
+function isEffectiveMethod(m: ReturnType<typeof methodByName>): boolean {
+  return methodValue(m) !== undefined;
+}
+
+function effectiveCoreMethods(v: ValuationJson): string[] {
+  return ["DCF", "DDM", "PE_BAND"].filter((name) => isEffectiveMethod(methodByName(v, name)));
+}
+
+function effectiveSupportingMethods(v: ValuationJson): string[] {
+  return ["PEG", "PS"].filter((name) => isEffectiveMethod(methodByName(v, name)));
+}
+
+function methodStatus(v: ValuationJson, method: string, effectiveLabel: string, missingLabel: string): string {
+  const m = methodByName(v, method);
+  if (isEffectiveMethod(m)) return effectiveLabel;
+  return m?.note ? `未采用：${m.note}` : missingLabel;
 }
 
 function assumptionNum(m: ReturnType<typeof methodByName>, key: string): number | undefined {
@@ -93,8 +121,15 @@ function renderFinancialTrendAppendix(marketPackMarkdown: string): string {
     extractMarketPackSection(marketPackMarkdown, /^##\s+§17\s+衍生指标[^\n]*\n/mu),
   ].filter((x): x is string => Boolean(x));
   return sections.length > 0
-    ? sections.join("\n\n")
+    ? sanitizeMarketPackAppendix(sections.join("\n\n"))
     : "_关键财务趋势表未能从市场包解析；请查看 data_pack_market.md。_";
+}
+
+function sanitizeMarketPackAppendix(md: string): string {
+  return md
+    .replace(/^##\s+§17\s+衍生指标[^\n]*$/gmu, "## §17 衍生指标")
+    .replace(/（预计算，供因子\/Phase3 引用）/gu, "")
+    .replace(/供因子\/Phase3 引用/gu, "用于计算核对");
 }
 
 function renderValuationDataLimits(vm: ReportViewModelV1): string {
@@ -116,7 +151,7 @@ function renderValuationDataLimits(vm: ReportViewModelV1): string {
 function renderPeerTable(vm: ReportViewModelV1, limit = 10): string {
   const peers = vm.phase1a.peerComparablePool?.peers ?? [];
   if (peers.length === 0) {
-    return "> Feed 同业池未形成结构化结果；本页不固定或伪造同行名单。";
+    return "> 自动同业池未形成结构化结果；本页不固定或伪造同行名单。";
   }
   const rows = [
     "| 代码 | 名称 | 行业 | 年度 | 营收 | 归母净利润 | 3Q归母净利润 |",
@@ -174,10 +209,9 @@ function renderCatalystsAndFailureConditions(vm: ReportViewModelV1): string {
 
 function renderPeerSummary(vm: ReportViewModelV1): string {
   const pool = vm.phase1a.peerComparablePool;
-  const peers = pool?.peers ?? [];
   const header = pool
-    ? `Feed 同业池来源=${pool.source ?? "—"}，行业=${pool.industryName ?? "—"}，排序口径=${pool.sortColumn ?? "—"}。`
-    : "Feed 同业池未形成结构化结果。";
+    ? `自动同业池：行业=${pool.industryName ?? "—"}，排序口径=${pool.sortColumn ?? "—"}。`
+    : "自动同业池未形成结构化结果。";
   return [header, "", renderPeerTable(vm, 10)].join("\n");
 }
 
@@ -189,22 +223,56 @@ function collectKeywordLines(text: string, keywords: string[], limit = 8): strin
   return Array.from(new Set(rows)).slice(0, limit).map((line) => (line.length > 120 ? `${line.slice(0, 120)}...` : line));
 }
 
+function extractTableRow(md: string, label: string): string | undefined {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const re = new RegExp(`^\\|\\s*${escaped}\\s*\\|([^\\n]+)$`, "mu");
+  const m = md.match(re);
+  if (!m) return undefined;
+  const values = m[1]
+    .split("|")
+    .map((cell) => cell.trim())
+    .filter(Boolean);
+  if (values.length === 0) return undefined;
+  return `${label}：${values.slice(0, 5).join(" / ")}`;
+}
+
+function cleanOperationSummary(line: string): string {
+  const cells = line
+    .split("|")
+    .map((cell) => cell.trim())
+    .filter(Boolean);
+  const summary = cells.length >= 3 ? cells[cells.length - 1] ?? line : line;
+  return summary.replace(/\s+/gu, " ").slice(0, 160);
+}
+
+function companyOperationLines(buffers: ReportPolishComposeBuffers, category: string, keywords: string[], limit = 2): string[] {
+  const section = extractMarketPackSection(buffers.marketPackMarkdown, /^##\s+§9O\s+公司经营画像[^\n]*\n/mu) ?? "";
+  const rows = section
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.includes(`| ${category} |`) && keywords.some((kw) => line.includes(kw)))
+    .map(cleanOperationSummary)
+    .filter((line) => line.length > 0);
+  return Array.from(new Set(rows)).slice(0, limit);
+}
+
 function renderCompanySpecificSignals(buffers: ReportPolishComposeBuffers): string {
-  const groups = [
-    { label: "主营结构", keywords: ["主营", "移动", "宽带", "DICT", "算力", "新兴业务"] },
-    { label: "经营指标", keywords: ["ARPU", "5G", "客户", "用户", "政企", "资本开支"] },
-    { label: "股东回报", keywords: ["分红", "派息", "股息", "DPS", "派息率"] },
+  const businessHits = companyOperationLines(
+    buffers,
+    "business_structure",
+    ["主营业务", "黑芝麻", "健康食品", "饮料", "大米", "电商", "移动", "宽带", "DICT", "算力", "新兴业务"],
+    2,
+  );
+  const revenue = extractTableRow(buffers.marketPackMarkdown, "营业收入");
+  const profit = extractTableRow(buffers.marketPackMarkdown, "归母净利润");
+  const fcf = extractTableRow(buffers.marketPackMarkdown, "FCF");
+  const dps = extractTableRow(buffers.marketPackMarkdown, "每股分红DPS");
+  const metricHits = [revenue, profit, fcf].filter((x): x is string => Boolean(x));
+  const rows = [
+    `| 主营结构 | ${businessHits.length ? businessHits.join("；") : "现有材料未形成可发布摘要，保留为后续核验项。"} |`,
+    `| 经营指标 | ${metricHits.length ? metricHits.join("；") : "现有材料未形成可发布摘要，保留为后续核验项。"} |`,
+    `| 股东回报 | ${dps ? `${dps}；分红连续性仍需结合利润质量验证。` : "现有材料未形成稳定股东回报证据，不作为核心回报来源。"} |`,
   ];
-  const rows = groups.map((g) => {
-    const annualHits = collectKeywordLines(buffers.dataPackReportMarkdown, g.keywords, 8);
-    const marketHits = collectKeywordLines(buffers.marketPackMarkdown, g.keywords, 8);
-    const count = annualHits.length + marketHits.length;
-    const status =
-      count > 0
-        ? `已在年报包/市场包形成 ${count} 条候选片段，供六维成稿引用。`
-        : "未形成结构化片段，进入 handoff 缺口。";
-    return `| ${g.label} | ${status} |`;
-  });
   return ["| 模块 | 年报/市场包信号 |", "|:-----|:-------------|", ...rows].join("\n");
 }
 
@@ -250,15 +318,18 @@ function renderPeBandSection(v: ValuationJson): string {
 }
 
 function renderMethodSelection(v: ValuationJson, vm: ReportViewModelV1): string {
-  const names = (v.methods ?? []).map((m) => m.method).filter(Boolean).join(" / ") || "—";
+  const core = effectiveCoreMethods(v);
+  const supporting = effectiveSupportingMethods(v);
   return [
-    `本次估值采用 ${names}。方法选择以 \`valuation_computed.json\` 为准，报告页只负责解释方法差异和投资含义。`,
+    `本次估值以 ${core.length ? core.join(" / ") : "可用核心方法不足"} 为核心，${supporting.length ? `${supporting.join(" / ")} 作为辅助观察` : "辅助方法未提供有效增量"}。方法取舍以现金流、分红稳定性、历史估值分布和盈利口径完整度为准。`,
     "",
     "| 方法 | 适用性 | 当前处理 |",
     "|:-----|:-------|:---------|",
-    `| DCF | 适合现金流可预测、资本开支可建模的公司 | ${methodByName(v, "DCF") ? "已纳入" : "未形成有效结果"} |`,
-    `| DDM | 适合分红稳定、股东回报清晰的成熟公司 | ${methodByName(v, "DDM") ? "已纳入，长期增长率做成熟蓝筹上限约束" : "未形成有效结果"} |`,
-    `| PE Band | 适合用真实历史 PE 分位做相对估值 | ${methodByName(v, "PE_BAND") ? "使用 P25/P50/P75 历史分位" : "缺少历史 PE 或 EPS 口径"} |`,
+    `| DCF | 适合现金流可预测、资本开支可建模的公司 | ${methodStatus(v, "DCF", "纳入核心估值", "未形成有效结果")} |`,
+    `| DDM | 适合分红稳定、股东回报清晰的成熟公司 | ${methodStatus(v, "DDM", "纳入核心估值，长期增长率保守约束", "未采用：分红历史或 Ke 不足")} |`,
+    `| PE Band | 适合用真实历史 PE 分位做相对估值 | ${methodStatus(v, "PE_BAND", "纳入核心估值，使用 P25/P50/P75 历史分位", "未采用：缺少历史 PE 或 EPS 口径")} |`,
+    `| PEG | 适合盈利增长可连续解释的公司 | ${methodStatus(v, "PEG", "作为辅助观察", "未采用：盈利增长口径不足")} |`,
+    `| PS | 适合利润短期失真但收入口径稳定的公司 | ${methodStatus(v, "PS", "作为辅助观察，不参与核心权重时仅作交叉验证", "未采用：收入或 PS 口径不足")} |`,
     `| 交叉验证 | 检查方法分歧与单点目标价风险 | 一致性 ${vm.valuation.consistency ?? "—"}，CV=${fmtNum(vm.valuation.coefficientOfVariation)} |`,
   ].join("\n");
 }
@@ -276,27 +347,100 @@ function renderReverseValuation(v: ValuationJson, vm: ReportViewModelV1): string
   ].join("\n");
 }
 
+function renderValuationExecutiveSummary(v: ValuationJson, vm: ReportViewModelV1): string {
+  const core = effectiveCoreMethods(v);
+  const price = vm.market.price;
+  const fair = vm.valuation.weightedAverage;
+  const dcf = methodValue(methodByName(v, "DCF"));
+  const pe = methodValue(methodByName(v, "PE_BAND"));
+  const relation = price !== undefined && fair !== undefined
+    ? price > fair
+      ? "当前价格高于综合估值，安全边际不足"
+      : "当前价格低于综合估值，具备进一步核验价值"
+    : "当前价格与综合估值的相对关系仍需补充确认";
+  const methodText = core.length
+    ? `本轮有效核心方法为 ${core.join(" / ")}`
+    : "本轮有效核心估值方法不足";
+  const dcfText = dcf !== undefined ? `DCF 给出 ${fmtNum(dcf)} 的现金流底部锚` : "DCF 未形成有效现金流锚";
+  const peText = pe !== undefined ? `PE Band 给出 ${fmtNum(pe)} 的历史倍数锚` : "PE Band 未形成有效历史倍数锚";
+  return `**一句话结论**：${relation}。${methodText}；${dcfText}，${peText}。一致性为 ${vm.valuation.consistency ?? "—"}，因此估值应按区间和情景理解，而不是按单点目标价交易。[E4][E6]`;
+}
+
+function renderValuationMethodCount(v: ValuationJson): string {
+  const core = effectiveCoreMethods(v);
+  const supporting = effectiveSupportingMethods(v);
+  return `${core.length} 个核心方法${supporting.length ? `；${supporting.length} 个辅助方法` : ""}`;
+}
+
+function renderValuationDisagreement(v: ValuationJson, vm: ReportViewModelV1): string {
+  const rows = [
+    "| 来源 | 估值含义 | 需要关注的分歧 |",
+    "|:-----|:---------|:---------------|",
+  ];
+  const dcf = methodByName(v, "DCF");
+  const pe = methodByName(v, "PE_BAND");
+  const ddm = methodByName(v, "DDM");
+  if (isEffectiveMethod(dcf)) {
+    rows.push(`| DCF | 现金流折现锚为 ${fmtNum(methodValue(dcf))} | 对 FCF、WACC、终值增长率敏感 |`);
+  }
+  if (isEffectiveMethod(pe)) {
+    rows.push(`| PE Band | 历史倍数中枢为 ${fmtNum(methodValue(pe))} | 对 EPS_norm 与历史 PE 分位敏感 |`);
+  }
+  if (!isEffectiveMethod(ddm)) {
+    rows.push(`| DDM | 本轮不作为核心估值 | ${ddm?.note ?? "分红连续性或贴现率证据不足"} |`);
+  }
+  rows.push(`| 综合结果 | 加权估值 ${fmtNum(vm.valuation.weightedAverage)} | 一致性 ${vm.valuation.consistency ?? "—"}，CV=${fmtNum(vm.valuation.coefficientOfVariation)} |`);
+  return rows.join("\n");
+}
+
+function renderPenetrationDiscipline(vm: ReportViewModelV1): string {
+  const r = vm.phase3.factor2?.R;
+  const ii = vm.phase3.factor2?.II;
+  const gg = vm.phase3.factor3?.GG;
+  if (r === undefined || ii === undefined) return "粗算 R 或门槛 II 缺失，本页仅保留计算口径，最终纪律保持审慎。";
+  if (r >= ii) return `粗算 R=${fmtPct(r)} 高于门槛 II=${fmtPct(ii)}，分配能力满足策略底线；仍需用现金质量和治理风险交叉验证。`;
+  const ggText = gg !== undefined
+    ? gg >= ii
+      ? `精算 GG=${fmtPct(gg)} 改善了现金流视角，但未改变粗算 R 低于门槛的纪律结论。`
+      : `精算 GG=${fmtPct(gg)} 同样未达到门槛，现金回报需要继续修复。`
+    : "精算 GG 缺失，不能作为放宽纪律的依据。";
+  return `粗算 R=${fmtPct(r)} 低于门槛 II=${fmtPct(ii)}，本轮不满足策略底线。${ggText}`;
+}
+
+function sanitizeCalculationExcerpt(text: string): string {
+  return text
+    .replace(/结论：通过/gu, "结论：仅作交叉验证")
+    .replace(/结论：因子/gu, "结论：计算口径")
+    .replace(/通过门槛/gu, "达到参考门槛")
+    .replace(/审计用/gu, "计算底稿");
+}
+
 function evidenceTable(vm: ReportViewModelV1): string {
   const e = vm.evidence;
   const rows: string[] = [
     "| 证据ID | 类型 | 定位 |",
     "|:-------|:-----|:-----|",
-    `| E1 | Phase1A 数据包 | \`${e.phase1aJsonRelative}\` |`,
+    `| E1 | 基础行情与财务数据 | \`${e.phase1aJsonRelative}\` |`,
     `| E2 | 市场与财务数据包 | \`${e.dataPackMarketMdRelative}\` |`,
-    `| E3 | Phase1B 外部证据补充 | \`${e.phase1bQualitativeMdRelative}\` |`,
+    `| E3 | 外部公告与监管材料 | \`${e.phase1bQualitativeMdRelative}\` |`,
   ];
   let idx = 4;
-  if (e.dataPackReportMdRelative) rows.push(`| E${idx++} | 年报 data_pack | \`${e.dataPackReportMdRelative}\` |`);
-  if (e.dataPackReportInterimMdRelative) rows.push(`| E${idx++} | 中报 data_pack | \`${e.dataPackReportInterimMdRelative}\` |`);
-  rows.push(`| E${idx++} | 估值 JSON | \`${e.valuationComputedJsonRelative}\` |`);
-  rows.push(`| E${idx++} | Phase3 规则报告 | \`${e.analysisReportMdRelative}\` |`);
-  if (e.phase3PreflightMdRelative) rows.push(`| E${idx++} | Phase3 预检 | \`${e.phase3PreflightMdRelative}\` |`);
+  if (e.dataPackReportMdRelative) rows.push(`| E${idx++} | 年报摘录 | \`${e.dataPackReportMdRelative}\` |`);
+  if (e.dataPackReportInterimMdRelative) rows.push(`| E${idx++} | 中报摘录 | \`${e.dataPackReportInterimMdRelative}\` |`);
+  rows.push(`| E${idx++} | 估值模型底稿 | \`${e.valuationComputedJsonRelative}\` |`);
+  rows.push(`| E${idx++} | 策略计算底稿 | \`${e.analysisReportMdRelative}\` |`);
+  if (e.phase3PreflightMdRelative) rows.push(`| E${idx++} | 证据质量预检 | \`${e.phase3PreflightMdRelative}\` |`);
   return rows.join("\n");
 }
 
-function todoBlock(vm: ReportViewModelV1): string {
-  if (!vm.todos.length) return "_本 run 无显式 TODO 缺口项。_";
-  return vm.todos.map((t) => `- **${t.id}**：${t.message}${t.suggestedSource ? ` → \`${t.suggestedSource}\`` : ""}`).join("\n");
+function evidenceGapSection(vm: ReportViewModelV1): string[] {
+  if (!vm.todos.length) return [];
+  return [
+    "## 证据缺口与后续核验",
+    "",
+    ...vm.todos.map((t) => `- **${t.id}**：${t.message}${t.suggestedSource ? ` → \`${t.suggestedSource}\`` : ""}`),
+    "",
+  ];
 }
 
 function metricTable(vm: ReportViewModelV1): string {
@@ -328,9 +472,8 @@ function signalLines(vm: ReportViewModelV1): string[] {
     out.push(`- **精算结果提供第二锚点**：GG=${fmtPct(gg)}，外推可信度 ${vm.phase3.factor3?.extrapolationTrust ?? "—"}。[E7]`);
   }
   if (vm.valuation.weightedAverage !== undefined) {
-    out.push(`- **估值有结构化锚点**：综合估值 ${fmtNum(vm.valuation.weightedAverage)}，方法数 ${vm.valuation.methodCount}，一致性 ${vm.valuation.consistency ?? "—"}。[E6]`);
+    out.push(`- **估值需要按区间理解**：综合估值 ${fmtNum(vm.valuation.weightedAverage)}，一致性 ${vm.valuation.consistency ?? "—"}；方法分歧大时不把单点估值当作结论。[E6]`);
   }
-  out.push(`- **商业质量纳入独立校验**：D1-D6 结论以证据编号与六维成稿状态为准，站点只展示达到发布标准的 Topic。[E3][E4]`);
   if (vm.dataPackReport.pdfGateVerdict && vm.dataPackReport.pdfGateVerdict !== "OK") {
     out.push(`- **年报抽取质量需披露**：当前证据质量为 ${vm.dataPackReport.pdfGateVerdict}，涉及年报章节的结论必须声明置信边界。[E4]`);
   }
@@ -351,7 +494,7 @@ function topicEvidenceBoundary(vm: ReportViewModelV1, topicId: string): string {
   const topic = vm.topicReports.find((t) => t.topicId === topicId);
   if (!topic?.blockingReasons?.length) return "";
   return [
-    "> **证据边界**：本页仅展示可审计证据组织结果；完整发布状态以站点清单和六维成稿质量为准。",
+    "> **证据边界**：本页展示已取得证据的组织结果；完整商业质量结论以六维成稿质量为准。",
     ">",
     ...topic.blockingReasons.map((r) => `> - ${sanitizeInternalStatusText(r)}`),
     "",
@@ -364,9 +507,9 @@ function phase1bCoverage(buffers: ReportPolishComposeBuffers): string {
   const rows = [
     "| 维度 | 当前证据状态 | 成稿处理 |",
     "|:-----|:-------------|:---------|",
-    `| 管理层与治理 | ${/##\s*7/u.test(text) ? "有 Phase1B 补充" : "待核对"} | 仅作为 D4 证据线索，不直接贴链接表 |`,
-    `| 行业与竞争 | ${/##\s*8/u.test(text) ? "有 Phase1B 补充" : "待核对"} | 映射到 D2/D3 |`,
-    `| MD&A | ${/##\s*10/u.test(text) ? "有 Phase1B 补充" : "待核对"} | 映射到 D5 |`,
+    `| 管理层与治理 | ${/##\s*7/u.test(text) ? "已有外部材料补充" : "待核对"} | 仅作为 D4 证据线索，不直接贴链接表 |`,
+    `| 行业与竞争 | ${/##\s*8/u.test(text) ? "已有外部材料补充" : "待核对"} | 映射到 D2/D3 |`,
+    `| MD&A | ${/##\s*10/u.test(text) ? "已有外部材料补充" : "待核对"} | 映射到 D5 |`,
     `| 显式未命中 | ${missing} 项 | 写入缺口清单，不静默补结论 |`,
   ];
   return rows.join("\n");
@@ -414,8 +557,8 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: Rep
     "## 关键假设",
     "",
     "- 年报与市场包中的财务口径保持一致；缺失或低置信章节只作为降级证据使用。[E2][E4]",
-    "- Phase3 规则结论优先作为投资纪律锚点，Topic 叙事不得重算策略公式。[E7]",
-    "- 商业质量页以六维研报成稿状态作为完整发布依据。",
+    "- 投资纪律以穿透回报率、现金质量、估值区间和治理风险的交叉结果为锚。[E7]",
+    "- 商业质量结论以 D1-D6 证据链为准，未验证事项只进入观察条件。",
     "",
     "## 基本面速写 · 商业质量分析",
     "",
@@ -450,17 +593,14 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: Rep
     "",
     "## 风险提示",
     "",
-    "- 本页由确定性管线生成，不构成投资建议。",
+    "- 本页基于本次可取得证据生成，不构成投资建议。",
     "- 若证据包缺失、年报抽取质量降级或外部证据未命中，相关结论保持降级披露。",
     "",
     "## 附录：证据索引",
     "",
     evidenceTable(vm),
     "",
-    "## 缺口与 TODO",
-    "",
-    todoBlock(vm),
-    "",
+    ...evidenceGapSection(vm),
   ].join("\n");
 }
 
@@ -563,10 +703,7 @@ export function renderBusinessQualityMarkdown(vm: ReportViewModelV1, buffers: Re
     "",
     evidenceTable(vm),
     "",
-    "## 缺口与 TODO",
-    "",
-    todoBlock(vm),
-    "",
+    ...evidenceGapSection(vm),
   ].join("\n");
 }
 
@@ -579,6 +716,10 @@ export function renderPenetrationReturnMarkdown(vm: ReportViewModelV1, buffers: 
     "",
     `> **Penetrating Return Verdict**：粗算 R=${fmtPct(vm.phase3.factor2?.R)}，门槛 II=${fmtPct(vm.phase3.factor2?.II)}，精算 GG=${fmtPct(vm.phase3.factor3?.GG)}。`,
     "",
+    "## Executive Summary",
+    "",
+    renderPenetrationDiscipline(vm),
+    "",
     "## 核心指标速览",
     "",
     metricTable(vm),
@@ -590,11 +731,11 @@ export function renderPenetrationReturnMarkdown(vm: ReportViewModelV1, buffers: 
     "",
     "## STEP 1 Owner Earnings 计算",
     "",
-    `Owner Earnings 由 Phase3 因子2输出锚定：A=${fmtNum(vm.phase3.factor2?.A)}，C=${fmtNum(vm.phase3.factor2?.C)}，D=${fmtNum(vm.phase3.factor2?.D)}，I=${fmtNum(vm.phase3.factor2?.I)}。[E7]`,
+    `Owner Earnings 以策略计算口径锚定：A=${fmtNum(vm.phase3.factor2?.A)}，C=${fmtNum(vm.phase3.factor2?.C)}，D=${fmtNum(vm.phase3.factor2?.D)}，I=${fmtNum(vm.phase3.factor2?.I)}。[E7]`,
     "",
     "## STEP 2 分配能力评估",
     "",
-    `分配能力由粗算 R 和门槛 II 交叉判断：R=${fmtPct(vm.phase3.factor2?.R)}，II=${fmtPct(vm.phase3.factor2?.II)}，结论=${vm.phase3.factor2?.passed ? "通过" : "未通过"}。[E7]`,
+    `${renderPenetrationDiscipline(vm)}[E7]`,
     "",
     "## STEP 3 真实现金收入还原",
     "",
@@ -642,11 +783,11 @@ export function renderPenetrationReturnMarkdown(vm: ReportViewModelV1, buffers: 
     `| 门槛 II | ${fmtPct(vm.phase3.factor2?.II)} |`,
     `| 可信度 | ${vm.phase3.confidence} / ${vm.phase3.factor3?.extrapolationTrust ?? "—"} |`,
     "",
-    "## Phase3 因子摘录（审计用）",
+    "## 附录：计算底稿摘要",
     "",
-    f2 ? clip(stripLeadingDanglingPunctuation(f2), 6000) : "_未匹配到因子2摘录；以结构化 Phase3 输出为准。_",
+    f2 ? clip(sanitizeCalculationExcerpt(stripLeadingDanglingPunctuation(f2)), 6000) : "_未匹配到粗算摘录；以结构化计算输出为准。_",
     "",
-    f3 ? clip(stripLeadingDanglingPunctuation(f3), 6000) : "_未匹配到因子3摘录；以结构化 Phase3 输出为准。_",
+    f3 ? clip(sanitizeCalculationExcerpt(stripLeadingDanglingPunctuation(f3)), 6000) : "_未匹配到精算摘录；以结构化计算输出为准。_",
     "",
     "## 附录：证据索引",
     "",
@@ -662,7 +803,7 @@ export function renderValuationTopicMarkdown(vm: ReportViewModelV1, buffers: Rep
   return [
     `# ${name}（${vm.normalizedCode}）· 估值分析报告`,
     "",
-    `> **Valuation Verdict**：综合估值 ${fmtNum(vm.valuation.weightedAverage)}，方法数 ${vm.valuation.methodCount}，一致性 ${vm.valuation.consistency ?? "—"}。`,
+    `> **Valuation Verdict**：综合估值 ${fmtNum(vm.valuation.weightedAverage)}，有效方法 ${renderValuationMethodCount(valuationJson)}，一致性 ${vm.valuation.consistency ?? "—"}。`,
     "",
     "## Valuation Snapshot",
     "",
@@ -671,11 +812,11 @@ export function renderValuationTopicMarkdown(vm: ReportViewModelV1, buffers: Rep
     `| 当前价格 | ${fmtNum(vm.market.price)} |`,
     `| 综合估值 | ${fmtNum(vm.valuation.weightedAverage)} |`,
     `| WACC / Ke | ${fmtNum(vm.valuation.wacc)} / ${fmtNum(vm.valuation.ke)} |`,
-    `| 方法数 / CV | ${vm.valuation.methodCount} / ${fmtNum(vm.valuation.coefficientOfVariation)} |`,
+    `| 有效方法 / CV | ${renderValuationMethodCount(valuationJson)} / ${fmtNum(vm.valuation.coefficientOfVariation)} |`,
     "",
     "## Executive Summary",
     "",
-    `**一句话结论**：估值页以 \`valuation_computed.json\` 为机械锚点，核心看 DCF、DDM、PE Band 的区间交叉，而不是单点目标价。综合估值 ${fmtNum(vm.valuation.weightedAverage)}，当前价格 ${fmtNum(vm.market.price)}，方法一致性 ${vm.valuation.consistency ?? "—"}。[E4][E6]`,
+    renderValuationExecutiveSummary(valuationJson, vm),
     "",
     "## 一、公司分类",
     "",
@@ -691,7 +832,7 @@ export function renderValuationTopicMarkdown(vm: ReportViewModelV1, buffers: Rep
     "",
     "## 四、定性调整说明",
     "",
-    "- 商业质量未达到完整六维成稿时，估值中的护城河、治理、监管和现金流调整应保持保守。",
+    "- 商业质量尚未形成完整六维结论时，估值中的护城河、治理、监管和现金流调整应保持保守。",
     "- 年报抽取质量降级时，涉及年报附注的调整必须标注置信边界。",
     "",
     "## 五、DCF 敏感性矩阵",
@@ -708,13 +849,16 @@ export function renderValuationTopicMarkdown(vm: ReportViewModelV1, buffers: Rep
     "",
     renderPeBandSection(valuationJson),
     "",
-    "## 八、结构化估值明细",
+    "## 八、DDM / PEG 未采用原因",
     "",
-    valBlock,
+    "| 方法 | 当前处理 | 原因 |",
+    "|:-----|:---------|:-----|",
+    `| DDM | ${isEffectiveMethod(methodByName(valuationJson, "DDM")) ? "已采用" : "未采用"} | ${methodByName(valuationJson, "DDM")?.note ?? (isEffectiveMethod(methodByName(valuationJson, "DDM")) ? "分红口径可用" : "分红连续性或贴现率证据不足")} |`,
+    `| PEG | ${isEffectiveMethod(methodByName(valuationJson, "PEG")) ? "已采用" : "未采用"} | ${methodByName(valuationJson, "PEG")?.note ?? (isEffectiveMethod(methodByName(valuationJson, "PEG")) ? "盈利增长口径可用" : "盈利增长口径不足")} |`,
     "",
-    "## 九、交叉验证",
+    "## 九、方法分歧解释",
     "",
-    `估值一致性=${vm.valuation.consistency ?? "—"}；变异系数 CV=${fmtNum(vm.valuation.coefficientOfVariation)}。若方法分歧大，终稿需解释分歧来自盈利、现金流、分红还是倍数假设。[E6]`,
+    renderValuationDisagreement(valuationJson, vm),
     "",
     "## 十、反向估值：当前价格隐含了什么？",
     "",
@@ -736,6 +880,10 @@ export function renderValuationTopicMarkdown(vm: ReportViewModelV1, buffers: Rep
     "## 附录：关键财务趋势",
     "",
     renderFinancialTrendAppendix(buffers.marketPackMarkdown),
+    "",
+    "## 附录：结构化估值明细",
+    "",
+    valBlock,
     "",
     "## 附录：证据索引",
     "",

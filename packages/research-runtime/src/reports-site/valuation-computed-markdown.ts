@@ -46,21 +46,21 @@ function methodRow(m: ValuationMethodResult): string {
 }
 
 /**
- * 将 `valuation_computed.json` 渲染为可读 Markdown（与研报站 emit 逻辑一致）。
+ * 将结构化估值结果渲染为可读 Markdown（与研报站 emit 逻辑一致）。
  */
 export function renderValuationComputedMarkdownFromJson(rawJson: string): string {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawJson);
   } catch {
-    return ["## 估值数据（解析失败）", "", "```text", rawJson.trim(), "```"].join("\n");
+    return ["## 估值计算明细（解析失败）", "", "```text", rawJson.trim(), "```"].join("\n");
   }
   if (!isValuationComputedShape(parsed)) {
-    return ["## 估值数据（结构异常）", "", "```json", JSON.stringify(parsed, null, 2), "```"].join("\n");
+    return ["## 估值计算明细（结构异常）", "", "```json", JSON.stringify(parsed, null, 2), "```"].join("\n");
   }
   const v = parsed;
   const lines: string[] = [
-    "## 估值结果（valuation_computed）",
+    "## 估值模型计算明细",
     "",
     "| 字段 | 内容 |",
     "|:-----|:-----|",
@@ -118,7 +118,7 @@ export function renderValuationComputedMarkdownFromJson(rawJson: string): string
   }
 
   lines.push(
-    "> **说明**：上表由本次 run 的结构化估值结果生成；站点正文以表格为准，原始 JSON 仅作为发布链路的内部证据文件。",
+    "> **说明**：以下表格为本次估值模型的计算底稿，用于核对方法、权重与关键假设。",
     "",
   );
 

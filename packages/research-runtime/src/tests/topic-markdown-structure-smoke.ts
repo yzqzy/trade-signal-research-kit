@@ -112,15 +112,40 @@ function assertTopicStructures(): void {
   const rendered = renderAllReportPolishMarkdowns(sampleVm(), sampleBuffers());
   const allMarkdown = Object.values(rendered).join("\n\n");
   assert.deepEqual(findPublishedMarkdownQualityViolations(allMarkdown), []);
+  for (const forbidden of [
+    "机械锚点",
+    "候选片段",
+    "供六维成稿引用",
+    "站点只展示",
+    "完整发布依据",
+    "审计用",
+    "缺口与 TODO",
+    "本 run 无显式 TODO",
+    "valuation_computed.json 为准",
+    "估值结果（valuation_computed）",
+    "原始 JSON",
+    "发布链路",
+    "F10 主链路",
+    "结构化接口",
+    "gateVerdict",
+  ]) {
+    assert.doesNotMatch(allMarkdown, new RegExp(forbidden, "u"));
+  }
   assert.match(rendered.turtleOverviewMarkdown, /## Turtle KPI Snapshot/);
   assert.match(rendered.turtleOverviewMarkdown, /## 投资论点卡（Thesis Card）/);
+  assert.match(rendered.turtleOverviewMarkdown, /现有材料未形成稳定股东回报证据|现有材料未形成可发布摘要/u);
   assert.match(rendered.businessQualityMarkdown, /## 维度一：商业模式与资本特征/);
   assert.match(rendered.businessQualityMarkdown, /## 监管与合规要点/);
   assert.doesNotMatch(rendered.businessQualityMarkdown, /https?:\/\//);
   assert.match(rendered.penetrationReturnMarkdown, /## STEP 0 数据校验与口径锚定/);
   assert.match(rendered.penetrationReturnMarkdown, /## STEP 11 交叉验证与可信度评级/);
+  assert.match(rendered.penetrationReturnMarkdown, /## 附录：计算底稿摘要/);
+  assert.doesNotMatch(rendered.penetrationReturnMarkdown, /结论：通过|通过门槛/);
   assert.match(rendered.valuationMarkdown, /## 五、DCF 敏感性矩阵/);
   assert.match(rendered.valuationMarkdown, /## 七、PE Band 历史分位区间/);
+  assert.match(rendered.valuationMarkdown, /## 八、DDM \/ PEG 未采用原因/);
+  assert.match(rendered.valuationMarkdown, /## 附录：结构化估值明细/);
+  assert.ok(rendered.valuationMarkdown.indexOf("## 附录：结构化估值明细") > rendered.valuationMarkdown.indexOf("## 十一、估值结论"));
   assert.match(rendered.valuationMarkdown, /## 十、反向估值：当前价格隐含了什么？/);
   assert.match(rendered.valuationMarkdown, /## 十二、关键假设与风险提示/);
 }
@@ -172,6 +197,30 @@ async function assertPublishedQualityGate(): Promise<void> {
   assert.deepEqual(findPublishedMarkdownQualityViolations("本页是草稿，待 Claude Code 收口。"), [
     "内部状态词：草稿",
     "内部状态词：待 Claude",
+  ]);
+  assert.deepEqual(findPublishedMarkdownQualityViolations("估值页以 valuation_computed.json 为准，是机械锚点。"), [
+    "内部流程词：机械锚点",
+    "内部流程词：valuation_computed.json 为准",
+  ]);
+  assert.deepEqual(findPublishedMarkdownQualityViolations("本页包含候选片段，供六维成稿引用，站点只展示完整发布依据，审计用。"), [
+    "内部流程词：候选片段",
+    "内部流程词：供六维成稿引用",
+    "内部流程词：站点只展示",
+    "内部流程词：完整发布依据",
+    "内部流程词：审计用",
+  ]);
+  assert.deepEqual(findPublishedMarkdownQualityViolations("## 缺口与 TODO\n\n_本 run 无显式 TODO 缺口项。_"), [
+    "内部流程词：缺口与 TODO",
+  ]);
+  assert.deepEqual(findPublishedMarkdownQualityViolations("## 估值结果（valuation_computed）\n原始 JSON 仅作为发布链路。"), [
+    "内部流程词：估值结果 valuation_computed",
+    "内部流程词：原始 JSON",
+    "内部流程词：发布链路",
+  ]);
+  assert.deepEqual(findPublishedMarkdownQualityViolations("gateVerdict=OK，F10 主链路可用，仍需补充结构化接口。"), [
+    "内部流程词：F10 主链路",
+    "内部流程词：结构化接口",
+    "内部流程词：gateVerdict",
   ]);
 }
 
@@ -229,10 +278,6 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
       "[终稿状态: 完成]",
       "# 测试公司（600887）· 商业质量评估",
       "> PDF 抽取质量声明：gate=DEGRADED，年报章节降级使用。[E1]",
-      "## Quality Snapshot",
-      "| 维度 | 判断 |",
-      "|:--|:--|",
-      "| D1 | 通过 |",
       "## Executive Summary",
       "核心判断。[E1]",
       "## 关键发现",
@@ -279,15 +324,20 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
           section7: [
             {
               item: "违规/处罚记录",
-              content: "⚠️ 未搜索到相关信息",
-              evidences: [],
+              content: "公司收到立案告知书，涉及信息披露违法违规风险。",
+              evidences: [
+                {
+                  title: "关于公司收到立案告知书的公告",
+                  url: "https://example.com/reg.pdf",
+                  source: "交易所",
+                  snippet: "公司涉嫌信息披露违法违规，被证监会立案调查。",
+                },
+              ],
               retrievalDiagnostics: {
-                webSearchUsed: true,
-                webSearchProviderId: "volc",
-                webSearchFailureReason: "UNKNOWN(rate_limit_exceeded): Volc WebSearch API 错误 [rate_limit_exceeded]: rate limit exceeded",
+                webSearchUsed: false,
                 feedFallbackUsed: true,
-                feedEvidenceCount: 0,
-                evidenceRetrievalStatus: "web_limited_feed_empty",
+                feedEvidenceCount: 1,
+                evidenceRetrievalStatus: "feed_hit",
               },
             },
           ],
@@ -336,6 +386,9 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
     assert.match(content, /证据质量：年报抽取为 DEGRADED，P13 需复核，详见文末。/);
     assert.match(content, /## 证据质量与限制/);
     assert.match(content, /## D1-D6 深度章节/);
+    assert.equal((content.match(/^##\s+Quality Snapshot\s*$/gmu) ?? []).length, 1);
+    assert.match(content, /\| 商业质量 \| 偏弱\/观察 \|/);
+    assert.doesNotMatch(content, /\| 商业质量 \| 较强/);
     assert.deepEqual(findPublishedMarkdownQualityViolations(content), []);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -370,7 +423,7 @@ function assertPhase1BRetrievalPresentation(): void {
     section8: [],
     section10: [],
   });
-  assert.match(md, /官方源与开放信息补充检索均未形成可确认候选证据/);
+  assert.match(md, /官方源与开放信息补充检索均未形成可确认事项/);
   assert.doesNotMatch(md, /回退 Feed|WebSearch 受限/);
 
   const filtered = filterPhase1BHighSensitivityEvidencesForTest("违规/处罚记录", [

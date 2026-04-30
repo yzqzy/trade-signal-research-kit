@@ -98,12 +98,12 @@ function buildCompanySpecificInsights(vm: ReportViewModelV1, buffers: ReportPoli
   ]);
   const marketHits = collectKeywordHits(buffers.marketPackMarkdown, ["DPS", "分红", "派息", "Capex", "资本开支", "PE", "同业"]);
   return {
-    sourcePriority: ["data_pack_report.md", "data_pack_market.md", "Feed peerComparablePool TopN", "phase1b_qualitative.md"],
+    sourcePriority: ["data_pack_report.md", "data_pack_market.md", "自动同业池 TopN", "phase1b_qualitative.md"],
     operatingSignalHits: annualHits,
     marketSignalHits: marketHits,
     peerComparablePool: vm.phase1a.peerComparablePool ?? {
       peers: [],
-      note: "Feed 同业池未形成结构化结果；不固定或伪造同行。",
+      note: "自动同业池未形成结构化结果；不固定或伪造同行。",
     },
     gaps:
       annualHits.length === 0
@@ -149,8 +149,8 @@ function renderBusinessFinalizeHandoffMarkdown(input: {
     "## 同业对标来源",
     "",
     vm.phase1a.peerComparablePool?.peers.length
-      ? `Feed 自动同业池 TopN，行业=${vm.phase1a.peerComparablePool.industryName ?? "—"}，排序=${vm.phase1a.peerComparablePool.sortColumn ?? "—"}。`
-      : "Feed 同业池未形成结构化结果；成稿不得固定写入预设同行，应在缺口清单披露。",
+      ? `自动同业池 TopN，行业=${vm.phase1a.peerComparablePool.industryName ?? "—"}，排序=${vm.phase1a.peerComparablePool.sortColumn ?? "—"}。`
+      : "自动同业池未形成结构化结果；成稿不得固定写入预设同行，应在缺口清单披露。",
     "",
   ].join("\n");
 }

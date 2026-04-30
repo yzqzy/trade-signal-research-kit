@@ -232,6 +232,20 @@ export function findPublishedMarkdownQualityViolations(markdown: string): string
     ["内部状态词：尚未完成", /尚未完成/u],
     ["内部状态词：成稿要求", /成稿要求/u],
     ["内部状态词：初始状态", /初始状态/u],
+    ["内部流程词：机械锚点", /机械锚点/u],
+    ["内部流程词：候选片段", /候选片段/u],
+    ["内部流程词：供六维成稿引用", /供六维成稿引用/u],
+    ["内部流程词：站点只展示", /站点只展示/u],
+    ["内部流程词：完整发布依据", /完整发布依据/u],
+    ["内部流程词：审计用", /审计用/u],
+    ["内部流程词：缺口与 TODO", /缺口与\s*TODO|本 run 无显式 TODO/u],
+    ["内部流程词：valuation_computed.json 为准", /valuation_computed\.json\s*为准/u],
+    ["内部流程词：估值结果 valuation_computed", /估值结果（valuation_computed）/u],
+    ["内部流程词：原始 JSON", /原始\s*JSON/u],
+    ["内部流程词：发布链路", /发布链路/u],
+    ["内部流程词：F10 主链路", /F10\s*主链路/u],
+    ["内部流程词：结构化接口", /结构化接口/u],
+    ["内部流程词：gateVerdict", /gateVerdict/u],
   ];
   return checks.filter(([, re]) => re.test(markdown)).map(([name]) => name);
 }
@@ -281,6 +295,7 @@ type PdfQualitySummary = {
 
 type EvidenceRetrievalSummary = {
   hasCriticalGap: boolean;
+  hasConfirmedCriticalEvent: boolean;
   webSearchUsed: boolean;
   webSearchLimited: boolean;
   missingItems: string[];
@@ -312,11 +327,18 @@ function flattenPhase1BItems(phase1b: Phase1BQualitativeSupplement | undefined):
 
 function summarizeEvidenceRetrieval(phase1b: Phase1BQualitativeSupplement | undefined): EvidenceRetrievalSummary {
   const critical = /违规|处罚|诉讼|仲裁|监管|问询|关注函|警示函|立案|纪律处分|公开谴责/u;
+  const confirmedCritical =
+    /违规|处罚|诉讼|仲裁|监管|问询|关注函|警示函|立案|调查|纪律处分|公开谴责|信披|信息披露违法/u;
   const items = flattenPhase1BItems(phase1b);
   const missing = items.filter((it) => it.evidences.length === 0);
   const limited = items.filter((it) => isRateLimited(it.retrievalDiagnostics?.webSearchFailureReason));
   return {
     hasCriticalGap: missing.some((it) => critical.test(it.item)),
+    hasConfirmedCriticalEvent: items.some(
+      (it) =>
+        critical.test(it.item) &&
+        it.evidences.some((ev) => confirmedCritical.test(`${ev.title}\n${ev.snippet ?? ""}\n${it.content}`)),
+    ),
     webSearchUsed: items.some((it) => it.retrievalDiagnostics?.webSearchUsed),
     webSearchLimited: limited.length > 0,
     missingItems: missing.map((it) => it.item),
@@ -334,17 +356,27 @@ function deriveBusinessAnalysisConfidence(input: {
   if (input.finalNarrativeStatus !== "complete" || input.status === "degraded") return "low";
   if (input.pdfQuality.gateVerdict === "CRITICAL") return "low";
   if (input.pdfQuality.gateVerdict === "DEGRADED") return "medium";
-  if (input.evidence.hasCriticalGap || input.evidence.webSearchLimited) return "medium";
+  if (input.evidence.hasCriticalGap || input.evidence.hasConfirmedCriticalEvent || input.evidence.webSearchLimited) {
+    return "medium";
+  }
   return "high";
 }
 
 function evidenceStatusLabel(evidence: EvidenceRetrievalSummary): string {
   if (evidence.webSearchLimited && evidence.missingItems.length > 0) {
-    return "官方源已优先检索；部分开放信息未形成关键反证";
+    return "官方信息已优先核验；部分开放信息未形成关键反证";
   }
-  if (evidence.hasCriticalGap) return "关键合规项存在证据缺口";
-  if (evidence.webSearchUsed) return "官方源与开放信息补充已形成候选证据";
-  return "官方源已形成候选证据";
+  if (evidence.hasConfirmedCriticalEvent) return "已确认关键监管事件，需跟踪最终结论";
+  if (evidence.hasCriticalGap) return "关键合规事项仍需补充核验";
+  if (evidence.webSearchUsed) return "官方信息与开放信息已完成交叉核验";
+  return "官方信息已完成基础核验";
+}
+
+function businessQualityLabel(input: { confidence: ConfidenceState; evidence: EvidenceRetrievalSummary }): string {
+  if (input.evidence.hasConfirmedCriticalEvent) return "偏弱/观察";
+  if (input.evidence.hasCriticalGap || input.confidence === "low" || input.confidence === "unknown") return "待验证";
+  if (input.confidence === "medium") return "观察";
+  return "较强";
 }
 
 function renderQualitySnapshot(input: {
@@ -359,11 +391,11 @@ function renderQualitySnapshot(input: {
     "",
     "| 项目 | 状态 |",
     "|:-----|:-----|",
-    "| 商业质量 | 较强但需观察 |",
+    `| 商业质量 | ${businessQualityLabel(input)} |`,
     `| 最终置信度 | ${input.confidence} |`,
     `| 年报抽取质量 | ${gate}；低置信关键块：${low} |`,
     `| 监管证据状态 | ${evidenceStatusLabel(input.evidence)} |`,
-    `| 证据完整度 | ${input.evidence.missingItems.length > 0 ? "存在需补充核验项，详见文末证据质量表" : "关键项已形成候选证据"} |`,
+    `| 证据完整度 | ${input.evidence.missingItems.length > 0 ? "存在需补充核验项，详见文末证据质量表" : "关键事项已完成基础核验"} |`,
   ].join("\n");
 }
 
@@ -380,6 +412,14 @@ function compactPdfLead(markdown: string, pdfQuality: PdfQualitySummary): string
 function sanitizeTechnicalEvidenceText(markdown: string): string {
   return markdown
     .replace(/WebSearch rate limit|WebSearch\s+rate_limit|rate_limit_exceeded|Volc WebSearch API 错误 \[[^\]]+\]/giu, "外部检索受限")
+    .replace(/gateVerdict\s*=\s*(OK|DEGRADED|CRITICAL)/giu, "年报抽取质量：$1")
+    .replace(/gateVerdict\s*`?\s*(OK|DEGRADED|CRITICAL)\s*`?/giu, "年报抽取质量：$1")
+    .replace(/F10\s*主链路/giu, "公开资料与经营画像")
+    .replace(/结构化接口/gu, "结构化数据")
+    .replace(/Feed\s*Top\s*10/giu, "自动 Top10")
+    .replace(/Feed\s*同业池/giu, "自动同业池")
+    .replace(/由\s*Feed\s*结构化返回/giu, "由结构化数据返回")
+    .replace(/Phase1B\s*还捕捉到/gu, "外部证据还捕捉到")
     .replace(/检索过程受到\s*外部检索受限\s*影响/gu, "外部检索受限")
     .replace(/且外部搜索存在限流失败/gu, "且外部检索受限")
     .replace(/、Phase1B\s*监管\/处罚检索缺口，以及\s*P13\s*低置信导致非经常性损益判断需降级/gu, "，以及外部证据与 PDF 抽取质量边界");
@@ -440,10 +480,10 @@ function renderEvidenceQualitySection(input: {
   rows.push(`| 年报抽取 | 质量=${gate}；低置信关键块=${low}；缺失关键块=${missingPdf} |`);
   rows.push(`| 人工复核优先级 | ${input.pdfQuality.humanReviewPriority?.length ? input.pdfQuality.humanReviewPriority.join("、") : "无"} |`);
   rows.push(`| 外部证据检索 | ${evidenceStatusLabel(input.evidence)} |`);
-  rows.push(`| 开放信息补充 | ${input.evidence.webSearchUsed ? (input.evidence.webSearchLimited ? "未形成关键反证；不作为监管事件主证据" : "已形成候选线索；不作为监管事件主证据") : "未启用或未触发"} |`);
+  rows.push(`| 开放信息补充 | ${input.evidence.webSearchUsed ? (input.evidence.webSearchLimited ? "未形成关键反证；不作为监管事件主证据" : "已形成补充线索；不作为监管事件主证据") : "未启用或未触发"} |`);
   const missingEvidence = input.evidence.missingItems.length ? input.evidence.missingItems.join("、") : "无";
-  rows.push(`| 未形成确认候选 | ${missingEvidence} |`);
-  rows.push("| 结论边界 | 未形成确认候选不等于事实不存在；若用于法律/合规尽调，应补充交易所、证监会、市场监管、司法与食品安全专用源。 |");
+  rows.push(`| 未形成确认事项 | ${missingEvidence} |`);
+  rows.push("| 结论边界 | 未形成确认事项不等于事实不存在；若用于法律/合规尽调，应补充交易所、证监会、市场监管、司法与食品安全专用源。 |");
   return rows.join("\n");
 }
 
@@ -452,6 +492,10 @@ function stripExistingEvidenceQualitySection(markdown: string): string {
     .replace(/^##\s+证据质量与限制\s*\n[\s\S]*?(?=^##\s+附录：证据索引\s*$|^##\s+证据缺口清单|^##\s+D[1-6]\b|(?![\s\S]))/imu, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function hasQualitySnapshot(markdown: string): boolean {
+  return /^##\s+Quality Snapshot\s*$/imu.test(markdown);
 }
 
 function renderBusinessAnalysisPublishedMarkdown(input: {
@@ -470,7 +514,10 @@ function renderBusinessAnalysisPublishedMarkdown(input: {
   const d = stripFinalStatusLine(input.qualitativeD1D6Markdown);
   const qSplit = splitEvidenceAppendix(stripExistingEvidenceQualitySection(q));
   const dSplit = splitEvidenceAppendix(d);
-  const sections = [qSplit.body.replace(/^(# .+?\n(?:> .+?\n)?)/u, `$1\n${renderQualitySnapshot(input)}\n`)];
+  const qBody = hasQualitySnapshot(qSplit.body)
+    ? qSplit.body
+    : qSplit.body.replace(/^(# .+?\n(?:> .+?\n)?)/u, `$1\n${renderQualitySnapshot(input)}\n`);
+  const sections = [qBody];
   if (input.finalNarrativeStatus === "complete" && dSplit.body && !hasD1D6Sections(qSplit.body)) {
     sections.push(["## D1-D6 深度章节", "", dSplit.body].join("\n"));
   }

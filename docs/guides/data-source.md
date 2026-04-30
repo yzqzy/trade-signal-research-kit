@@ -155,11 +155,12 @@ HTTP 场景（AI/Agent）：
 
 ## WebSearch（Phase1B 可选增强）
 
-当配置 `WEB_SEARCH_API_KEY` 时，Phase1B 的以下条目会优先走联网搜索，无命中再回退 Feed 公告检索：
+当配置 `WEB_SEARCH_API_KEY` 时，Phase1B 只把 WebSearch 作为开放信息补充，不作为监管、估值、财务核心证据的主路径。默认联网补充条目为：
 
-- `违规/处罚记录`
 - `行业监管动态`
 - `回购计划`
+
+`违规/处罚记录` 默认走官方监管事件与公告检索；只有显式开启 `PHASE1B_REGULATORY_WEB_FALLBACK=1` 且官方源无命中或失败时，才低并发尝试 WebSearch 补充线索。遇到限流会停止后续开放检索，并保留官方源检索状态。
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
@@ -169,6 +170,8 @@ HTTP 场景（AI/Agent）：
 | `WEB_SEARCH_TIMEOUT_MS` | 否 | 默认 `10000` |
 | `WEB_SEARCH_MAX_RESULTS` | 否 | 默认 `5`，最大 `50` |
 | `WEB_SEARCH_TIME_RANGE` | 否 | 默认 `OneYear`，支持 `OneDay/OneWeek/OneMonth/OneYear` 与 `1d/1w/1m/1y` |
+| `WEB_SEARCH_CONCURRENCY` | 否 | 默认 `1`，用于控制开放信息补充检索并发 |
+| `PHASE1B_REGULATORY_WEB_FALLBACK` | 否 | 默认关闭；设为 `1` 时允许监管事件官方源失败后的 WebSearch 兜底 |
 
 Smoke：
 

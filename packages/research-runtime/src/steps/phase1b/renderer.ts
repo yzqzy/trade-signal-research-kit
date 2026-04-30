@@ -18,20 +18,20 @@ function humanRetrievalStatus(item: Phase1BItem): string {
   const d = item.retrievalDiagnostics;
   if (item.evidences.length > 0) {
     if (d?.evidenceRetrievalStatus === "web_limited_feed_hit") {
-      return "开放信息补充检索受限，官方源已形成候选证据";
+      return "开放信息补充检索受限，官方源已形成可核验线索";
     }
-    if (d?.evidenceRetrievalStatus === "web_hit") return "开放信息补充检索形成候选证据";
-    if (d?.evidenceRetrievalStatus === "feed_hit") return "官方源形成候选证据";
-    return "已取得候选证据";
+    if (d?.evidenceRetrievalStatus === "web_hit") return "开放信息补充检索形成可核验线索";
+    if (d?.evidenceRetrievalStatus === "feed_hit") return "官方源形成可核验线索";
+    return "已取得可核验线索";
   }
   if (d?.evidenceRetrievalStatus === "web_limited_feed_empty") {
-    return "官方源与开放信息补充检索均未形成可确认候选证据";
+    return "官方源与开放信息补充检索均未形成可确认事项";
   }
   if (d?.webSearchUsed && d.webSearchFailureReason) {
     return "开放信息补充检索未形成可用结果，已保留为证据缺口";
   }
   if (d?.webSearchSkippedReason) {
-    return "官方源未形成可确认候选证据，已保留为证据缺口";
+    return "官方源未形成可确认事项，已保留为证据缺口";
   }
   return "官方源检索无命中，保留为证据缺口";
 }

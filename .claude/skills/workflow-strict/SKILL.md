@@ -50,7 +50,8 @@ description: "`workflow:run --mode turtle-strict`：TS 严格链 + Phase3 + repo
 
 ## Phase1B · WebSearch（可选）
 
-- 配置了 `WEB_SEARCH_API_KEY` 时，Phase1B 对 **`违规/处罚记录` / `行业监管动态` / `回购计划`** 优先联网搜索；无命中再回退 Feed（不静默补数）。
+- 配置了 `WEB_SEARCH_API_KEY` 时，Phase1B 仅把 WebSearch 作为开放信息补充，默认用于 **`行业监管动态` / `回购计划`** 等背景线索。
+- **`违规/处罚记录`** 主路径为官方监管事件与公告检索；只有显式开启 `PHASE1B_REGULATORY_WEB_FALLBACK=1` 且官方源无命中或失败时，才低并发尝试 WebSearch 补充线索。
 - Smoke：`pnpm run build` 后 `pnpm --filter @trade-signal/research-runtime run run:websearch-smoke -- --query "…" --limit 3`
 - 六维终稿写回仍遵守 **`business-analysis-finalize`**（见该 skill 与共享终稿规范）。
 
