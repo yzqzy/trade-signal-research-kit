@@ -11,6 +11,7 @@ import {
   findPublishedMarkdownQualityViolations,
   rebuildSiteReportsIndex,
 } from "../reports-site/emit-site-reports.js";
+import { renderPublicEvidencePackContent } from "../reports-site/public-evidence-pack-renderer.js";
 import { filterPhase1BHighSensitivityEvidencesForTest } from "../steps/phase1b/collector.js";
 import { renderPhase1BMarkdown } from "../steps/phase1b/renderer.js";
 import { renderAllReportPolishMarkdowns } from "../steps/phase3/report-polish/render-report-polish-markdown.js";
@@ -127,6 +128,13 @@ function assertTopicStructures(): void {
     "发布链路",
     "F10 主链路",
     "结构化接口",
+    "Position Recommendation",
+    "Topic 质量标准",
+    "结构化证据",
+    "同一次分析",
+    "不跨行业硬套指标",
+    "治理风险进入折价而非口号",
+    "行业 profile 决定",
     "gateVerdict",
     "PDF gate",
     "gate=OK",
@@ -244,6 +252,58 @@ async function assertPublishedQualityGate(): Promise<void> {
     "内部流程词：结构化接口",
     "内部流程词：gateVerdict",
   ]);
+  assert.deepEqual(findPublishedMarkdownQualityViolations("/Users/heora/project/output/data_pack_report.md"), [
+    "本地绝对路径",
+  ]);
+  assert.deepEqual(
+    findPublishedMarkdownQualityViolations(
+      "Position Recommendation：观察；观察。数值与判断来自同一次分析的结构化证据，并按 Topic 质量标准发布。",
+    ),
+    [
+      "内部流程词：Position Recommendation",
+      "内部流程词：Topic 质量标准",
+      "内部流程词：结构化证据",
+      "内部流程词：同一次分析",
+    ],
+  );
+  assert.deepEqual(
+    findPublishedMarkdownQualityViolations(
+      "行业 profile 决定该跟踪哪些 KPI；不跨行业硬套指标；治理风险进入折价而非口号。",
+    ),
+    [
+      "非研报表达：不跨行业硬套指标",
+      "非研报表达：治理风险进入折价而非口号",
+      "非研报表达：行业 profile 决定",
+    ],
+  );
+}
+
+function assertPublicEvidencePackRenderer(): void {
+  const publicMarkdown = renderPublicEvidencePackContent(
+    [
+      '<!-- PDF_EXTRACT_QUALITY:{"gateVerdict":"DEGRADED"} -->',
+      "- **extractQuality.gateVerdict**: `DEGRADED`",
+      "Phase1B 本 run /Users/heora/project/output/workflow/600941/run/data_pack_report.md",
+    ].join("\n"),
+    "markdown",
+    {
+      normalizeMarkdown: (markdown) =>
+        markdown
+          .replace(/extractQuality\.gateVerdict/gu, "年报抽取质量")
+          .replace(/gateVerdict/gu, "年报抽取质量")
+          .replace(/Phase1B/gu, "外部证据")
+          .replace(/本 run/gu, "本次证据包"),
+      validateContent: findPublishedMarkdownQualityViolations,
+    },
+  );
+  assert.doesNotMatch(publicMarkdown, /gateVerdict|Phase1B|本 run|\/Users\/|output\/workflow/u);
+  assert.deepEqual(findPublishedMarkdownQualityViolations(publicMarkdown), []);
+
+  const publicJson = renderPublicEvidencePackContent('{"code":"600941","value":1}', "json", {
+    normalizeMarkdown: (markdown) => markdown,
+    validateContent: findPublishedMarkdownQualityViolations,
+  });
+  assert.match(publicJson, /"code": "600941"/);
 }
 
 async function assertSiteDedupPrefersComplete(): Promise<void> {
@@ -331,9 +391,11 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
     await writeFile(path.join(runDir, "qualitative_d1_d6.md"), d1d6, "utf-8");
     await writeFile(
       path.join(runDir, "data_pack_report.md"),
-      '<!-- PDF_EXTRACT_QUALITY:{"gateVerdict":"DEGRADED","missingCritical":[],"lowConfidenceCritical":["P13"],"allowsFinalNarrativeComplete":true,"humanReviewPriority":["P13"]} -->',
+      '<!-- PDF_EXTRACT_QUALITY:{"gateVerdict":"DEGRADED","missingCritical":[],"lowConfidenceCritical":["P13"],"allowsFinalNarrativeComplete":true,"humanReviewPriority":["P13"]} -->\n\n# 年报证据包\n\n主营与现金流摘要。',
       "utf-8",
     );
+    await writeFile(path.join(runDir, "data_pack_market.md"), "# 测试公司（600887）\n\n## §18 费用率趋势\n\n费用率摘要。", "utf-8");
+    await writeFile(path.join(runDir, "phase1b_qualitative.md"), "# 外部证据\n\n监管补充摘要。", "utf-8");
     await writeFile(
       path.join(runDir, "phase1b_qualitative.json"),
       JSON.stringify(
@@ -380,11 +442,18 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
           finalNarrativeStatus: "complete",
           finalNarrativeBlockingReasons: [],
           outputLayout: { code: "600887", runId: "ba-run" },
-          input: { code: "600887", runId: "ba-run", companyName: "测试公司" },
+          input: {
+            code: "600887",
+            runId: "ba-run",
+            companyName: "测试公司",
+            reportUrl: "https://static.cninfo.com.cn/finalpage/2026-04-25/mock.PDF",
+          },
           outputs: {
             qualitativeReportPath: "qualitative_report.md",
             qualitativeD1D6Path: "qualitative_d1_d6.md",
+            marketPackPath: "data_pack_market.md",
             phase1bJsonPath: "phase1b_qualitative.json",
+            phase1bMarkdownPath: "phase1b_qualitative.md",
             dataPackReportPath: "data_pack_report.md",
           },
         },
@@ -399,8 +468,20 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
     const content = await readFile(path.join(entriesRoot, entryId, "content.md"), "utf-8");
     const meta = JSON.parse(await readFile(path.join(entriesRoot, entryId, "meta.json"), "utf-8")) as {
       confidenceState: string;
+      attachments?: Array<{ id: string; href: string; previewable: boolean }>;
+      sourceLinks?: Array<{ id: string; href: string; kind: string }>;
     };
     assert.equal(meta.confidenceState, "medium");
+    assert.ok(meta.attachments?.some((a) => a.id === "annual-report-pack" && a.href === "attachments/annual-report-pack.md"));
+    assert.ok(meta.attachments?.some((a) => a.id === "market-pack" && a.previewable));
+    assert.ok(meta.attachments?.some((a) => a.id === "regulatory-evidence"));
+    assert.ok(meta.sourceLinks?.some((s) => s.id === "annual-pdf-official" && s.kind === "pdf"));
+    const attachmentNames = ["annual-report-pack.md", "market-pack.md", "regulatory-evidence.md"];
+    for (const name of attachmentNames) {
+      const attachment = await readFile(path.join(entriesRoot, entryId, "attachments", name), "utf-8");
+      assert.doesNotMatch(attachment, /\/Users\/|output\/(?:workflow|business-analysis|site)\//u);
+      assert.deepEqual(findPublishedMarkdownQualityViolations(attachment), []);
+    }
     assert.doesNotMatch(content, /^##\s+qualitative_report\.md$/imu);
     assert.doesNotMatch(content, /^##\s+qualitative_d1_d6\.md$/imu);
     assert.doesNotMatch(content.slice(0, 300), /PDF 抽取质量声明/);
@@ -408,6 +489,10 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
     assert.match(content, /证据质量：年报抽取为 DEGRADED，P13 需复核，详见文末。/);
     assert.match(content, /## 证据质量与限制/);
     assert.match(content, /## D1-D6 深度章节/);
+    assert.match(content, /年报证据包 · 可展开\/下载/);
+    assert.doesNotMatch(content, /\[(?:E\d+|M:§\d+)\]\[(?:E\d+|M:§\d+)\]/u);
+    assert.doesNotMatch(content, /不跨行业硬套指标|治理风险进入折价而非口号|行业 profile 决定/u);
+    assert.doesNotMatch(content, /见本页 \[M:§\] 引用/);
     assert.equal((content.match(/^##\s+Quality Snapshot\s*$/gmu) ?? []).length, 1);
     assert.match(content, /\| 商业质量 \| 偏弱\/观察 \|/);
     assert.doesNotMatch(content, /\| 商业质量 \| 较强/);
@@ -467,6 +552,7 @@ function assertPhase1BRetrievalPresentation(): void {
 assertTopicStructures();
 assertFinalNarrativeValidation();
 await assertPublishedQualityGate();
+assertPublicEvidencePackRenderer();
 await assertSiteDedupPrefersComplete();
 await assertBusinessAnalysisPublishesSingleMarkdown();
 assertPhase1BRetrievalPresentation();

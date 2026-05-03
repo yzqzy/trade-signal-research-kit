@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ReportAttachments, type ReportAttachmentView, type ReportSourceLinkView } from "@/components/ReportAttachments";
 import { ReportMarkdownBody } from "@/components/ReportMarkdownBody";
 import { TOPIC_LABEL_ZH, type ReportTopicType } from "@/lib/reports/topic-labels";
 
@@ -21,6 +22,8 @@ type EntryMeta = {
   requiredFieldsStatus: "complete" | "degraded" | "missing";
   confidenceState: "high" | "medium" | "low" | "unknown";
   contentFile?: string;
+  attachments?: Array<Omit<ReportAttachmentView, "content">>;
+  sourceLinks?: ReportSourceLinkView[];
 };
 
 function metaStatusClass(s: EntryMeta["requiredFieldsStatus"]): string {
@@ -82,11 +85,24 @@ export default async function ReportEntryPage({ params }: { params: Promise<{ en
   const base = path.join(process.cwd(), "public", "reports", "entries", entryId);
   let meta: EntryMeta;
   let markdown: string;
+  let attachments: ReportAttachmentView[] = [];
   try {
     const metaRaw = await readFile(path.join(base, "meta.json"), "utf-8");
     meta = JSON.parse(metaRaw) as EntryMeta;
     const contentName = meta.contentFile?.trim() || DEFAULT_CONTENT_FILE;
     markdown = await readFile(path.join(base, contentName), "utf-8");
+    attachments = await Promise.all(
+      (meta.attachments ?? []).map(async (att) => {
+        const safeHref = att.href.replace(/^\/+/u, "");
+        if (safeHref.includes("..")) return att;
+        const content = att.previewable ? await readFile(path.join(base, safeHref), "utf-8").catch(() => undefined) : undefined;
+        return {
+          ...att,
+          href: `/reports/entries/${entryId}/${safeHref}`,
+          content,
+        };
+      }),
+    );
   } catch {
     notFound();
   }
@@ -115,6 +131,7 @@ export default async function ReportEntryPage({ params }: { params: Promise<{ en
         </div>
       </header>
       <ReportMarkdownBody markdown={markdown} />
+      <ReportAttachments attachments={attachments} sourceLinks={meta.sourceLinks ?? []} />
     </div>
   );
 }

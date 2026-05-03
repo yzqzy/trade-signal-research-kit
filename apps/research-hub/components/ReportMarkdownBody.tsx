@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Children, isValidElement, type ReactNode } from "react";
+import React, { Children, isValidElement, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -174,7 +174,85 @@ function isRhMetadataCode(className: string | undefined): boolean {
   return className.includes("language-rh-metadata") || /\brh-metadata\b/.test(className);
 }
 
-export function ReportMarkdownBody({ markdown }: { markdown: string }) {
+function evidenceAnchorId(raw: string): string | null {
+  const text = raw.trim();
+  const e = text.match(/^E(\d+)$/iu);
+  if (e) return `evidence-e${e[1]}`;
+  const m = text.match(/^M:§(\d+)$/iu);
+  if (m) return `evidence-m-${m[1]}`;
+  return null;
+}
+
+function linkEvidenceRefs(markdown: string): string {
+  const linked = markdown.replace(/\[(E\d+|M:§\d+)\](?!\()/giu, (full, ref: string) => {
+    const id = evidenceAnchorId(ref);
+    return id ? `[${ref}](#${id})` : full;
+  });
+  return linked.replace(/(\[(?:E\d+|M:§\d+)\]\([^)]*\))(?=\[(?:E\d+|M:§\d+)\]\([^)]*\))/giu, "$1 ");
+}
+
+export function ReportMarkdownBody({
+  markdown,
+  variant = "default",
+}: {
+  markdown: string;
+  variant?: "default" | "compact";
+}) {
+  const pulseTimers = useRef<Map<string, number>>(new Map());
+
+  const pulseTarget = useCallback((id: string, className: string, block: ScrollLogicalPosition = "center") => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block });
+    el.classList.add(className);
+    const prev = pulseTimers.current.get(id);
+    if (prev) window.clearTimeout(prev);
+    const timer = window.setTimeout(() => {
+      el.classList.remove(className);
+      pulseTimers.current.delete(id);
+    }, 2600);
+    pulseTimers.current.set(id, timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of pulseTimers.current.values()) window.clearTimeout(timer);
+      pulseTimers.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    const id = window.location.hash.replace(/^#/u, "");
+    if (!id) return;
+    if (id.startsWith("evidence-")) pulseTarget(id, "rh-evidence-row--pulse");
+    if (id.startsWith("attachment-")) {
+      const target = document.getElementById(id);
+      if (target instanceof HTMLDetailsElement) target.open = true;
+      pulseTarget(id, "rh-attachment-card--pulse", "start");
+    }
+  }, [pulseTarget]);
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const target = event.target instanceof Element ? event.target.closest("a") : null;
+      const href = target?.getAttribute("href") ?? "";
+      if (!href.startsWith("#")) return;
+      const id = decodeURIComponent(href.slice(1));
+      if (id.startsWith("evidence-")) {
+        event.preventDefault();
+        pulseTarget(id, "rh-evidence-row--pulse");
+        return;
+      }
+      if (id.startsWith("attachment-")) {
+        event.preventDefault();
+        const el = document.getElementById(id);
+        if (el instanceof HTMLDetailsElement) el.open = true;
+        pulseTarget(id, "rh-attachment-card--pulse", "start");
+      }
+    },
+    [pulseTarget],
+  );
+
   const components: Partial<Components> = {
     pre({ children, ...rest }) {
       const arr = Children.toArray(children);
@@ -215,12 +293,26 @@ export function ReportMarkdownBody({ markdown }: { markdown: string }) {
         </p>
       );
     },
+    tr({ children, className, ...rest }) {
+      const text = flattenText(children).trim();
+      const ref = text.match(/^(E\d+|M:§\d+)/iu)?.[1];
+      const id = ref ? evidenceAnchorId(ref) : null;
+      const merged = [className, id ? "rh-evidence-row" : ""].filter(Boolean).join(" ");
+      return (
+        <tr {...rest} id={id ?? undefined} className={merged || undefined}>
+          {children}
+        </tr>
+      );
+    },
   };
 
   return (
-    <article className="report-entry-body rh-prose">
+    <article
+      className={`report-entry-body rh-prose${variant === "compact" ? " rh-prose--compact" : ""}`}
+      onClick={handleClick}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {markdown}
+        {linkEvidenceRefs(markdown)}
       </ReactMarkdown>
     </article>
   );

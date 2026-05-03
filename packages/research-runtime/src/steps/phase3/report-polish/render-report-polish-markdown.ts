@@ -689,10 +689,13 @@ function phase1bCoverage(buffers: ReportPolishComposeBuffers): string {
 export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: ReportPolishComposeBuffers): string {
   const name = vm.displayCompanyName ?? vm.market.name ?? vm.normalizedCode;
   const valuationJson = parseValuationJson(buffers.valuationRawJson);
+  const thesisSummary =
+    renderThesisSummary(vm) ||
+    `${name} 当前在龟龟策略下为 **${decisionZh(vm.phase3.decision)}**，核心锚点是穿透回报率、估值合成与价值陷阱排查三者的交叉结果。`;
   return [
     `# ${name}（${vm.normalizedCode}）· 龟龟投资策略分析`,
     "",
-    `> **Position Recommendation**：${decisionZh(vm.phase3.decision)}；${verdictTone(vm)}。数值与判断来自同一次分析的结构化证据，并按 Topic 质量标准发布。`,
+    `> **策略结论**：${decisionZh(vm.phase3.decision)}。${thesisSummary}`,
     "",
     "## Turtle KPI Snapshot",
     "",
@@ -700,7 +703,7 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: Rep
     "",
     "## Executive Summary",
     "",
-    `**一句话结论**：${renderThesisSummary(vm) || `${name} 当前在龟龟策略下为 **${decisionZh(vm.phase3.decision)}**，核心锚点是穿透回报率、估值合成与价值陷阱排查三者的交叉结果。`}[E2][E6][E7]`,
+    `**一句话结论**：${thesisSummary}[E2][E6][E7]`,
     "",
     "## 关键发现",
     "",
@@ -708,7 +711,7 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: Rep
     "",
     "## 核心投资论点",
     "",
-    renderThesisSummary(vm) || "本轮 run 未形成足够的 R/GG/估值分位组合信号，投资论点保持审慎。",
+    renderThesisSummary(vm) || "现有 R/GG/估值分位组合信号不足，投资论点保持审慎。",
     "",
     "## 观察条件",
     "",
@@ -747,11 +750,11 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: Rep
     "",
     "## 穿透回报率分析",
     "",
-    `粗算 R=${fmtPct(vm.phase3.factor2?.R)}，门槛 II=${fmtPct(vm.phase3.factor2?.II)}；精算 GG=${fmtPct(vm.phase3.factor3?.GG)}。完整计算链见本站“穿透回报率定量分析”Topic。`,
+    `粗算 R=${fmtPct(vm.phase3.factor2?.R)}，门槛 II=${fmtPct(vm.phase3.factor2?.II)}；精算 GG=${fmtPct(vm.phase3.factor3?.GG)}。完整计算链见“穿透回报率定量分析”页。`,
     "",
     "## 估值与定价",
     "",
-    `${renderValuationMethodCount(valuationJson)}，综合估值 ${fmtNum(vm.valuation.weightedAverage)}，一致性 ${vm.valuation.consistency ?? "—"}。完整方法与敏感性见本站“估值分析”Topic。`,
+    `${renderValuationMethodCount(valuationJson)}，综合估值 ${fmtNum(vm.valuation.weightedAverage)}，一致性 ${vm.valuation.consistency ?? "—"}。完整方法与敏感性见“估值分析”页。`,
     "",
     "## 投资论点卡（Thesis Card）",
     "",

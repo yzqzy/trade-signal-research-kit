@@ -7,9 +7,15 @@ import { resolveOutputPath } from "../crosscut/normalization/resolve-monorepo-pa
 import { formatListedCode } from "./listed-code.js";
 import { buildDisplayTitle, TOPIC_ENTRY_SLUG } from "./topic-labels.js";
 import { renderValuationComputedMarkdownFromJson } from "./valuation-computed-markdown.js";
+import {
+  renderPublicEvidencePack,
+  writePublicEvidencePack,
+  type PublicEvidencePackSource,
+} from "./public-evidence-pack-renderer.js";
 import type {
   ConfidenceState,
   EntryMeta,
+  ReportSourceLink,
   ReportTopicType,
   RequiredFieldsStatus,
   SiteReportsIndex,
@@ -214,8 +220,11 @@ async function writeEntry(params: {
   siteDir: string;
   meta: EntryMeta;
   contentMarkdown: string;
+  attachments?: PublicEvidencePackSource[];
+  sourceLinks?: ReportSourceLink[];
 }): Promise<void> {
-  const violations = findPublishedMarkdownQualityViolations(params.contentMarkdown);
+  const contentMarkdown = normalizePublishedMarkdownProse(params.contentMarkdown);
+  const violations = findPublishedMarkdownQualityViolations(contentMarkdown);
   if (violations.length > 0) {
     throw new Error(
       `[reports-site] ${params.meta.entryId} 含发布禁用内容：${violations.join(", ")}`,
@@ -223,8 +232,19 @@ async function writeEntry(params: {
   }
   const dir = path.join(params.siteDir, "entries", params.meta.entryId);
   await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, "meta.json"), JSON.stringify(params.meta, null, 2), "utf-8");
-  await writeFile(path.join(dir, "content.md"), params.contentMarkdown, "utf-8");
+  const publicEvidencePack = await renderPublicEvidencePack(params.attachments ?? [], {
+    normalizeMarkdown: normalizePublishedMarkdownProse,
+    validateContent: findPublishedMarkdownQualityViolations,
+    pathExists,
+  });
+  const attachments = await writePublicEvidencePack(dir, publicEvidencePack);
+  const meta: EntryMeta = {
+    ...params.meta,
+    attachments: attachments.length ? attachments : undefined,
+    sourceLinks: params.sourceLinks?.length ? params.sourceLinks : undefined,
+  };
+  await writeFile(path.join(dir, "meta.json"), JSON.stringify(meta, null, 2), "utf-8");
+  await writeFile(path.join(dir, "content.md"), contentMarkdown, "utf-8");
 }
 
 export function findPublishedMarkdownQualityViolations(markdown: string): string[] {
@@ -251,6 +271,13 @@ const PUBLISHED_MARKDOWN_FORBIDDEN: Array<[string, RegExp]> = [
   ["内部流程词：发布链路", /发布链路/u],
   ["内部流程词：F10 主链路", /F10\s*主链路/u],
   ["内部流程词：结构化接口", /结构化接口/u],
+  ["内部流程词：Position Recommendation", /Position\s+Recommendation/iu],
+  ["内部流程词：Topic 质量标准", /Topic\s*质量标准/u],
+  ["内部流程词：结构化证据", /结构化证据/u],
+  ["内部流程词：同一次分析", /同一次分析/u],
+  ["非研报表达：不跨行业硬套指标", /不跨行业硬套指标/u],
+  ["非研报表达：治理风险进入折价而非口号", /治理风险进入折价而非口号/u],
+  ["非研报表达：行业 profile 决定", /行业\s*profile\s*决定/u],
   ["内部流程词：gateVerdict", /gateVerdict/u],
   ["内部流程词：本报告可完成终稿", /本报告可完成终稿/u],
   ["内部流程词：PDF gate", /PDF\s*gate|gate\s*=\s*(?:OK|DEGRADED|CRITICAL)/iu],
@@ -258,6 +285,8 @@ const PUBLISHED_MARKDOWN_FORBIDDEN: Array<[string, RegExp]> = [
   ["内部流程词：结论应表述为", /结论应表述为|而不是提前定性/u],
   ["内部流程词：本 run", /本\s*run/iu],
   ["内部流程词：Phase1B", /\bPhase1B\b/u],
+  ["本地绝对路径", /\/Users\/|\/private\/|\/var\/folders\//u],
+  ["内部输出路径", /output\/(?:workflow|business-analysis|site)\//u],
 ];
 
 function statusRank(s: RequiredFieldsStatus): number {
@@ -450,11 +479,16 @@ const PUBLISH_TEXT_REWRITES: Array<[RegExp, string]> = [
   [/PDF\s*gate\s*=\s*OK[，,、]?\s*关键(?:年报)?块(?:无缺失|未缺失|可用于终稿)/giu, "年报关键章节已完成定位"],
   [/PDF\s*gate\s*=\s*OK/giu, "年报抽取质量正常"],
   [/gate\s*=\s*OK/giu, "年报抽取质量正常"],
+  [/extractQuality\.gateVerdict/giu, "年报抽取质量"],
+  [/"gateVerdict"\s*:\s*"(OK|DEGRADED|CRITICAL)"/giu, '"年报抽取质量": "$1"'],
   [/gateVerdict\s*`?\s*(OK|DEGRADED|CRITICAL)\s*`?/giu, "年报抽取质量：$1"],
   [/gateVerdict\s*=\s*(OK|DEGRADED|CRITICAL)/giu, "年报抽取质量：$1"],
   [/12\/12\s*章节定位完成/giu, "主要章节已定位"],
   [/年报抽取\s*OK/giu, "年报抽取质量正常"],
   [/可用于终稿/gu, "可供分析引用"],
+  [/终稿硬阻断/gu, "交付阻断"],
+  [/Claude\s*终稿/gu, "正文"],
+  [/business-analysis-finalize/giu, "证据质量要求"],
   [/终稿置信度/gu, "分析置信度"],
   [/本\s*run/giu, "本次证据包"],
   [/F10\s*主链路/giu, "公开资料与经营画像"],
@@ -467,6 +501,11 @@ const PUBLISH_TEXT_REWRITES: Array<[RegExp, string]> = [
   [/本次证据包\s+结论/gu, "证据包结论"],
   [/本次证据包\s+(未|官方|显示|可见)/gu, "本次证据包$1"],
   [/外部证据\s+(显示|可见|还捕捉到)/gu, "外部证据$1"],
+  [/业务叙事 vs 行业 KPI/gu, "业务叙事 vs 行业关键变量"],
+  [/行业\s*profile\s*决定该跟踪哪些\s*KPI/giu, "行业属性决定收入结构、资本开支和客户指标的验证重点"],
+  [/不跨行业硬套指标/gu, "结论需落到本行业真实经营变量"],
+  [/已确认事项和未确认事项分层披露/gu, "已确认事件、未形成确认事件与待核验事项分开披露"],
+  [/治理风险进入折价而非口号/gu, "治理不确定性体现在估值折价和跟踪清单中"],
 ];
 
 function stripPublishInternalLines(markdown: string): string {
@@ -484,7 +523,90 @@ function normalizePublishedMarkdownProse(markdown: string): string {
   for (const [pattern, replacement] of PUBLISH_TEXT_REWRITES) {
     next = next.replace(pattern, replacement);
   }
+  next = sanitizePublicEvidenceAppendix(next);
+  next = normalizeEvidenceRefSpacing(next);
   return next.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function normalizeEvidenceRefSpacing(markdown: string): string {
+  return markdown
+    .replace(/(\[(?:E\d+|M:§\d+)\])(?=\[(?:E\d+|M:§\d+)\])/giu, "$1 ")
+    .replace(/(\[(?:E\d+|M:§\d+)\]\([^)]*\))(?=\[(?:E\d+|M:§\d+)\]\([^)]*\))/giu, "$1 ");
+}
+
+function officialAnnualPdfLink(input: Record<string, unknown>): ReportSourceLink[] {
+  const href = typeof input.reportUrl === "string" ? input.reportUrl.trim() : "";
+  if (!/^https?:\/\/.+\.pdf(?:[?#].*)?$/iu.test(href)) return [];
+  return [{ id: "annual-pdf-official", label: "原始年报 PDF（官方）", kind: "pdf", href }];
+}
+
+function commonEvidenceAttachments(paths: {
+  marketPath?: string;
+  dataPackReportPath?: string;
+  phase1bMarkdownPath?: string;
+}): PublicEvidencePackSource[] {
+  return [
+    {
+      id: "annual-report-pack",
+      label: "年报证据包摘要",
+      kind: "markdown",
+      sourcePath: paths.dataPackReportPath,
+      fileName: "annual-report-pack.md",
+    },
+    {
+      id: "regulatory-evidence",
+      label: "公告与监管补充",
+      kind: "markdown",
+      sourcePath: paths.phase1bMarkdownPath,
+      fileName: "regulatory-evidence.md",
+    },
+    {
+      id: "market-pack",
+      label: "市场与行业证据摘要",
+      kind: "markdown",
+      sourcePath: paths.marketPath,
+      fileName: "market-pack.md",
+    },
+  ];
+}
+
+function publicEvidenceLocator(raw: string): string {
+  const cell = raw.replace(/`/gu, "").trim();
+  const basename = cell.split(/[\\/]/u).filter(Boolean).at(-1) ?? cell;
+  if (/data_pack_report(?:_interim)?\.md/u.test(basename)) return "[年报证据包 · 可展开/下载](#attachment-annual-report-pack)";
+  if (/phase1b_qualitative\.md/u.test(basename)) return "[公告与监管补充 · 可展开/下载](#attachment-regulatory-evidence)";
+  if (/data_pack_market\.md/u.test(basename)) return "[市场与行业证据摘要 · 可展开/下载](#attachment-market-pack)";
+  if (/phase1a_data_pack\.json/u.test(basename)) return "基础行情与财务数据，已汇总入本页表格";
+  if (/valuation_computed\.json/u.test(basename)) return "[估值模型结果 · 可下载](#attachment-valuation-model)";
+  if (/analysis_report\.md/u.test(basename)) return "[策略计算底稿 · 可展开/下载](#attachment-strategy-calculation)";
+  if (/phase3_preflight\.md/u.test(basename)) return "证据质量预检摘要，见“证据质量与限制”";
+  if (/\.md$|\.json$/u.test(basename)) return "内部证据包摘要，已转写入正文";
+  return cell || "正文引用定位";
+}
+
+function sanitizePublicEvidenceAppendix(markdown: string): string {
+  return markdown
+    .split(/\r?\n/u)
+    .map((line) => {
+      let next = line.replace(/\|\s*链接或定位\s*\|/u, "| 公开定位 |");
+      if (/^\|/.test(next) && /\/Users\/|\/private\/|\/var\/folders\/|output\/(?:workflow|business-analysis|site)\//u.test(next)) {
+        const cells = next.split("|");
+        if (cells.length >= 6) {
+          cells[cells.length - 2] = ` ${publicEvidenceLocator(cells[cells.length - 2] ?? "")} `;
+          next = cells.join("|");
+        }
+      }
+      next = next.replace(/`?[\w./-]*?(?:data_pack_report(?:_interim)?|phase1b_qualitative|data_pack_market|phase1a_data_pack|valuation_computed|analysis_report|phase3_preflight)\.(?:md|json)`?/gu, (m) =>
+        publicEvidenceLocator(m),
+      );
+      next = next
+        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§18/gu, "费用率趋势（市场包 §18）")
+        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§19/gu, "营运资本与现金转换周期（市场包 §19）")
+        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§21/gu, "治理与监管事件时间线（市场包 §21）")
+        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§22/gu, "行业关键变量（市场包 §22）");
+      return next.replace(/\/Users\/[^\s|)]+/gu, "内部证据包摘要，已转写入正文");
+    })
+    .join("\n");
 }
 
 function moveEvidenceGapsBeforeAppendix(markdown: string): string {
@@ -617,6 +739,8 @@ type WorkflowManifest = {
     phase1aJsonPath?: string;
     marketPackPath?: string;
     phase1bMarkdownPath?: string;
+    phase2bMarkdownPath?: string;
+    phase3PreflightPath?: string;
     valuationPath?: string;
     reportMarkdownPath?: string;
     reportViewModelPath?: string;
@@ -665,6 +789,8 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const reportMdPath = resolveArtifactPath(runDir, m.outputs.reportMarkdownPath);
   const valuationPath = resolveArtifactPath(runDir, m.outputs.valuationPath);
   const marketPath = resolveArtifactPath(runDir, m.outputs.marketPackPath);
+  const dataPackReportPath = resolveArtifactPath(runDir, m.outputs.phase2bMarkdownPath);
+  const phase1bMarkdownPath = resolveArtifactPath(runDir, m.outputs.phase1bMarkdownPath);
   const polishOverviewPath = resolveArtifactPath(runDir, m.outputs.turtleOverviewMarkdownPath);
   const polishBusinessPath = resolveArtifactPath(runDir, m.outputs.businessQualityMarkdownPath);
   const polishPenetrationPath = resolveArtifactPath(runDir, m.outputs.penetrationReturnMarkdownPath);
@@ -710,6 +836,12 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const valuationRawJson =
     hasValuationJson && valuationPath ? await readFile(valuationPath, "utf-8") : undefined;
   const valuationConfidence = deriveValuationConfidence(confidence, parseValuationQuality(valuationRawJson));
+  const workflowCommonAttachments = commonEvidenceAttachments({
+    marketPath,
+    dataPackReportPath,
+    phase1bMarkdownPath,
+  });
+  const workflowSourceLinks = officialAnnualPdfLink(m.input);
 
   const topics: Array<{
     topic: ReportTopicType;
@@ -835,7 +967,39 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       contentFile: "content.md",
       sourceManifestPath: manifestRel,
     };
-    await writeEntry({ siteDir, meta, contentMarkdown: t.markdown });
+    const attachments = [
+      ...workflowCommonAttachments,
+      ...(t.topic === "valuation" && valuationPath
+        ? [
+            {
+              id: "valuation-model",
+              label: "估值模型结果",
+              kind: "json" as const,
+              sourcePath: valuationPath,
+              fileName: "valuation-model.json",
+              previewable: true,
+            },
+          ]
+        : []),
+      ...(t.topic === "penetration-return" || t.topic === "turtle-strategy"
+        ? [
+            {
+              id: "strategy-calculation",
+              label: "策略计算底稿",
+              kind: "markdown" as const,
+              sourcePath: reportMdPath,
+              fileName: "strategy-calculation.md",
+            },
+          ]
+        : []),
+    ];
+    await writeEntry({
+      siteDir,
+      meta,
+      contentMarkdown: t.markdown,
+      attachments,
+      sourceLinks: workflowSourceLinks,
+    });
     const q = topicQuality.get(t.topic);
     manifestTopics.push({
       v2TopicId: siteTopicTypeToV2TopicId(t.topic),
@@ -1029,6 +1193,12 @@ async function emitFromBusinessAnalysis(
   if (!markdown.trim()) return;
 
   const manifestRel = path.relative(siteDir, manifestPath);
+  const businessAttachments = commonEvidenceAttachments({
+    marketPath: marketPathBa,
+    dataPackReportPath,
+    phase1bMarkdownPath:
+      typeof m.outputs.phase1bMarkdownPath === "string" ? resolveArtifactPath(runDir, m.outputs.phase1bMarkdownPath) : undefined,
+  });
   const meta: EntryMeta = {
     entryId,
     code: codeDigits,
@@ -1041,7 +1211,13 @@ async function emitFromBusinessAnalysis(
     contentFile: "content.md",
     sourceManifestPath: manifestRel,
   };
-  await writeEntry({ siteDir, meta, contentMarkdown: markdown });
+  await writeEntry({
+    siteDir,
+    meta,
+    contentMarkdown: markdown,
+    attachments: businessAttachments,
+    sourceLinks: officialAnnualPdfLink(m.input),
+  });
 
   const topicManifest: TopicManifestV1 = {
     manifestVersion: TOPIC_MANIFEST_VERSION,

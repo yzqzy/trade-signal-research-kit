@@ -205,7 +205,6 @@ export async function collectPhase1ADataPack(
   const defaultDate = new Date().toISOString().slice(0, 10);
   const from = input.from ?? defaultDate;
   const to = input.to ?? defaultDate;
-
   const [instrument, quote, klines] = await Promise.all([
     provider.getInstrument(input.code),
     provider.getQuote(input.code),

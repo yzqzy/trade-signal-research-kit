@@ -29,6 +29,23 @@ export type TimelineItem = {
   confidenceState: ConfidenceState;
 };
 
+export type ReportAttachment = {
+  id: string;
+  label: string;
+  kind: "markdown" | "json";
+  href: string;
+  previewable: boolean;
+  bytes?: number;
+  lines?: number;
+};
+
+export type ReportSourceLink = {
+  id: string;
+  label: string;
+  kind: "pdf" | "external";
+  href: string;
+};
+
 export type EntryMeta = {
   entryId: string;
   code: string;
@@ -40,6 +57,10 @@ export type EntryMeta = {
   confidenceState: ConfidenceState;
   /** 正文相对路径（相对 `entries/<entryId>/`），固定为 `content.md` */
   contentFile: "content.md";
+  /** 可公开查看/下载的净化证据包附件（相对 `entries/<entryId>/`） */
+  attachments?: ReportAttachment[];
+  /** 官方外部来源链接，如原始年报 PDF */
+  sourceLinks?: ReportSourceLink[];
   /** 可选：来源 manifest 路径（便于追溯） */
   sourceManifestPath?: string;
 };

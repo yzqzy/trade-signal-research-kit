@@ -333,6 +333,146 @@
   text-underline-offset: 2px;
 }
 
+.report-entry-body :where(a[href^="#evidence-"]) {
+  display: inline-block;
+  margin: 0 0.1rem;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #047857;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.report-entry-body :where(.rh-evidence-row) {
+  scroll-margin-top: 5.5rem;
+}
+
+.report-entry-body :where(.rh-evidence-row--pulse) {
+  animation: rhEvidencePulse 2.6s ease-out;
+}
+
+@keyframes rhEvidencePulse {
+  0%,
+  78% {
+    background: #ecfdf5;
+    outline: 2px solid #86efac;
+    outline-offset: -2px;
+  }
+  100% {
+    background: transparent;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+  }
+}
+
+.rh-prose--compact {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.rh-prose--compact :where(h1, h2, h3, h4) {
+  font-size: 0.95rem;
+}
+
+.rh-attachments {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.rh-attachments h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.rh-source-links,
+.rh-attachment-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.rh-source-links {
+  margin-bottom: 0.85rem;
+}
+
+.rh-attachment-link,
+.rh-attachment-download {
+  color: #047857;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.rh-attachment-link:hover,
+.rh-attachment-download:hover {
+  text-decoration: underline;
+}
+
+.rh-attachment-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 0.5rem;
+  background: transparent;
+  scroll-margin-top: 5.5rem;
+}
+
+.rh-attachment-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  padding: 0.75rem 0.85rem;
+}
+
+.rh-attachment-card:hover,
+.rh-attachment-card:focus-within {
+  border-color: #86efac;
+}
+
+.rh-attachment-card--pulse {
+  animation: rhAttachmentPulse 2.6s ease-out;
+}
+
+@keyframes rhAttachmentPulse {
+  0%,
+  78% {
+    border-color: #34d399;
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.25);
+  }
+  100% {
+    border-color: #e5e5e5;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+.rh-attachment-card summary span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.rh-attachment-card summary small {
+  color: #737373;
+  font-size: 0.75rem;
+}
+
+.rh-attachment-preview {
+  max-height: 28rem;
+  overflow: auto;
+  border-top: 1px solid #e5e5e5;
+  padding: 0.75rem 0.85rem;
+  background: #fafafa;
+}
+
+.rh-attachment-empty {
+  margin: 0;
+  border-top: 1px solid #e5e5e5;
+  padding: 0.75rem 0.85rem;
+  color: #737373;
+  font-size: 0.875rem;
+}
+
 /* —— Phase3 报告：投资结论元数据卡片 + 标签 —— */
 .rh-metadata-card {
   margin: 0.65rem 0 1.15rem;
@@ -617,6 +757,78 @@
 
 .dark .report-entry-body :where(a) {
   color: #34d399;
+}
+
+.dark .report-entry-body :where(a[href^="#evidence-"]) {
+  border-color: #047857;
+  background: #052e24;
+  color: #a7f3d0;
+}
+
+.dark .report-entry-body :where(.rh-evidence-row--pulse) {
+  animation-name: rhEvidencePulseDark;
+}
+
+@keyframes rhEvidencePulseDark {
+  0%,
+  78% {
+    background: #10251e;
+    outline: 2px solid #047857;
+    outline-offset: -2px;
+  }
+  100% {
+    background: transparent;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+  }
+}
+
+.dark .rh-attachments {
+  border-top-color: #404040;
+}
+
+.dark .rh-attachment-link,
+.dark .rh-attachment-download {
+  color: #34d399;
+}
+
+.dark .rh-attachment-card {
+  border-color: #404040;
+}
+
+.dark .rh-attachment-card:hover,
+.dark .rh-attachment-card:focus-within {
+  border-color: #047857;
+}
+
+.dark .rh-attachment-card--pulse {
+  animation-name: rhAttachmentPulseDark;
+}
+
+@keyframes rhAttachmentPulseDark {
+  0%,
+  78% {
+    border-color: #059669;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.35);
+  }
+  100% {
+    border-color: #404040;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+.dark .rh-attachment-card summary small {
+  color: #a3a3a3;
+}
+
+.dark .rh-attachment-preview {
+  border-top-color: #404040;
+  background: #111;
+}
+
+.dark .rh-attachment-empty {
+  border-top-color: #404040;
+  color: #a3a3a3;
 }
 
 .dark .rh-metadata-card {

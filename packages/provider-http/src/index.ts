@@ -312,7 +312,10 @@ const asNumber = (value: unknown): number | undefined => {
 
 const isTransientFeedError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
-  return /socket hang up|ECONNRESET|fetch failed/i.test(message);
+  const name = error instanceof Error ? error.name : "";
+  return /socket hang up|ECONNRESET|fetch failed|aborted|AbortError|Failed to fetch stockDetail|Failed to fetch stockList/i.test(
+    `${name} ${message}`,
+  );
 };
 
 const eastmoneyScaledNumber = (value: unknown, scale: unknown): number | undefined => {
@@ -494,7 +497,11 @@ export class FeedHttpProvider implements MarketDataProvider {
     return `${trimmed}${apiBasePath}`;
   }
 
-  private async request<T>(path: string, query?: Record<string, string | undefined>): Promise<T> {
+  private async request<T>(
+    path: string,
+    query?: Record<string, string | undefined>,
+    options?: { timeoutMs?: number },
+  ): Promise<T> {
     const url = new URL(`${this.apiBase}${path}`);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
@@ -505,7 +512,7 @@ export class FeedHttpProvider implements MarketDataProvider {
     }
 
     const controller = new AbortController();
-    const timeoutMs = this.options.timeoutMs ?? 10_000;
+    const timeoutMs = options?.timeoutMs ?? this.options.timeoutMs ?? 10_000;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -535,10 +542,17 @@ export class FeedHttpProvider implements MarketDataProvider {
     }
   }
 
-  private async getStockListFallback(code: string): Promise<(StockDetailPayload & StockQuotePayload & { f152?: number; marketId?: number }) | undefined> {
-    const payload = await this.request<StockListPayload>("/stock/list", { codes: code });
-    const rows = payload.diff ?? payload.data ?? payload.list ?? [];
-    return rows[0];
+  private async getStockListFallback(
+    code: string,
+  ): Promise<(StockDetailPayload & StockQuotePayload & { f152?: number; marketId?: number }) | undefined> {
+    try {
+      const payload = await this.request<StockListPayload>("/stock/list", { codes: code });
+      const rows = payload.diff ?? payload.data ?? payload.list ?? [];
+      return rows[0];
+    } catch (error) {
+      if (isTransientFeedError(error)) return undefined;
+      throw error;
+    }
   }
 
   async getInstrument(code: string): Promise<Instrument> {
@@ -548,7 +562,15 @@ export class FeedHttpProvider implements MarketDataProvider {
     } catch (error) {
       if (!isTransientFeedError(error)) throw error;
       const fallback = await this.getStockListFallback(code);
-      if (!fallback) throw error;
+      if (!fallback) {
+        const sw = await this.getSwIndustryClassification(code).catch(() => undefined);
+        return {
+          code,
+          market: inferMarket(code),
+          name: sw?.name ?? code,
+          industry: sw?.level1Name,
+        };
+      }
       payload = fallback;
     }
     return {
@@ -572,7 +594,15 @@ export class FeedHttpProvider implements MarketDataProvider {
     } catch (error) {
       if (!isTransientFeedError(error)) throw error;
       const fallback = await this.getStockListFallback(code);
-      if (!fallback) throw error;
+      if (!fallback) {
+        const pe = await this.getHistoricalPeSeries(code, 60).catch(() => undefined);
+        const lastPrice = pe?.prices?.filter((v: number) => Number.isFinite(v)).at(-1);
+        return {
+          code,
+          price: typeof lastPrice === "number" ? lastPrice : 0,
+          timestamp: new Date().toISOString(),
+        };
+      }
       payload = fallback;
     }
     return {
@@ -591,22 +621,17 @@ export class FeedHttpProvider implements MarketDataProvider {
     to?: string;
     adj?: "none" | "forward" | "backward";
   }): Promise<KlineBar[]> {
-    let payload: KlinePayload;
-    try {
-      payload = await this.request<KlinePayload>("/stock/kline", {
+    const payload = await this.request<KlinePayload>(
+      "/stock/kline",
+      {
         code: input.code,
         period: input.period,
         fqt: PERIOD_TO_FQT[input.adj ?? "forward"],
         from: input.from,
         to: input.to,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/socket hang up|ECONNRESET|fetch failed/i.test(message)) {
-        return [];
-      }
-      throw error;
-    }
+      },
+      { timeoutMs: 90_000 },
+    );
     const records = payload.klines ?? payload.data ?? [];
     return records
       .map((record) => parseKlineRecord(record))
