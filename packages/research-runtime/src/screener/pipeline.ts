@@ -260,9 +260,13 @@ export async function runScreenerPipeline(
 ): Promise<ScreenerRunOutput> {
   const capability = buildUniverseCapability(input.market, input.universe);
   const now = new Date().toISOString();
+  const strategyId = "turtle";
+  const strategyLabel = "龟龟策略";
 
   if (capability.status === "hk_not_ready" || capability.status === "blocked_missing_required_fields") {
     return {
+      strategyId,
+      strategyLabel,
       market: input.market,
       mode: input.mode,
       generatedAt: now,
@@ -286,6 +290,8 @@ export async function runScreenerPipeline(
   if (input.tier1Only) {
     const sorted = [...tier1Candidates].sort((a, b) => b.tier1Score - a.tier1Score);
     return {
+      strategyId,
+      strategyLabel,
       market: input.market,
       mode: input.mode,
       generatedAt: now,
@@ -392,6 +398,8 @@ export async function runScreenerPipeline(
 
   const sorted = [...scored].sort((a, b) => b.totalScore - a.totalScore);
   return {
+    strategyId,
+    strategyLabel,
     market: input.market,
     mode: input.mode,
     generatedAt: now,

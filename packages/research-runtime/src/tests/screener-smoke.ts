@@ -11,12 +11,13 @@ import path from "node:path";
 
 import { ScreenerDiskCache } from "../screener/cache.js";
 import { getDefaultScreenerConfig, resolveScreenerConfig, validateScreenerConfig } from "../screener/config.js";
-import { parseScreenerUniversePayload } from "../screener/http-source.js";
+import { fetchScreenerUniverseFromHttp, parseScreenerUniversePayload } from "../screener/http-source.js";
 import { tier1FilterCnA } from "../screener/cn-a.js";
 import { exportScreenerResultsCsv } from "../screener/export-results.js";
 import { buildUniverseCapability } from "../screener/capability.js";
 import { computeFactorSummary, runScreenerPipeline } from "../screener/pipeline.js";
 import type { ScreenerUniverseRow } from "../screener/types.js";
+import { isAfterCnAClose, loadOrFetchUniverseSnapshot } from "../screener/universe-snapshot.js";
 
 async function testDiskCache(): Promise<void> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "screener-cache-"));
@@ -264,6 +265,120 @@ function testParseScreenerUniversePayload(): void {
   assert.equal(parsed.items.length, 1);
 }
 
+async function testFetchScreenerUniversePagesUntilTotal(): Promise<void> {
+  const previousFetch = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    urls.push(url);
+    const page = Number(new URL(url).searchParams.get("page"));
+    const body =
+      page === 1
+        ? { success: true, data: { total: 3, page: 1, pageSize: 2, items: [{ code: "A" }, { code: "B" }] } }
+        : { success: true, data: { total: 3, page: 2, pageSize: 2, items: [{ code: "C" }] } };
+    return new Response(JSON.stringify(body), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const rows = await fetchScreenerUniverseFromHttp(
+      { baseUrl: "http://feed.example", pageSize: 2 },
+      "CN_A",
+    );
+    assert.equal(rows.length, 3);
+    assert.equal(urls.length, 2);
+    assert.ok(urls[0]?.includes("page=1"));
+    assert.ok(urls[1]?.includes("page=2"));
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+}
+
+async function testFetchScreenerUniverseDedupAndStagnation(): Promise<void> {
+  const previousFetch = globalThis.fetch;
+  const previousWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map((a) => String(a)).join(" "));
+  };
+  let pageCount = 0;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    const page = Number(new URL(url).searchParams.get("page"));
+    pageCount = Math.max(pageCount, page);
+    const body =
+      page === 1
+        ? { success: true, data: { total: 9999, page: 1, pageSize: 2, items: [{ code: "A" }, { code: "B" }] } }
+        : { success: true, data: { total: 9999, page, pageSize: 2, items: [{ code: "A" }, { code: "B" }] } };
+    return new Response(JSON.stringify(body), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const rows = await fetchScreenerUniverseFromHttp(
+      { baseUrl: "http://feed.example", pageSize: 2 },
+      "CN_A",
+    );
+    assert.equal(rows.length, 2, "重复条目应被去重");
+    assert.equal(pageCount, 2, "停滞退出后不应继续翻页");
+    assert.ok(
+      warnings.some((w) => w.includes("翻页去重")),
+      "应输出去重告警",
+    );
+    assert.ok(
+      warnings.some((w) => w.includes("翻页停滞")),
+      "应输出停滞告警",
+    );
+    assert.ok(
+      warnings.some((w) => w.includes("累计与 total 不一致")),
+      "应输出 total 不一致告警",
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    console.warn = previousWarn;
+  }
+}
+
+async function testUniverseSnapshotReusesAfterClose(): Promise<void> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "screener-universe-"));
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          total: 1,
+          page: 1,
+          pageSize: 500,
+          items: [{ code: "000001", name: "测试", market: "CN_A", marketCap: 1000, turnover: 1 }],
+        },
+      }),
+      { status: 200 },
+    );
+  }) as typeof fetch;
+  try {
+    assert.equal(isAfterCnAClose(new Date("2026-05-04T06:59:00.000Z")), false);
+    assert.equal(isAfterCnAClose(new Date("2026-05-04T07:00:00.000Z")), true);
+    const first = await loadOrFetchUniverseSnapshot({
+      market: "CN_A",
+      outputRoot: dir,
+      feedBaseUrl: "http://feed.example",
+      now: new Date("2026-05-04T07:01:00.000Z"),
+    });
+    const second = await loadOrFetchUniverseSnapshot({
+      market: "CN_A",
+      outputRoot: dir,
+      feedBaseUrl: "http://feed.example",
+      now: new Date("2026-05-04T07:02:00.000Z"),
+    });
+    assert.equal(calls, 1);
+    assert.equal(first.meta.reused, false);
+    assert.equal(second.meta.reused, true);
+    assert.equal(second.rows.length, 1);
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
 async function testTier1OnlyPipeline(): Promise<void> {
   const universe: ScreenerUniverseRow[] = [
     {
@@ -298,6 +413,9 @@ async function main(): Promise<void> {
   testFactor2R();
   testFloorPremiumSource();
   testParseScreenerUniversePayload();
+  await testFetchScreenerUniversePagesUntilTotal();
+  await testFetchScreenerUniverseDedupAndStagnation();
+  await testUniverseSnapshotReusesAfterClose();
   await testUniverseCapabilityHkEmpty();
   await testUniverseCapabilityBlockedMissingMarketCap();
   await testUniverseCapabilityDegradedTier2();

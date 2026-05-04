@@ -10,13 +10,21 @@ import { resolveScreenerConfig, validateScreenerConfig } from "./config.js";
 import { exportScreenerResultsCsv, exportScreenerUniverseCsv } from "./export-results.js";
 import { runScreenerPipeline } from "./pipeline.js";
 import { renderScreenerHtml, renderScreenerMarkdown } from "./renderer.js";
-import { buildSelectionManifestV1 } from "./selection-manifest-v2.js";
+import {
+  buildSelectionManifestV1,
+  RANKINGS_DEFAULT_TOP_N,
+} from "./selection-manifest-v2.js";
 import type { ScreenerConfigOverrides, ScreenerRunInput, ScreenerUniverseRow } from "./types.js";
+import { loadOrFetchUniverseSnapshot } from "./universe-snapshot.js";
 
 type CliArgs = {
   market: "CN_A" | "HK";
   mode: "standalone" | "composed";
-  inputJsonPath: string;
+  inputJsonPath?: string;
+  feedBaseUrl?: string;
+  feedApiBasePath?: string;
+  feedApiKey?: string;
+  universePageSize?: number;
   configJsonPath?: string;
   outputDir: string;
   tier1Only: boolean;
@@ -27,9 +35,11 @@ type CliArgs = {
   cacheDir?: string;
   cacheRefresh: boolean;
   cacheTier2Refresh: boolean;
+  refreshUniverse: boolean;
   csvPath?: string;
   htmlPath?: string;
   skipDefaultCsv: boolean;
+  rankingsTopN?: number;
 };
 
 function parseArgs(argv: string[]): CliArgs {
@@ -47,6 +57,7 @@ function parseArgs(argv: string[]): CliArgs {
       name === "tier1_only" ||
       name === "cache_refresh" ||
       name === "cache_tier2_refresh" ||
+      name === "refresh_universe" ||
       name === "skip_default_csv"
     ) {
       flags.add(name);
@@ -63,7 +74,11 @@ function parseArgs(argv: string[]): CliArgs {
   return {
     market: (values.market ?? "CN_A") as "CN_A" | "HK",
     mode: (values.mode ?? "standalone") as "standalone" | "composed",
-    inputJsonPath: values.input_json ?? "",
+    inputJsonPath: values.input_json,
+    feedBaseUrl: values.feed_base_url,
+    feedApiBasePath: values.feed_api_base_path,
+    feedApiKey: values.feed_api_key,
+    universePageSize: values.universe_page_size !== undefined ? Number(values.universe_page_size) : undefined,
     configJsonPath: values.config_json,
     outputDir: values.output_dir ?? values.output ?? "output",
     tier1Only: flags.has("tier1_only"),
@@ -74,9 +89,12 @@ function parseArgs(argv: string[]): CliArgs {
     cacheDir: values.cache_dir,
     cacheRefresh: flags.has("cache_refresh"),
     cacheTier2Refresh: flags.has("cache_tier2_refresh"),
+    refreshUniverse: flags.has("refresh_universe"),
     csvPath: values.csv,
     htmlPath: values.html,
     skipDefaultCsv: flags.has("skip_default_csv"),
+    rankingsTopN:
+      values.rankings_top_n !== undefined ? Number(values.rankings_top_n) : undefined,
   };
 }
 
@@ -93,9 +111,21 @@ async function writeText(filePath: string, content: string): Promise<void> {
 async function main(): Promise<void> {
   initCliEnv();
   const args = parseArgs(process.argv.slice(2));
-  if (!args.inputJsonPath) throw new Error("Missing --input-json <path>");
 
-  const universe = await loadJson<ScreenerUniverseRow[]>(args.inputJsonPath);
+  const universe = args.inputJsonPath
+    ? await loadJson<ScreenerUniverseRow[]>(args.inputJsonPath)
+    : (
+        await loadOrFetchUniverseSnapshot({
+          market: args.market,
+          outputRoot: args.outputDir,
+          feedBaseUrl: args.feedBaseUrl,
+          feedApiBasePath: args.feedApiBasePath,
+          feedApiKey: args.feedApiKey,
+          pageSize: args.universePageSize ?? 500,
+          refresh: args.refreshUniverse,
+        })
+      ).rows;
+  if (!Array.isArray(universe)) throw new Error("[screener] universe 须为数组");
   const fileCfg = args.configJsonPath ? await loadJson<ScreenerConfigOverrides>(args.configJsonPath) : {};
 
   const cliOverrides: ScreenerConfigOverrides = { ...fileCfg };
@@ -166,9 +196,23 @@ async function main(): Promise<void> {
   await mkdir(outDir, { recursive: true });
   await writeText(path.join(outDir, "screener_results.json"), JSON.stringify(result, null, 2));
   const runId = path.basename(outDir);
+
+  const topNRaw = args.rankingsTopN;
+  const rankingsTopN =
+    typeof topNRaw === "number" && Number.isFinite(topNRaw) && topNRaw > 0
+      ? Math.floor(topNRaw)
+      : RANKINGS_DEFAULT_TOP_N;
   await writeText(
     path.join(outDir, "selection_manifest.json"),
-    JSON.stringify(buildSelectionManifestV1(result, runId), null, 2),
+    JSON.stringify(buildSelectionManifestV1(result, runId, { rankingsTopN }), null, 2),
+  );
+
+  const passedRanking = result.results.filter((r) => r.passed && r.decision !== "avoid").length;
+  console.log(
+    `[screener] summary: market=${result.market} mode=${result.mode} ` +
+      `universe=${result.totalUniverse} tier1=${result.tier1Count} ` +
+      `passed=${passedRanking}/${result.passedCount} results=${result.results.length} ` +
+      `rankingsTopN=${rankingsTopN} capability=${result.capability?.status ?? "n/a"}`,
   );
   await writeText(path.join(outDir, "screener_input.csv"), exportScreenerUniverseCsv(universe));
   await writeText(path.join(outDir, "screener_report.md"), renderScreenerMarkdown(result));

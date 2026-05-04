@@ -2,7 +2,7 @@
 
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { resolveInputPath, resolveOutputPath } from "../crosscut/normalization/resolve-monorepo-path.js";
-import { emitSiteReportsFromRun, rebuildSiteReportsIndex } from "../reports-site/emit-site-reports.js";
+import { emitSiteReportsFromRun, rebuildSiteRankingsIndex, rebuildSiteReportsIndex } from "../reports-site/emit-site-reports.js";
 
 type CliArgs = {
   runDir?: string;
@@ -40,6 +40,7 @@ async function main(): Promise<void> {
 
   if (args.reindexOnly) {
     await rebuildSiteReportsIndex(siteDir);
+    await rebuildSiteRankingsIndex(siteDir);
     console.log(`[reports-site:emit] reindexed -> ${siteDir}`);
     return;
   }

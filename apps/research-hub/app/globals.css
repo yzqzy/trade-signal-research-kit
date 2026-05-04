@@ -238,6 +238,86 @@
   color: #737373;
 }
 
+.rh-ranking-block {
+  margin-top: 1.5rem;
+}
+
+.rh-ranking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.rh-ranking-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+}
+
+.rh-ranking-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.5rem;
+}
+
+.rh-ranking-table {
+  width: 100%;
+  min-width: 44rem;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.rh-ranking-table th,
+.rh-ranking-table td {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rh-ranking-table thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #737373;
+  background: #fafafa;
+}
+
+.rh-ranking-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rh-ranking-cards {
+  display: none;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.rh-ranking-card-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+@media (max-width: 767px) {
+  .rh-ranking-header {
+    flex-direction: column;
+  }
+
+  .rh-ranking-table-wrap {
+    display: none;
+  }
+
+  .rh-ranking-cards {
+    display: grid;
+  }
+}
+
 /* 报告正文：react-markdown 输出 */
 .rh-prose.report-entry-body,
 .report-entry-body.rh-prose {

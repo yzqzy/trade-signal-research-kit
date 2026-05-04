@@ -364,11 +364,18 @@ pnpm run business-analysis:run -- \
 
 Screener CLI（独立策略域，与 Stage E 并行存在）：
 
+拉取/缓存 A 股 universe（分页直至累计条数 ≥ `total`；上海时间 15:00 后同日快照默认复用，可传 `--refresh` 强制重拉）：
+
+```bash
+pnpm run screener:fetch-universe -- \
+  --market CN_A \
+  --output-dir "./output"
+```
+
 ```bash
 pnpm --filter @trade-signal/research-runtime run run:screener -- \
   --market CN_A \
   --mode standalone \
-  --input-json "./output/screener_samples/cn_a_universe.json" \
   --output-dir "./output"
 ```
 
@@ -380,14 +387,17 @@ pnpm --filter @trade-signal/research-runtime run run:screener -- \
   --output-dir "./output"
 ```
 
-> 说明：实际写入 `./output/screener/<market>/<mode>/<runId>/`（每次运行新建 `<runId>`）。
+> 说明：`--input-json` 为离线/fixture 输入；未传时，CLI 使用 `FEED_BASE_URL` 调用 `GET /api/v1/stock/screener/universe`，按响应 `total` 自动递增 `page` 拉满 universe 后再本地执行选股排序。客户端按 `code` 去重；若发现连续整页全为已见标的（疑似 feed 分页 bug 或 `total` 偏大），会输出告警并提前退出，避免无限累加；累计条数与 `total` 不一致时同样告警以便排查。收盘后同日快照位于 `output/screener/universe/<market>/<YYYY-MM-DD>/universe.json`，当天再次运行默认复用；传 `--refresh-universe` 强制重拉。实际写入 `./output/screener/<market>/<mode>/<runId>/`（每次运行新建 `<runId>`）。
 
 Screener 输出：
 
-- `screener_results.json`
+- `screener_results.json`（pipeline 全量按策略综合分降序，供审计）
+- `selection_manifest.json`（含 `strategyId / strategyLabel / rankingsTopN`，下游 `reports-site:emit` 据此截取站点榜单）
 - `screener_input.csv`
 - `screener_report.md`
 - `screener_report.html`
+
+榜单 Top N：站点 `/rankings` 仅展示按策略综合分降序后的前 N 名，**默认 200**。`pnpm run screener:run` 接受 `--rankings-top-n <N>` 显式覆盖；不传时读取 `RANKINGS_DEFAULT_TOP_N` 常量（位于 `@trade-signal/research-contracts`）。`reports-site:emit` 从 `selection_manifest.rankingsTopN` 取值，写入 `rankings/lists/*.json` 时同时记录 `topN` 与 `totalCandidates`，便于审计「谁被截掉了」。
 
 质量门禁：
 

@@ -22,6 +22,7 @@
     "quality:all": "pnpm --filter @trade-signal/research-runtime run quality:all",
     "test:linkage": "pnpm run build:runtime && pnpm --filter @trade-signal/research-runtime run test:linkage",
     "test:screener": "pnpm run build:runtime && pnpm --filter @trade-signal/research-runtime run test:screener",
+    "screener:fetch-universe": "pnpm --filter @trade-signal/research-runtime run run:screener-fetch-universe",
     "screener:run": "pnpm --filter @trade-signal/research-runtime run run:screener",
     "reports-site:emit": "pnpm run build:runtime && pnpm --filter @trade-signal/research-runtime run run:reports-site-emit",
     "reports-site:clear": "pnpm run build:runtime && pnpm --filter @trade-signal/research-runtime run run:reports-site-clear",

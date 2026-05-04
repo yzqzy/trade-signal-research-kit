@@ -71,10 +71,20 @@ export function parseScreenerUniversePayload(
   };
 }
 
+/** 提取 row 上的标的代码，用于翻页去重；找不到时返回 `undefined`，调用方按原样保留。 */
+function extractItemCode(item: unknown): string | undefined {
+  if (item === null || typeof item !== "object") return undefined;
+  const code = (item as { code?: unknown }).code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+
 export async function fetchScreenerUniverseFromHttp(
   options: HttpScreenerSourceOptions,
   market: "CN_A" | "HK",
 ): Promise<unknown[]> {
+  if (!options.baseUrl.trim()) {
+    throw new Error("[screener] Missing FEED_BASE_URL or --feed-base-url for HTTP universe fetch");
+  }
   const base = options.baseUrl.replace(/\/+$/, "");
   const apiBasePath = (options.apiBasePath ?? "/api/v1").replace(/\/+$/, "");
   const pageSizeRaw = options.pageSize ?? 500;
@@ -85,7 +95,9 @@ export async function fetchScreenerUniverseFromHttp(
   if (options.apiKey) headers["x-api-key"] = options.apiKey;
 
   const all: unknown[] = [];
+  const seenCodes = new Set<string>();
   let page = 1;
+  let lastTotal = 0;
   const basePath = `${base}${apiBasePath}/stock/screener/universe`;
 
   for (;;) {
@@ -106,15 +118,51 @@ export async function fetchScreenerUniverseFromHttp(
       throw new Error(`[screener] 响应体非合法 JSON，url=${url}`);
     }
     const parsed = parseScreenerUniversePayload(payload, url);
-    all.push(...parsed.items);
+    lastTotal = parsed.total;
+
+    let addedThisPage = 0;
+    let duplicatesThisPage = 0;
+    for (const item of parsed.items) {
+      const code = extractItemCode(item);
+      if (code === undefined) {
+        all.push(item);
+        addedThisPage += 1;
+        continue;
+      }
+      if (seenCodes.has(code)) {
+        duplicatesThisPage += 1;
+        continue;
+      }
+      seenCodes.add(code);
+      all.push(item);
+      addedThisPage += 1;
+    }
+
+    if (duplicatesThisPage > 0) {
+      console.warn(
+        `[screener] 翻页去重：page=${page} 收到 ${parsed.items.length} 条，重复 ${duplicatesThisPage} 条`,
+      );
+    }
 
     if (mode === "single_page") break;
     if (parsed.items.length === 0) break;
     if (all.length >= parsed.total) break;
+    if (addedThisPage === 0) {
+      console.warn(
+        `[screener] 翻页停滞：page=${page} 未新增任何记录（疑似 feed 分页 bug 或 total 偏大），提前退出 累计=${all.length} total=${parsed.total}`,
+      );
+      break;
+    }
     page += 1;
     if (page > 50_000) {
       throw new Error(`[screener] 分页安全上限：已超过 50000 页，base=${basePath}`);
     }
+  }
+
+  if (mode === "all_pages" && lastTotal > 0 && all.length !== lastTotal) {
+    console.warn(
+      `[screener] 翻页累计与 total 不一致：累计=${all.length} total=${lastTotal}（feed 契约可能不准；运维可加 --refresh-universe 验证）`,
+    );
   }
 
   return all;

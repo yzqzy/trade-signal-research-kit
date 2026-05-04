@@ -167,6 +167,8 @@ export interface ScreenerCapabilityBlock {
 }
 
 export interface ScreenerRunOutput {
+  strategyId: string;
+  strategyLabel: string;
   market: ScreenerMarket;
   mode: ScreenerAnalysisMode;
   generatedAt: string;

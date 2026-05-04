@@ -18,6 +18,53 @@ export type SiteReportsIndex = {
   timelineHref: string;
 };
 
+export type RankingCapabilityStatus =
+  | "ok"
+  | "degraded_tier2_fields"
+  | "blocked_missing_required_fields"
+  | "hk_not_ready";
+
+export type RankingMetricValue = string | number | boolean | null;
+
+export type RankingMetricMap = Record<string, RankingMetricValue>;
+
+export type RankingViewItem = {
+  rank: number;
+  code: string;
+  name: string;
+  industry?: string;
+  score: number;
+  decision: string;
+  confidence: ConfidenceState;
+  href?: string;
+  metrics: RankingMetricMap;
+};
+
+export type RankingListView = {
+  listId: string;
+  strategyId: string;
+  strategyLabel: string;
+  market: string;
+  mode: string;
+  generatedAt: string;
+  capabilityStatus?: RankingCapabilityStatus;
+  capabilityReasonCodes?: string[];
+  /** 上游策略综合分降序后取的前 N 名上限，与 `items.length <= topN` 一致 */
+  topN?: number;
+  /** 截断前的候选总数（含未通过门禁，便于审计） */
+  totalCandidates?: number;
+  items: RankingViewItem[];
+};
+
+export type SiteRankingsIndex = {
+  version: "1.0";
+  generatedAt: string;
+  strategyCount: number;
+  listCount: number;
+  defaultStrategyId?: string;
+  lists: RankingListView[];
+};
+
 export type TimelineItem = {
   entryId: string;
   displayTitle: string;

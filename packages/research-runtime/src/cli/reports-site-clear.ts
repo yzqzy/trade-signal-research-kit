@@ -152,6 +152,18 @@ async function rebuildIndexFromTimeline(targetDir: string): Promise<void> {
     timelineHref: "/reports/",
   };
   await writeFile(path.join(targetDir, "index.json"), JSON.stringify(index, null, 2) + "\n", "utf-8");
+  const rankingsIndex = {
+    version: "1.0",
+    generatedAt: formatLocalDateTime(new Date()),
+    strategyCount: 0,
+    listCount: 0,
+    defaultStrategyId: "turtle",
+    lists: [],
+  };
+  await mkdir(path.join(targetDir, "rankings"), { recursive: true });
+  await writeFile(path.join(targetDir, "rankings", "index.json"), JSON.stringify(rankingsIndex, null, 2) + "\n", "utf-8");
+  await rm(path.join(targetDir, "rankings", "lists"), { recursive: true, force: true });
+  await mkdir(path.join(targetDir, "rankings", "lists"), { recursive: true });
 }
 
 async function main(): Promise<void> {

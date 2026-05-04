@@ -5,7 +5,7 @@ import type { DataPackMarket, Market } from "@trade-signal/schema-core";
 
 import { resolveOutputPath } from "../crosscut/normalization/resolve-monorepo-path.js";
 import { formatListedCode } from "./listed-code.js";
-import { buildDisplayTitle, TOPIC_ENTRY_SLUG } from "./topic-labels.js";
+import { buildDisplayTitle, TOPIC_DISPLAY_PAGE_NAME, TOPIC_ENTRY_SLUG } from "./topic-labels.js";
 import { renderValuationComputedMarkdownFromJson } from "./valuation-computed-markdown.js";
 import {
   renderPublicEvidencePack,
@@ -15,6 +15,9 @@ import {
 import type {
   ConfidenceState,
   EntryMeta,
+  RankingListView,
+  RankingViewItem,
+  SiteRankingsIndex,
   ReportSourceLink,
   ReportTopicType,
   RequiredFieldsStatus,
@@ -32,12 +35,21 @@ import {
   type FinalNarrativeStatus,
 } from "../runtime/business-analysis/final-narrative-status.js";
 import type { Phase1BItem, Phase1BQualitativeSupplement } from "../steps/phase1b/types.js";
+import {
+  RANKINGS_DEFAULT_TOP_N,
+  type SelectionManifestV1,
+} from "../screener/selection-manifest-v2.js";
+import type { ScreenerRunOutput, ScreenerScoredResult } from "../screener/types.js";
 
 export type EmitSiteReportsOptions = {
-  /** workflow 或 business-analysis 单次 run 根目录（含 manifest） */
+  /** workflow / business-analysis / screener 单次 run 根目录（含 manifest 或 screener 输出） */
   runDir: string;
   /** 聚合站点根目录，默认 `output/site/reports`（相对 monorepo 根） */
   siteDir?: string;
+};
+
+type RankingListFile = RankingListView & {
+  sourceRunId: string;
 };
 
 function shortRunId(runId: string): string {
@@ -72,6 +84,16 @@ async function pathExists(p: string): Promise<boolean> {
 async function readJson<T>(p: string): Promise<T> {
   const raw = await readFile(p, "utf-8");
   return JSON.parse(raw) as T;
+}
+
+function normalizeRankingConfidence(raw: string | undefined): ConfidenceState {
+  if (raw === "high" || raw === "medium" || raw === "low") return raw;
+  return "unknown";
+}
+
+function normalizeRankingDecision(raw: string | undefined): string {
+  const v = raw?.trim();
+  return v ? v : "unknown";
 }
 
 function resolveArtifactPath(runDir: string, filePath?: string): string | undefined {
@@ -1243,6 +1265,159 @@ async function emitFromBusinessAnalysis(
   await writeTopicManifest(runDir, topicManifest);
 }
 
+function buildRankingListId(params: {
+  generatedAt: string;
+  strategyId: string;
+  market: string;
+  mode: string;
+  runId: string;
+}): string {
+  const day = dateKeyFromIso(params.generatedAt);
+  const compactStrategy = params.strategyId.replace(/[^a-zA-Z0-9_-]+/g, "-").toLowerCase();
+  const compactMarket = params.market.replace(/[^a-zA-Z0-9_-]+/g, "-").toLowerCase();
+  const compactMode = params.mode.replace(/[^a-zA-Z0-9_-]+/g, "-").toLowerCase();
+  return `${day}-${compactStrategy}-${compactMarket}-${compactMode}-${shortRunId(params.runId)}`;
+}
+
+/**
+ * 策略 → 站点专题 slug 映射；用于榜单条目跳转研报详情页的 `topic` 查询参数。
+ * 未映射的策略返回 `undefined`，调用方将省略 href 中的 `topic` 部分。
+ */
+const STRATEGY_TOPIC_SLUG: Record<string, ReportTopicType> = {
+  turtle: "turtle-strategy",
+};
+
+function strategyHref(strategyId: string, code: string): string {
+  const topic = STRATEGY_TOPIC_SLUG[strategyId];
+  const params = new URLSearchParams();
+  params.set("code", code);
+  if (topic) params.set("topic", topic);
+  return `/reports?${params.toString()}`;
+}
+
+function buildRankingItem(
+  result: ScreenerScoredResult,
+  rank: number,
+  strategyId: string,
+): RankingViewItem {
+  return {
+    rank,
+    code: result.code,
+    name: result.name,
+    industry: result.industry,
+    score: Number.isFinite(result.totalScore) ? result.totalScore : 0,
+    decision: normalizeRankingDecision(result.decision),
+    confidence: normalizeRankingConfidence(result.confidence),
+    href: strategyHref(strategyId, result.code),
+    metrics: {
+      channel: result.channel,
+      roe: result.roe ?? null,
+      fcfYield: result.fcfYield ?? null,
+      penetrationR: result.factors.penetrationR ?? null,
+      evEbitda: result.factors.evEbitda ?? null,
+      floorPremium: result.factors.floorPremium ?? null,
+      tier1Score: result.tier1Score ?? null,
+      reportScore: result.reportScore ?? null,
+    },
+  };
+}
+
+/**
+ * 从 manifest 中读取 `rankingsTopN` 并做防御性收敛：非有限正数则使用默认值。
+ * 实际是否截断取决于 results 的真实长度，本函数只决定上限。
+ */
+function resolveRankingsTopN(manifest: SelectionManifestV1): number {
+  const raw = manifest.rankingsTopN;
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+    return Math.floor(raw);
+  }
+  return RANKINGS_DEFAULT_TOP_N;
+}
+
+async function emitFromScreener(runDir: string, siteDir: string): Promise<void> {
+  const [result, manifest] = await Promise.all([
+    readJson<ScreenerRunOutput>(path.join(runDir, "screener_results.json")),
+    readJson<SelectionManifestV1>(path.join(runDir, "selection_manifest.json")),
+  ]);
+  const runId = manifest.runId?.trim() || path.basename(runDir);
+  const listId = buildRankingListId({
+    generatedAt: result.generatedAt,
+    strategyId: manifest.strategyId || result.strategyId || "turtle",
+    market: result.market,
+    mode: result.mode,
+    runId,
+  });
+  const topN = resolveRankingsTopN(manifest);
+  const topResults = result.results.slice(0, topN);
+  const strategyId = manifest.strategyId || result.strategyId || "turtle";
+  const list: RankingListFile = {
+    listId,
+    sourceRunId: runId,
+    strategyId,
+    strategyLabel: manifest.strategyLabel || result.strategyLabel || "龟龟策略",
+    market: result.market,
+    mode: result.mode,
+    generatedAt: result.generatedAt,
+    capabilityStatus: result.capability?.status,
+    capabilityReasonCodes: result.capability?.reasonCodes ?? [],
+    topN,
+    totalCandidates: result.results.length,
+    items: topResults.map((item, idx) => buildRankingItem(item, idx + 1, strategyId)),
+  };
+  const rankingsDir = path.join(siteDir, "rankings", "lists");
+  await mkdir(rankingsDir, { recursive: true });
+  await writeFile(path.join(rankingsDir, `${listId}.json`), JSON.stringify(list, null, 2), "utf-8");
+}
+
+function isBetterRankingList(next: RankingListView, prev: RankingListView): boolean {
+  if (next.items.length !== prev.items.length) return next.items.length > prev.items.length;
+  return next.generatedAt > prev.generatedAt;
+}
+
+export async function rebuildSiteRankingsIndex(siteDir: string): Promise<void> {
+  const listsRoot = path.join(siteDir, "rankings", "lists");
+  const rawLists: RankingListFile[] = [];
+  try {
+    const files = (await readdir(listsRoot)).filter((name) => name.endsWith(".json")).sort();
+    for (const fileName of files) {
+      try {
+        rawLists.push(await readJson<RankingListFile>(path.join(listsRoot, fileName)));
+      } catch {
+        /* skip broken */
+      }
+    }
+  } catch {
+    /* rankings directory absent */
+  }
+
+  const dedup = new Map<string, RankingListFile>();
+  for (const list of rawLists) {
+    const key = `${dateKeyFromIso(list.generatedAt)}|${list.strategyId}|${list.market}|${list.mode}`;
+    const prev = dedup.get(key);
+    if (!prev || isBetterRankingList(list, prev)) dedup.set(key, list);
+  }
+
+  const winnerIds = new Set([...dedup.values()].map((it) => it.listId));
+  for (const list of rawLists) {
+    if (winnerIds.has(list.listId)) continue;
+    await rm(path.join(listsRoot, `${list.listId}.json`), { force: true });
+  }
+
+  const lists = [...dedup.values()]
+    .map(({ sourceRunId: _sourceRunId, ...list }) => list)
+    .sort((a, b) => (a.generatedAt < b.generatedAt ? 1 : -1));
+  const index: SiteRankingsIndex = {
+    version: "1.0",
+    generatedAt: formatLocalDateTime(new Date()),
+    strategyCount: new Set(lists.map((list) => list.strategyId)).size,
+    listCount: lists.length,
+    defaultStrategyId: lists[0]?.strategyId ?? "turtle",
+    lists,
+  };
+  await mkdir(path.join(siteDir, "rankings"), { recursive: true });
+  await writeFile(path.join(siteDir, "rankings", "index.json"), JSON.stringify(index, null, 2), "utf-8");
+}
+
 /** 扫描 entries 下各子目录的 meta.json，去重后重写 views 与 index.json */
 export async function rebuildSiteReportsIndex(siteDir: string): Promise<void> {
   const entriesRoot = path.join(siteDir, "entries");
@@ -1301,7 +1476,8 @@ export async function rebuildSiteReportsIndex(siteDir: string): Promise<void> {
     byCode.set(it.code, [...(byCode.get(it.code) ?? []), it]);
   }
 
-  for (const [topic, arr] of byTopic) {
+  for (const topic of Object.keys(TOPIC_DISPLAY_PAGE_NAME) as ReportTopicType[]) {
+    const arr = byTopic.get(topic) ?? [];
     await writeFile(path.join(siteDir, "views", "by-topic", `${topic}.json`), JSON.stringify(arr, null, 2), "utf-8");
   }
   for (const [code, arr] of byCode) {
@@ -1332,6 +1508,8 @@ export async function emitSiteReportsFromRun(opts: EmitSiteReportsOptions): Prom
   const wf = path.join(runDir, "workflow_manifest.json");
   const ba = path.join(runDir, "business_analysis_manifest.json");
   const tm = path.join(runDir, "topic_manifest.json");
+  const screener = path.join(runDir, "screener_results.json");
+  const selectionManifest = path.join(runDir, "selection_manifest.json");
 
   if (await pathExists(wf)) {
     await emitFromWorkflow(runDir, siteDir, wf);
@@ -1339,13 +1517,16 @@ export async function emitSiteReportsFromRun(opts: EmitSiteReportsOptions): Prom
     await emitFromBusinessAnalysis(runDir, siteDir, ba);
   } else if (await pathExists(tm)) {
     await emitFromTopicManifestOnly(runDir, siteDir, tm);
+  } else if ((await pathExists(screener)) && (await pathExists(selectionManifest))) {
+    await emitFromScreener(runDir, siteDir);
   } else {
     throw new Error(
-      `[reports-site] 未找到 workflow_manifest.json / business_analysis_manifest.json / topic_manifest.json：${runDir}`,
+      `[reports-site] 未找到 workflow_manifest.json / business_analysis_manifest.json / topic_manifest.json / screener_results.json：${runDir}`,
     );
   }
 
   await rebuildSiteReportsIndex(siteDir);
+  await rebuildSiteRankingsIndex(siteDir);
   return { siteDir };
 }
 
