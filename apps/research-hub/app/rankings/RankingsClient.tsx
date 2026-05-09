@@ -95,11 +95,12 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
         earlier.push(list);
       }
     }
-    return [
+    const groups: RankingListGroup[] = [
       { key: "today", label: "今天", lists: today },
       { key: "recent", label: "近 7 天", lists: recent },
       { key: "earlier", label: "更早", lists: earlier },
-    ].filter((group) => group.lists.length > 0);
+    ];
+    return groups.filter((group) => group.lists.length > 0);
   }, [displayLists]);
 
   return (

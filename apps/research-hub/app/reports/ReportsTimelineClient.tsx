@@ -112,11 +112,12 @@ export function ReportsTimelineClient({
       }
     }
 
-    return [
+    const groups: TimelineGroup[] = [
       { key: "today", label: "今天", items: today },
       { key: "recent", label: "近 7 天", items: recent },
       { key: "earlier", label: "更早", items: earlier },
-    ].filter((group) => group.items.length > 0);
+    ];
+    return groups.filter((group) => group.items.length > 0);
   }, [filtered]);
 
   const codes = useMemo(() => [...new Set(items.map((i) => i.code))].sort(), [items]);
