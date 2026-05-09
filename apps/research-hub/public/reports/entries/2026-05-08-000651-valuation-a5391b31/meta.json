@@ -1,0 +1,58 @@
+{
+  "entryId": "2026-05-08-000651-valuation-a5391b31",
+  "code": "000651",
+  "topicType": "valuation",
+  "displayTitle": "格力电器 (000651.SZ) · 估值分析",
+  "publishedAt": "2026-05-08T13:55:03.091Z",
+  "sourceRunId": "a5391b31-51c9-4456-842e-31b4853a3bcb",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "medium",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../workflow/000651/a5391b31-51c9-4456-842e-31b4853a3bcb/workflow_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 124219,
+      "lines": 1854
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 16552,
+      "lines": 73
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 20877,
+      "lines": 210
+    },
+    {
+      "id": "valuation-model",
+      "label": "估值模型结果",
+      "kind": "json",
+      "href": "attachments/valuation-model.json",
+      "previewable": true,
+      "bytes": 2573,
+      "lines": 107
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-04-29/1225250396.PDF"
+    }
+  ]
+}

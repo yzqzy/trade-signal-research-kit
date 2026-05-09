@@ -28,6 +28,19 @@ export interface ScreenerUniversePageData {
   note?: unknown;
 }
 
+export type ScreenerUniverseFetchDiagnostics = {
+  requestedPages: number;
+  expectedTotal?: number;
+  receivedCount: number;
+  shortfall?: number;
+  endedBy: "single_page" | "empty_page" | "short_page" | "reported_total" | "stagnation";
+};
+
+export type ScreenerUniverseFetchResult = {
+  items: unknown[];
+  diagnostics: ScreenerUniverseFetchDiagnostics;
+};
+
 /**
  * 校验并解析 feed 返回的 JSON（已解包为根对象；通常为 `{ success, data }`）。
  * @throws Error 契约不匹配时携带 `url` 便于排查
@@ -82,6 +95,13 @@ export async function fetchScreenerUniverseFromHttp(
   options: HttpScreenerSourceOptions,
   market: "CN_A" | "HK",
 ): Promise<unknown[]> {
+  return (await fetchScreenerUniverseFromHttpWithDiagnostics(options, market)).items;
+}
+
+export async function fetchScreenerUniverseFromHttpWithDiagnostics(
+  options: HttpScreenerSourceOptions,
+  market: "CN_A" | "HK",
+): Promise<ScreenerUniverseFetchResult> {
   if (!options.baseUrl.trim()) {
     throw new Error("[screener] Missing FEED_BASE_URL or --feed-base-url for HTTP universe fetch");
   }
@@ -98,6 +118,7 @@ export async function fetchScreenerUniverseFromHttp(
   const seenCodes = new Set<string>();
   let page = 1;
   let lastTotal = 0;
+  let endedBy: ScreenerUniverseFetchDiagnostics["endedBy"] = "empty_page";
   const basePath = `${base}${apiBasePath}/stock/screener/universe`;
 
   for (;;) {
@@ -144,13 +165,33 @@ export async function fetchScreenerUniverseFromHttp(
       );
     }
 
-    if (mode === "single_page") break;
-    if (parsed.items.length === 0) break;
-    if (all.length >= parsed.total) break;
+    if (mode === "single_page") {
+      endedBy = "single_page";
+      break;
+    }
+    if (parsed.items.length === 0) {
+      endedBy = "empty_page";
+      break;
+    }
+    const effectivePageSize = Math.min(pageSize, Math.max(1, Math.floor(parsed.pageSize)));
+    if (parsed.items.length < effectivePageSize) {
+      endedBy = "short_page";
+      break;
+    }
+    if (parsed.total > effectivePageSize && all.length >= parsed.total) {
+      endedBy = "reported_total";
+      break;
+    }
+    if (parsed.total <= effectivePageSize && parsed.items.length === effectivePageSize) {
+      console.warn(
+        `[screener] feed total=${parsed.total} 不足以判断全量（pageSize=${effectivePageSize} 且当前页满页），继续请求下一页`,
+      );
+    }
     if (addedThisPage === 0) {
       console.warn(
         `[screener] 翻页停滞：page=${page} 未新增任何记录（疑似 feed 分页 bug 或 total 偏大），提前退出 累计=${all.length} total=${parsed.total}`,
       );
+      endedBy = "stagnation";
       break;
     }
     page += 1;
@@ -165,5 +206,14 @@ export async function fetchScreenerUniverseFromHttp(
     );
   }
 
-  return all;
+  return {
+    items: all,
+    diagnostics: {
+      requestedPages: page,
+      expectedTotal: lastTotal > 0 ? lastTotal : undefined,
+      receivedCount: all.length,
+      shortfall: lastTotal > all.length ? lastTotal - all.length : undefined,
+      endedBy,
+    },
+  };
 }

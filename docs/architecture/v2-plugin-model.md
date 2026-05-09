@@ -68,3 +68,19 @@ Publisher 消费 **`topic_manifest.json`**（`manifestVersion: "1.0"`），由 `
 - [v2-domain-contract.md](./v2-domain-contract.md)
 - [v2-flow-topology.md](./v2-flow-topology.md)
 - [reports-site-publish.md](../guides/reports-site-publish.md)
+
+## 现状索引（已注册真实插件）
+
+- **Policy**
+  - `policy:turtle`（薄 adapter，承接 runtime 策略输出）
+  - `policy:value_v1`（薄 adapter，承接 runtime 策略输出）
+  - `policy:high_dividend`（薄 adapter，承接 `strategy/high-dividend` 输出）
+- **Selection**
+  - `selection:turtle:cn_a_universe`（兼容 stub）
+  - `selection:high_dividend:cn_a`（真实组合：过滤 + 排序 + topN）
+- **Topic**
+  - `topic:business-six-dimension`
+  - `topic:valuation`
+  - `topic:penetration-return`
+  - `topic:turtle-strategy-explainer`
+  - `topic:earnings-alert`

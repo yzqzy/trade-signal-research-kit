@@ -57,7 +57,11 @@ pnpm --filter @trade-signal/research-runtime run run:reports-site-sync -- \
 
 - 每次 `reports-site:emit` 在 **run 根目录** 写入 **`topic_manifest.json`**（`manifestVersion: "1.0"`），列出本次写入站点的专题：`v2TopicId`、`siteTopicType`、`entryId`、`sourceMarkdownRelative` 等，供外部工具与 **manifest 驱动发布** 对齐（见 [v2-plugin-model](../architecture/v2-plugin-model.md)）。
 - 发布索引按 **同一自然日 + 股票代码 + Topic** 去重，优先级为 `complete > degraded > missing`，同优先级取更新发布时间；被替换的 entry 目录会从 `entries/` 移除，避免静态导出继续暴露旧降级页。
-- workflow run 不再把降级的 `business_quality.md` 发布为完整商业质量页；只有 business-analysis run 的 `finalNarrativeStatus=complete` 才会发布 `topic:business-six-dimension` 正文。
+- workflow run 的 `turtle_overview.md`、`valuation.md`、`penetration_return.md`、`business_quality.md` 均视为 Topic draft；只有对应 `finalized/<siteTopicType>.md`（或 `<draft>.final.md`）存在并通过 Topic Finalization Gate，才会写入正式站点 entry。
+- business-analysis run 的商业质量仍以 `finalNarrativeStatus=complete` 且通过叙事质量门禁为发布条件。
+- business-analysis run 若未通过终稿门禁，`reports-site:emit` 只写入 run 内 `topic_manifest.json` 的阻断原因，并会移除站点聚合目录里同日同代码的旧 `business-quality` entry，避免模板稿或旧降级页继续暴露。
+- workflow run 若缺少 finalized Markdown 或 finalized Markdown 未通过 gate，同样只写入 `topic_manifest.json`，并移除同日同代码同专题旧 entry。
+- **`reports-site:emit`（workflow 路径）** 会读取 `business_quality.md` 的 **维度一**，与 `report_view_model.json` 交叉执行 **`evaluateBusinessQualityPublishGate`**（数字个数、数值密度、监控阈值行数、`businessModel` 是否存在）及 **`evaluateBusinessQualityPublicationHardBlock`**（§13 外推/关键估算或 PDF **CRITICAL** 时 D1 须含降级表述）；未通过时强制将 **`business-quality`** 专题标为 **degraded** 或 **blocked** 并合并 `blockingReasons`（与 `nodeReportPolish` 编排层门禁语义一致）。
 - **仅再发布**：若目录下 **没有** `workflow_manifest.json` / `business_analysis_manifest.json`，但存在合法的 **`topic_manifest.json`**，则 emit 走 **`emitFromTopicManifestOnly`**，按清单中的 `sourceMarkdownRelative` 读取 Markdown 并重写 `entries`（`runProfile: publish_only` 场景）。
 
 ## 选股（Selection）侧产物

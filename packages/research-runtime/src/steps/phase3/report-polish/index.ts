@@ -5,3 +5,8 @@ export type {
 } from "./report-view-model.js";
 export { composeReportViewModel, type ComposeReportViewModelInput } from "./compose-report-view-model.js";
 export { renderAllReportPolishMarkdowns } from "./render-report-polish-markdown.js";
+export {
+  evaluateBusinessQualityPublishGate,
+  evaluateBusinessQualityPublicationHardBlock,
+  extractD1Section,
+} from "./business-quality-publish-gate.js";

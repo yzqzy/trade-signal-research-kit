@@ -14,7 +14,13 @@ export type SelectionManifestV1 = {
     code: string;
     score?: number;
     decision?: string;
+    confidence?: "high" | "medium" | "low" | "unknown";
     policyContributions?: Record<string, number>;
+  }>;
+  policyResults?: Array<{
+    policyId: string;
+    code: string;
+    payload: Record<string, unknown>;
   }>;
   drillDownTopicIds?: string[];
   /** 站点榜单按策略分数降序后取的前 N 名；未设置时下游按默认 200 兜底 */

@@ -1,0 +1,49 @@
+{
+  "entryId": "2026-05-08-002818-biz-quality-e4252388",
+  "code": "002818",
+  "topicType": "business-quality",
+  "displayTitle": "富森美 (002818.SZ) · 商业质量评估",
+  "publishedAt": "2026-05-08T13:32:37.822Z",
+  "sourceRunId": "e4252388-fa95-47e7-a67b-3923b82d3416",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "medium",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../business-analysis/002818/e4252388-fa95-47e7-a67b-3923b82d3416/business_analysis_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 105215,
+      "lines": 2440
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 11228,
+      "lines": 58
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 16689,
+      "lines": 214
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-03-31/1225058141.PDF"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "entryId": "2026-05-08-002818-valuation-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-valuation-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-002818-turtle-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-turtle-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-002818-penetration-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-penetration-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-002818-biz-quality-e4252388",
+    "displayTitle": "富森美 (002818.SZ) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:32:37.822Z",
+    "href": "/reports/2026-05-08-002818-biz-quality-e4252388/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  }
+]

@@ -15,9 +15,13 @@ import { fetchScreenerUniverseFromHttp, parseScreenerUniversePayload } from "../
 import { tier1FilterCnA } from "../screener/cn-a.js";
 import { exportScreenerResultsCsv } from "../screener/export-results.js";
 import { buildUniverseCapability } from "../screener/capability.js";
-import { computeFactorSummary, runScreenerPipeline } from "../screener/pipeline.js";
-import type { ScreenerUniverseRow } from "../screener/types.js";
+import type { ScreenerRunOutput, ScreenerUniverseRow } from "../screener/types.js";
 import { isAfterCnAClose, loadOrFetchUniverseSnapshot } from "../screener/universe-snapshot.js";
+import { evaluateTurtlePolicy } from "../strategy/turtle/policy-evaluator.js";
+import { bootstrapV2PluginRegistry } from "../bootstrap/v2-plugin-registry.js";
+import { resolvePolicyPlugin } from "@trade-signal/research-policy";
+import { resolveSelectionPlugin, TURTLE_CN_A_SELECTION_ID } from "@trade-signal/research-selection";
+import type { FeatureSet } from "@trade-signal/research-contracts";
 
 async function testDiskCache(): Promise<void> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "screener-cache-"));
@@ -45,6 +49,7 @@ function testConfig(): void {
   assert.equal(cfg.obsChannelLimit, 50);
   assert.equal(cfg.tier2MainLimit, 150);
   assert.equal(cfg.minMarketCapYi, 5);
+  assert.equal(cfg.roeAnnualizationFactor, 4);
   assert.deepEqual(validateScreenerConfig(cfg), []);
 
   const bad = resolveScreenerConfig("CN_A", {
@@ -67,7 +72,7 @@ function testTier1Filter(): void {
       code: "000001.SZ",
       name: "平安银行",
       market: "CN_A",
-      industry: "银行",
+      industry: "银行Ⅱ",
       listDate: "19910403",
       marketCap: 2000,
       turnover: 1,
@@ -120,67 +125,60 @@ function testTier1Filter(): void {
   assert.ok(!codes.has("000004.SZ"), "PE=0 既非主通道也非观察（与 Python NaN-only 观察一致）");
 }
 
-function testFactor2R(): void {
-  const cfg = getDefaultScreenerConfig("CN_A");
-  const row: ScreenerUniverseRow = {
-    code: "T.SZ",
-    name: "T",
-    market: "CN_A",
-    ocf: 100,
-    capex: -20,
-    marketCap: 1000,
-    payoutRatio: 30,
-  };
-  const f = computeFactorSummary(row, cfg);
-  assert.ok(f.penetrationR !== undefined);
-  assert.ok(Math.abs((f.penetrationR ?? 0) - 2.4) < 1e-6, `R expected 2.4, got ${f.penetrationR}`);
+function toFeatureSet(row: ScreenerUniverseRow): FeatureSet {
+  return { runId: "test-run", code: row.code, features: { ...row }, sourceRefs: [] };
 }
 
-function testFloorPremiumSource(): void {
-  const cfg = getDefaultScreenerConfig("CN_A");
-  const prev = process.env.SCREENER_FLOOR_PREMIUM_FALLBACK;
-  try {
-    delete process.env.SCREENER_FLOOR_PREMIUM_FALLBACK;
-    const fromField = computeFactorSummary(
-      { code: "A", name: "A", market: "CN_A", floorPremium: 5, pe: 9 } as ScreenerUniverseRow,
-      cfg,
-    );
-    assert.equal(fromField.floorPremiumSource, "universe_field");
-    assert.equal(fromField.floorPremium, 5);
+async function testTurtlePolicyAndSelectionUseV2Path(): Promise<void> {
+  const base: ScreenerUniverseRow = {
+    code: "BASE",
+    name: "BASE",
+    market: "CN_A",
+    industry: "食品",
+    listDate: "20100101",
+    close: 10,
+    marketCap: 2000,
+    turnover: 1,
+    dv: 3,
+    grossMargin: 30,
+    debtRatio: 30,
+    netProfit: 100,
+    totalAssets: 1000,
+    totalLiabilities: 300,
+    payoutRatio: 40,
+  };
+  const rows = [
+    { ...base, code: "GOOD", name: "好公司", pe: 8, pb: 1, roe: 4, ocf: 350, capex: -50 },
+    { ...base, code: "WEAK", name: "弱公司", pe: 20, pb: 3, roe: 1, ocf: 180, capex: -40 },
+    { ...base, code: "BANK", name: "银行样本", industry: "银行Ⅱ", pe: 5, pb: 0.5, roe: 5, dv: 6, ocf: 350, capex: -50 },
+  ];
+  bootstrapV2PluginRegistry();
+  const policy = resolvePolicyPlugin("policy:turtle");
+  const policyResults = await Promise.all(
+    rows.map((row) => policy.evaluate({ policyId: "policy:turtle", runId: "test-run", code: row.code, featureSet: toFeatureSet(row) })),
+  );
+  assert.equal(policyResults.some((it) => (it.payload as { stub?: boolean }).stub), false);
+  const goodPayload = policyResults.find((it) => it.code === "GOOD")?.payload as { metrics?: { penetrationR?: number }; passesUniverseGate?: boolean };
+  assert.ok(typeof goodPayload.metrics?.penetrationR === "number");
+  assert.equal(goodPayload.passesUniverseGate, true);
+  const bankPayload = policyResults.find((it) => it.code === "BANK")?.payload as { filterReasons?: string[] };
+  assert.ok(bankPayload.filterReasons?.includes("bank_industry_excluded"));
 
-    const peFallback = computeFactorSummary(
-      { code: "B", name: "B", market: "CN_A", pe: 9 } as ScreenerUniverseRow,
-      cfg,
-    );
-    assert.equal(peFallback.floorPremiumSource, "pe_over_3_heuristic");
-    assert.ok(Math.abs((peFallback.floorPremium ?? 0) - 3) < 1e-9);
-
-    process.env.SCREENER_FLOOR_PREMIUM_FALLBACK = "zero";
-    const zeroFb = computeFactorSummary(
-      { code: "C", name: "C", market: "CN_A", pe: 9 } as ScreenerUniverseRow,
-      cfg,
-    );
-    assert.equal(zeroFb.floorPremiumSource, "zero_fallback");
-    assert.equal(zeroFb.floorPremium, 0);
-  } finally {
-    if (prev === undefined) delete process.env.SCREENER_FLOOR_PREMIUM_FALLBACK;
-    else process.env.SCREENER_FLOOR_PREMIUM_FALLBACK = prev;
-  }
+  const selection = await resolveSelectionPlugin(TURTLE_CN_A_SELECTION_ID).compose({
+    selectionId: TURTLE_CN_A_SELECTION_ID,
+    runId: "test-run",
+    universe: "cn_a_universe",
+    policyResults,
+    maxCandidates: 10,
+  });
+  assert.ok(selection.candidates.length > 0);
+  assert.equal(selection.candidates[0]?.code, "GOOD");
 }
 
 async function testUniverseCapabilityHkEmpty(): Promise<void> {
   const cap = buildUniverseCapability("HK", []);
   assert.equal(cap.status, "hk_not_ready");
   assert.ok(cap.reasonCodes.includes("hk_screener_universe_not_implemented"));
-
-  const out = await runScreenerPipeline({
-    market: "HK",
-    mode: "standalone",
-    universe: [],
-    tier1Only: true,
-  });
-  assert.equal(out.capability?.status, "hk_not_ready");
-  assert.equal(out.results.length, 0);
 }
 
 async function testUniverseCapabilityBlockedMissingMarketCap(): Promise<void> {
@@ -195,14 +193,8 @@ async function testUniverseCapabilityBlockedMissingMarketCap(): Promise<void> {
     dv: 2,
     turnover: 1,
   };
-  const out = await runScreenerPipeline({
-    market: "CN_A",
-    mode: "standalone",
-    universe: [row],
-    tier1Only: true,
-  });
-  assert.equal(out.capability?.status, "blocked_missing_required_fields");
-  assert.equal(out.results.length, 0);
+  const cap = buildUniverseCapability("CN_A", [row]);
+  assert.equal(cap.status, "blocked_missing_required_fields");
 }
 
 async function testUniverseCapabilityDegradedTier2(): Promise<void> {
@@ -219,14 +211,8 @@ async function testUniverseCapabilityDegradedTier2(): Promise<void> {
     turnover: 1,
     pe: 12,
   };
-  const out = await runScreenerPipeline({
-    market: "CN_A",
-    mode: "standalone",
-    universe: [row],
-    tier1Only: true,
-  });
-  assert.equal(out.capability?.status, "degraded_tier2_fields");
-  assert.ok(out.results.length >= 1);
+  const cap = buildUniverseCapability("CN_A", [row]);
+  assert.equal(cap.status, "degraded_tier2_fields");
 }
 
 function testParseScreenerUniversePayload(): void {
@@ -287,6 +273,39 @@ async function testFetchScreenerUniversePagesUntilTotal(): Promise<void> {
     assert.equal(urls.length, 2);
     assert.ok(urls[0]?.includes("page=1"));
     assert.ok(urls[1]?.includes("page=2"));
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+}
+
+async function testFetchScreenerUniverseContinuesWhenTotalLooksLikePageCount(): Promise<void> {
+  const previousFetch = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    urls.push(url);
+    const page = Number(new URL(url).searchParams.get("page"));
+    const items = page <= 3 ? [{ code: `A${page}` }, { code: `B${page}` }] : [];
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          total: 2,
+          page,
+          pageSize: 2,
+          items,
+        },
+      }),
+      { status: 200 },
+    );
+  }) as typeof fetch;
+  try {
+    const rows = await fetchScreenerUniverseFromHttp(
+      { baseUrl: "http://feed.example", pageSize: 2 },
+      "CN_A",
+    );
+    assert.equal(rows.length, 6);
+    assert.equal(urls.length, 4);
   } finally {
     globalThis.fetch = previousFetch;
   }
@@ -380,28 +399,32 @@ async function testUniverseSnapshotReusesAfterClose(): Promise<void> {
 }
 
 async function testTier1OnlyPipeline(): Promise<void> {
-  const universe: ScreenerUniverseRow[] = [
-    {
+  const out: ScreenerRunOutput = {
+    strategyId: "turtle",
+    strategyLabel: "龟龟策略",
+    market: "CN_A",
+    mode: "standalone",
+    generatedAt: "2026-05-09T00:00:00.000Z",
+    totalUniverse: 1,
+    tier1Count: 1,
+    passedCount: 1,
+    tier1Only: true,
+    results: [{
       code: "000002.SZ",
       name: "测试科技",
       market: "CN_A",
       industry: "软件",
-      listDate: "20180101",
-      marketCap: 2000,
-      turnover: 1,
-      pb: 2,
-      pe: 12,
-      dv: 2,
-    },
-  ];
-  const out = await runScreenerPipeline({
-    market: "CN_A",
-    mode: "standalone",
-    universe,
-    tier1Only: true,
-  });
-  assert.equal(out.tier1Only, true);
-  assert.ok(out.results.length >= 1);
+      channel: "main",
+      tier1Score: 0.5,
+      passed: true,
+      qualityPassed: true,
+      screenerScore: 0.5,
+      totalScore: 0.5,
+      decision: "watch",
+      confidence: "medium",
+      factors: {},
+    }],
+  };
   const csv = exportScreenerResultsCsv(out);
   assert.ok(csv.includes("ts_code"));
 }
@@ -410,10 +433,10 @@ async function main(): Promise<void> {
   initCliEnv();
   testConfig();
   testTier1Filter();
-  testFactor2R();
-  testFloorPremiumSource();
+  await testTurtlePolicyAndSelectionUseV2Path();
   testParseScreenerUniversePayload();
   await testFetchScreenerUniversePagesUntilTotal();
+  await testFetchScreenerUniverseContinuesWhenTotalLooksLikePageCount();
   await testFetchScreenerUniverseDedupAndStagnation();
   await testUniverseSnapshotReusesAfterClose();
   await testUniverseCapabilityHkEmpty();

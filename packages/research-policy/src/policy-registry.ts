@@ -15,8 +15,10 @@ export type PolicyPlugin = {
 };
 
 export type PolicyPluginFactory = () => PolicyPlugin;
+export type PolicyEvaluator = (ctx: PolicyPluginContext) => Record<string, unknown> | Promise<Record<string, unknown>>;
 
 const policyFactories = new Map<string, PolicyPluginFactory>();
+const policyEvaluators = new Map<string, PolicyEvaluator>();
 
 export function registerPolicyPlugin(id: string, factory: PolicyPluginFactory): void {
   policyFactories.set(id, factory);
@@ -30,6 +32,14 @@ export function resolvePolicyPlugin(id: string): PolicyPlugin {
   const factory = policyFactories.get(id);
   if (!factory) throw new Error(`[research-policy] 未注册 Policy 插件: ${id}`);
   return factory();
+}
+
+export function registerPolicyEvaluator(id: string, evaluator: PolicyEvaluator): void {
+  policyEvaluators.set(id, evaluator);
+}
+
+export function resolvePolicyEvaluator(id: string): PolicyEvaluator | undefined {
+  return policyEvaluators.get(id);
 }
 
 export function createStubPolicyResult(policyId: string, runId: string, code: string): PolicyResult {

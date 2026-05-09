@@ -1,0 +1,58 @@
+{
+  "entryId": "2026-05-08-002818-valuation-e2de8e90",
+  "code": "002818",
+  "topicType": "valuation",
+  "displayTitle": "富森美 (002818.SZ) · 估值分析",
+  "publishedAt": "2026-05-08T13:55:33.393Z",
+  "sourceRunId": "e2de8e90-6bde-468d-8923-3a944a2a8f85",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "medium",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../workflow/002818/e2de8e90-6bde-468d-8923-3a944a2a8f85/workflow_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 105215,
+      "lines": 2440
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 12362,
+      "lines": 59
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 16689,
+      "lines": 214
+    },
+    {
+      "id": "valuation-model",
+      "label": "估值模型结果",
+      "kind": "json",
+      "href": "attachments/valuation-model.json",
+      "previewable": true,
+      "bytes": 2548,
+      "lines": 107
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-03-31/1225058141.PDF"
+    }
+  ]
+}

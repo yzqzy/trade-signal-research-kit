@@ -1,0 +1,58 @@
+{
+  "entryId": "2026-05-08-601919-valuation-4194512b",
+  "code": "601919",
+  "topicType": "valuation",
+  "displayTitle": "中远海控 (601919.SH) · 估值分析",
+  "publishedAt": "2026-05-08T13:55:44.527Z",
+  "sourceRunId": "4194512b-0ba0-4260-8448-71243a75b1a3",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "medium",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../workflow/601919/4194512b-0ba0-4260-8448-71243a75b1a3/workflow_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 104468,
+      "lines": 2044
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 16324,
+      "lines": 80
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 21443,
+      "lines": 218
+    },
+    {
+      "id": "valuation-model",
+      "label": "估值模型结果",
+      "kind": "json",
+      "href": "attachments/valuation-model.json",
+      "previewable": true,
+      "bytes": 2280,
+      "lines": 95
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-03-20/1225019947.PDF"
+    }
+  ]
+}

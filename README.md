@@ -8,7 +8,7 @@
 
 ## 核心边界（先看）
 
-- **`/workflow-analysis`**：产出 Phase3 规则报告 + **report-polish** → 对应 V2 的 **TopicReport** 集合（多页 Markdown + `report_view_model.json`），经 `reports-site:emit` 进入站点。
+- **`/workflow-analysis`**：产出 Phase3 规则报告 + **report-polish** → 对应 V2 的 **Topic draft** 集合（多页 Markdown + `report_view_model.json`）；正式站点页需 AI/Agent 写回 `finalized/<siteTopicType>.md` 并通过发布门禁。
 - **`/business-analysis`**：产出证据包并在 Claude 会话完成 **`topic:business-six-dimension` 终稿写回**（落地文件仍为 `qualitative_report.md` / `qualitative_d1_d6.md`）。
 - **选股（Screener）**：V2 中为 **Selection 分支**，与 Topic 并列；候选池可再按需触发专题下钻，**不是** Topic 子分支。
 - **`analysis_report.md`**：规则审计产物，不是站点最终排版页。

@@ -1,4 +1,5 @@
 import type { ReportPolishComposeBuffers, ReportViewModelV1 } from "./report-view-model.js";
+import { renderBusinessQualityD1Section } from "./render-business-quality-d1.js";
 import { renderValuationComputedMarkdownFromJson } from "../../../reports-site/valuation-computed-markdown.js";
 
 type ValuationJson = {
@@ -686,6 +687,46 @@ function phase1bCoverage(buffers: ReportPolishComposeBuffers): string {
   return rows.join("\n");
 }
 
+function extractWarningLinesFromMarketPack(markdown: string): string[] {
+  const section = extractMarketPackSection(markdown, /^##\s+§13\s+Warnings[^\n]*\n/mu) ?? "";
+  return section
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- ["))
+    .slice(0, 8);
+}
+
+function trendConclusionGate(buffers: ReportPolishComposeBuffers): {
+  level: "strict_downgrade" | "soft_downgrade" | "base_allowed";
+  reason: string;
+  matchedWarnings: string[];
+} {
+  const warnings = extractWarningLinesFromMarketPack(buffers.marketPackMarkdown);
+  const replicated = warnings.some((w) => /外推复制|不足\s*2\s*个独立财年/u.test(w));
+  const estimatedByRule = warnings.some((w) =>
+    /规则=capex_ocf_20pct|规则=interest_bearing_debt_tl_0_4|规则=cash_and_equiv_ta_0_1/u.test(w),
+  );
+  if (replicated || estimatedByRule) {
+    return {
+      level: "strict_downgrade",
+      reason: "触发了多年序列回退复制或关键财务估算规则，趋势类结论需降级为方向性判断。",
+      matchedWarnings: warnings.filter((w) => /外推复制|不足\s*2\s*个独立财年|规则=/u.test(w)).slice(0, 3),
+    };
+  }
+  if (warnings.length > 0) {
+    return {
+      level: "soft_downgrade",
+      reason: "存在数据完整性告警，但未触发硬性回退规则；可保留趋势判断，同时保持谨慎语气。",
+      matchedWarnings: warnings.slice(0, 2),
+    };
+  }
+  return {
+    level: "base_allowed",
+    reason: "未发现关键数据回退告警，可按四条线输出基础趋势结论。",
+    matchedWarnings: [],
+  };
+}
+
 export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: ReportPolishComposeBuffers): string {
   const name = vm.displayCompanyName ?? vm.market.name ?? vm.normalizedCode;
   const valuationJson = parseValuationJson(buffers.valuationRawJson);
@@ -785,6 +826,27 @@ export function renderTurtleOverviewMarkdown(vm: ReportViewModelV1, buffers: Rep
 
 export function renderBusinessQualityMarkdown(vm: ReportViewModelV1, buffers: ReportPolishComposeBuffers): string {
   const name = vm.displayCompanyName ?? vm.market.name ?? vm.normalizedCode;
+  const gate = trendConclusionGate(buffers);
+  const d1Body = [
+    renderBusinessQualityD1Section(vm, buffers),
+    "",
+    "### 趋势结论降级规则（确定性）",
+    "",
+    `- 当前状态：**${gate.level}**。${gate.reason}`,
+    ...(gate.matchedWarnings.length
+      ? gate.matchedWarnings.map((w) => `- 命中告警：${w}`)
+      : ["- 未命中关键降级告警。"]),
+    "- 只有触发“多年序列外推复制/关键估算规则”时，趋势结论才强制降级为方向性描述。",
+    "- 仅有一般数据完整性提醒时，保留趋势判断，但不使用绝对化语气。",
+    "",
+    "| 子项 | 证据锚点 | 分析口径 |",
+    "|:-----|:-------------|:-------------|",
+    "| 商业模式 | 市场包与年报包 | 客户、产品、收费方式、成本结构 |",
+    "| 收入质量 | 财务历史与外部证据 | 增长来源、一次性与可持续收入区分 |",
+    "| 利润质量 | Phase3 利润锚点 | 扣非、非经、毛利和费用变化 |",
+    "| 资本消耗 | Capex、折旧、营运资本 | 轻/重资产属性与维护性投入 |",
+    "| 现金收款 | OCF、应收、合同负债 | 利润与现金流匹配度 |",
+  ].join("\n");
   return [
     `# ${name}（${vm.normalizedCode}）· 商业质量评估`,
     "",
@@ -810,17 +872,7 @@ export function renderBusinessQualityMarkdown(vm: ReportViewModelV1, buffers: Re
     "",
     signalLines(vm).join("\n"),
     "",
-    "## 维度一：商业模式与资本特征",
-    "",
-    "**核心判断**：商业模式分析围绕收入来源、利润含金量、资本消耗和现金收款四个锚点展开，避免只用增长率替代商业质量判断。[E2][E4]",
-    "",
-    "| 子项 | 证据锚点 | 分析口径 |",
-    "|:-----|:-------------|:-------------|",
-    "| 商业模式 | 市场包与年报包 | 客户、产品、收费方式、成本结构 |",
-    "| 收入质量 | 财务历史与外部证据 | 增长来源、一次性与可持续收入区分 |",
-    "| 利润质量 | Phase3 利润锚点 | 扣非、非经、毛利和费用变化 |",
-    "| 资本消耗 | Capex、折旧、营运资本 | 轻/重资产属性与维护性投入 |",
-    "| 现金收款 | OCF、应收、合同负债 | 利润与现金流匹配度 |",
+    d1Body,
     "",
     "## 维度二：竞争优势与护城河",
     "",

@@ -1,0 +1,106 @@
+{
+  "code": "002818",
+  "generatedAt": "2026-05-08T13:55:33.377Z",
+  "companyType": "blue_chip_value",
+  "wacc": 9.692177047512688,
+  "ke": 9.7,
+  "methods": [
+    {
+      "method": "DCF",
+      "value": 32.585958508502216,
+      "range": {
+        "conservative": 27.698064732226882,
+        "central": 32.585958508502216,
+        "optimistic": 37.47385228477754
+      },
+      "assumptions": {
+        "gTerminal": 3,
+        "growth": 18.1421371156555,
+        "fcfBase": 809.9133333333333,
+        "shares": 748.46
+      }
+    },
+    {
+      "method": "DDM",
+      "value": 17.361290322580647,
+      "range": {
+        "conservative": 15.625161290322582,
+        "central": 17.361290322580647,
+        "optimistic": 19.097419354838713
+      },
+      "assumptions": {
+        "latestDps": 1.04,
+        "rawGrowth": 14.741499781411548,
+        "g": 3.5,
+        "ke": 9.7
+      }
+    },
+    {
+      "method": "PE_BAND",
+      "value": 11.197466666666667,
+      "range": {
+        "conservative": 10.138000000000002,
+        "central": 11.197466666666667,
+        "optimistic": 11.7957
+      },
+      "assumptions": {
+        "currentPe": 14.54,
+        "epsNorm": 0.9133333333333334,
+        "peMedian": 12.26,
+        "peP25": 9.94,
+        "peP50": 12.26,
+        "peP75": 13.57
+      }
+    },
+    {
+      "method": "PEG",
+      "note": "non-positive profit growth"
+    },
+    {
+      "method": "PS",
+      "value": 12.06998369986372,
+      "range": {
+        "conservative": 9.655986959890976,
+        "central": 12.06998369986372,
+        "optimistic": 14.483980439836463
+      },
+      "assumptions": {
+        "currentPs": 7.53346064361183,
+        "psMedian": 7.53346064361183,
+        "revenueNow": 1199.17
+      }
+    }
+  ],
+  "crossValidation": {
+    "weightedAverage": 21.602010500175084,
+    "coefficientOfVariation": 45.84455919760654,
+    "consistency": "low",
+    "activeWeights": {
+      "DCF": 0.4,
+      "DDM": 0.3,
+      "PE_BAND": 0.3,
+      "PS": 0
+    },
+    "range": {
+      "conservative": 11.197466666666667,
+      "central": 21.602010500175084,
+      "optimistic": 32.585958508502216
+    }
+  },
+  "impliedExpectations": {
+    "impliedGrowthFromPe": 2.8224209078404394,
+    "historicalProfitCagr": -11.736566818790873,
+    "fcfYield": 8.385857713722757,
+    "modelWacc": 9.692177047512688,
+    "modelKe": 9.7,
+    "market": "CN_A",
+    "rf": 2.5,
+    "beta": 1.2,
+    "erp": 6,
+    "kdPre": 3.5,
+    "taxRate": 25,
+    "eWeight": 0.9988942823339488,
+    "dWeight": 0.0011057176660511506,
+    "gTerminalDefault": 3
+  }
+}

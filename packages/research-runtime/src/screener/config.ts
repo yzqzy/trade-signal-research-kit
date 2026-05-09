@@ -13,6 +13,7 @@ const CN_A_CONFIG: ScreenerConfig = {
   peWeight: 0.3,
   pbWeight: 0.3,
   maxPledgePct: 70,
+  roeAnnualizationFactor: 4,
   minRoe: 8,
   minGrossMargin: 15,
   maxDebtRatio: 70,

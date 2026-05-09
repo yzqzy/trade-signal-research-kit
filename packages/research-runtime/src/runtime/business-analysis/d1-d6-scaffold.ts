@@ -32,6 +32,43 @@ function clipStructuredSection(text: string | undefined, max = 1400): string {
   return t.length <= max ? t : `${t.slice(0, max).trim()}\n\n> …… 已截断，完整内容见 data_pack_market.md。`;
 }
 
+function inferBusinessModelFeature(input: {
+  marketMarkdown?: string;
+  dataPackReportExcerpt?: string;
+  industryName?: string;
+}): {
+  modelType: string;
+  assetIntensity: string;
+  cashConversionProfile: string;
+  capexProfile: string;
+  revenueEvidenceRefs: string[];
+  cashflowEvidenceRefs: string[];
+  industryKpiRefs: string[];
+  gaps: string[];
+} {
+  const source = `${input.marketMarkdown ?? ""}\n${input.dataPackReportExcerpt ?? ""}`;
+  const industry = input.industryName ?? "";
+  const revenueEvidenceRefs = /营业收入|收入结构|主营业务|分部|产品|客户/u.test(source) ? ["M:§3", "E:annual-report-business"] : [];
+  const cashflowEvidenceRefs = /经营活动现金流|OCF|资本开支|Capex|现金转换/u.test(source) ? ["M:§5", "E:annual-report-cashflow"] : [];
+  const industryKpiRefs = /行业关键变量|同业|周期|景气|价格|客流|运价/u.test(source) ? ["M:§22"] : [];
+  const assetHeavy = /地产|物业|航运|港口|公路|电力|煤炭|钢铁|制造|家电|固定资产|投资性房地产/u.test(source + industry);
+  const capexHeavy = /在建工程|资本开支|固定资产|购建固定资产|投资性房地产|船舶|产能/u.test(source);
+  const gaps: string[] = [];
+  if (revenueEvidenceRefs.length === 0) gaps.push("missing_revenue_structure_or_main_business_evidence");
+  if (cashflowEvidenceRefs.length === 0) gaps.push("missing_cashflow_or_capex_evidence");
+  if (industryKpiRefs.length === 0) gaps.push("missing_industry_kpi_evidence");
+  return {
+    modelType: assetHeavy ? "asset_based_or_manufacturing" : "product_or_service_operator",
+    assetIntensity: assetHeavy ? "heavy_or_moderate" : "light_or_unknown",
+    cashConversionProfile: cashflowEvidenceRefs.length > 0 ? "requires_ocf_capex_cross_check" : "unknown_due_to_missing_cashflow_evidence",
+    capexProfile: capexHeavy ? "capex_or_asset_reinvestment_sensitive" : "not_established",
+    revenueEvidenceRefs,
+    cashflowEvidenceRefs,
+    industryKpiRefs,
+    gaps,
+  };
+}
+
 /**
  * PDF-first / 单 Agent 六维（D1~D6）契约：输出固定骨架，便于与 Turtle qualitative_assessment_v2 语义对齐。
  * 工程层写入可版本化 Markdown；正文在 Claude Code 工作区会话中按门槛补全。
@@ -81,6 +118,11 @@ export function renderQualitativeD1D6Scaffold(input: {
       structuredMarketSnapshot.governance.highSeverityCount,
     );
   }
+  const businessModel = inferBusinessModelFeature({
+    marketMarkdown,
+    dataPackReportExcerpt,
+    industryName: structuredMarketSnapshot?.cycle.industryName,
+  });
 
   return [
     "# 商业分析六维（D1~D6）契约稿",
@@ -158,17 +200,26 @@ export function renderQualitativeD1D6Scaffold(input: {
           "",
         ]
       : ["- （未提供 market markdown，跳过结构化快照）", ""]),
-    "## D1 商业模式（价值创造逻辑）",
+    "## D1 商业模式与资本特征",
     "",
     "### 证据约束",
-    "- 至少 1 条来源指向：收入结构、分部、或财报「主营业务」描述。",
+    "- D1 必须消费下方 `businessModel` FeatureSlice；不得只用通用模板描述商业模式。",
+    "- 每个结论必须引用 `[E*]` 或 `[M:§x]`；缺少收入结构、主营描述、现金流或 Capex 证据时必须显式降级。",
+    "- 禁止无证据使用「护城河强」「客户粘性高」「平台型」「周期位置明确」等空泛判断。",
+    "",
+    "### businessModel FeatureSlice（D1 输入真源）",
+    "",
+    "```json",
+    JSON.stringify(businessModel, null, 2),
+    "```",
     "",
     "### 事实摘录（Phase1B）",
     rough ? `> ${rough.replace(/\n/g, " ").slice(0, 800)}` : "> （Phase1B 无可用摘要字段）",
     "",
-    "### 待补全正文（PDF-first）",
-    "- 客户需求 / 价值主张 / 收入模型的可验证描述",
-    "- 与财报「收入确认」口径的一致性检查要点",
+    "### 终稿写作要求",
+    "- 先说明公司如何创造现金流：收入来源、资产占用、现金转换、再投资需求。",
+    "- 再说明资本特征：轻/重资产、Capex 敏感度、OCF 与净利润匹配关系。",
+    "- 最后列出证据缺口：上述 `gaps` 非空时，D1 结论最多为观察/待核验，不能写成确定性优势。",
     "",
     "## D2 护城河与竞争地位（Greenwald 视角）",
     "",

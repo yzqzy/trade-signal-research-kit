@@ -65,6 +65,11 @@ export interface ScreenerConfig {
   peWeight: number;
   pbWeight: number;
   maxPledgePct: number;
+  /**
+   * feed 的 clist 财务字段通常是“最新一期”（例如一季报）口径；
+   * 质量门按年化 ROE 判断，避免把 Q1 的 2%-4% 误当全年 ROE。
+   */
+  roeAnnualizationFactor: number;
   minRoe: number;
   minGrossMargin: number;
   maxDebtRatio: number;

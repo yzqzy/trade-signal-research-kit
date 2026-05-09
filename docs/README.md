@@ -27,6 +27,7 @@
 | [reports-site-publish.md](./guides/reports-site-publish.md) | **研报中心**：`site/reports` 协议、`sync:reports-to-app`、与 `apps/research-hub` 的衔接 |
 | [entrypoint-narrative-contract.md](./guides/entrypoint-narrative-contract.md) | **证据包 vs 终稿叙事**、入口矩阵、CLI/Claude 失败语义、000021 验收示例（终稿证据索引：本地路径优先） |
 | [report-polish-narrative-contract.md](./guides/report-polish-narrative-contract.md) | **report-polish**：workflow 多页 Markdown 发布稿与证据边界（与六维终稿分流） |
+| [business-quality-d1-gate.md](./guides/business-quality-d1-gate.md) | **商业质量 D1**：数据化渲染、`businessModel` / `businessQualityGate`、emit 二次门禁与 4 样本验收指引 |
 | [skill-shared-skill-template.md](./guides/skill-shared-skill-template.md) | **Claude Skill** 统一五段结构与共享规范索引 |
 | [skill-shared-final-narrative-criteria.md](./guides/skill-shared-final-narrative-criteria.md) | 六维终稿 **final-narrative** 硬约束、阻断模板、输出标准（skill 引用真源） |
 | [skill-shared-pdf-gate-semantics.md](./guides/skill-shared-pdf-gate-semantics.md) | `data_pack_report` / `gateVerdict` 与终稿完成态（skill 引用真源） |

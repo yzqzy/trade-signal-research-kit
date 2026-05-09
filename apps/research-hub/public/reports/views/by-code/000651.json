@@ -1,0 +1,42 @@
+[
+  {
+    "entryId": "2026-05-08-000651-valuation-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-valuation-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000651-turtle-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-turtle-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-000651-penetration-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-penetration-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-000651-biz-quality-83aab8ae",
+    "displayTitle": "格力电器 (000651.SZ) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:32:40.929Z",
+    "href": "/reports/2026-05-08-000651-biz-quality-83aab8ae/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  }
+]

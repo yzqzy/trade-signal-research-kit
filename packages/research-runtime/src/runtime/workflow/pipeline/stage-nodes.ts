@@ -16,6 +16,10 @@ import { renderPhase2BDataPackReport } from "../../../steps/phase2b/renderer.js"
 import { renderPhase3Markdown } from "../../../steps/phase3/report-renderer.js";
 import { composeReportViewModel } from "../../../steps/phase3/report-polish/compose-report-view-model.js";
 import { renderAllReportPolishMarkdowns } from "../../../steps/phase3/report-polish/render-report-polish-markdown.js";
+import {
+  evaluateBusinessQualityPublishGate,
+  evaluateBusinessQualityPublicationHardBlock,
+} from "../../../steps/phase3/report-polish/business-quality-publish-gate.js";
 import type { ReportPolishComposeBuffers, ReportViewModelV1 } from "../../../steps/phase3/report-polish/report-view-model.js";
 import { appendFeedGapSection, evaluateFeedDataGaps } from "../../../crosscut/feed-gap/feed-gap-contract.js";
 import { resolveWorkflowStrategyPlugin } from "../../../strategy/registry.js";
@@ -630,6 +634,33 @@ export async function nodeReportPolish(state: WorkflowRunState): Promise<Partial
 
   const rendered = renderAllReportPolishMarkdowns(viewModel, buffers);
 
+  const bqGate = evaluateBusinessQualityPublishGate(rendered.businessQualityMarkdown, {
+    hasBusinessModel: Boolean(viewModel.businessModel),
+  });
+  const bqHard = evaluateBusinessQualityPublicationHardBlock(
+    rendered.businessQualityMarkdown,
+    buffers.marketPackMarkdown,
+    viewModel.dataPackReport.pdfGateVerdict,
+  );
+  viewModel.businessQualityGate = {
+    passed: bqGate.passed && !bqHard.blocked,
+    d1SectionCharCount: bqGate.d1SectionCharCount,
+    d1DigitCount: bqGate.d1DigitCount,
+    numericDensity: bqGate.numericDensity,
+    reasons: [...bqGate.reasons, ...bqHard.reasons],
+  };
+
+  const businessSixTopic = viewModel.topicReports.find((t) => t.topicId === "topic:business-six-dimension");
+  if (businessSixTopic) {
+    if (bqHard.blocked) {
+      businessSixTopic.qualityStatus = "blocked";
+      businessSixTopic.blockingReasons = [...(businessSixTopic.blockingReasons ?? []), ...bqHard.reasons];
+    } else if (!bqGate.passed) {
+      businessSixTopic.qualityStatus = "degraded";
+      businessSixTopic.blockingReasons = [...(businessSixTopic.blockingReasons ?? []), ...bqGate.reasons];
+    }
+  }
+
   const reportViewModelPath = path.join(outputDir, "report_view_model.json");
   const turtleOverviewMarkdownPath = path.join(outputDir, "turtle_overview.md");
   const businessQualityMarkdownPath = path.join(outputDir, "business_quality.md");
@@ -637,11 +668,10 @@ export async function nodeReportPolish(state: WorkflowRunState): Promise<Partial
   const valuationTopicMarkdownPath = path.join(outputDir, "valuation.md");
   const businessFinalizeHandoffJsonPath = path.join(outputDir, "business_finalize_handoff.json");
   const businessFinalizeHandoffMarkdownPath = path.join(outputDir, "business_finalize_handoff.md");
-  const businessTopic = viewModel.topicReports.find((t) => t.topicId === "topic:business-six-dimension");
   const businessNarrativeStatus =
-    businessTopic?.qualityStatus === "complete"
+    businessSixTopic?.qualityStatus === "complete"
       ? "complete_available"
-      : businessTopic?.qualityStatus === "blocked"
+      : businessSixTopic?.qualityStatus === "blocked"
         ? "blocked"
         : "needs_final_narrative";
   const suggestedBusinessAnalysisCommand = buildSuggestedBusinessAnalysisCommand(state, outputDir);

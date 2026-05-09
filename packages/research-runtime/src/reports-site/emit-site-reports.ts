@@ -34,9 +34,27 @@ import {
   validateFinalNarrativeMarkdown,
   type FinalNarrativeStatus,
 } from "../runtime/business-analysis/final-narrative-status.js";
-import type { Phase1BItem, Phase1BQualitativeSupplement } from "../steps/phase1b/types.js";
+import { validateTopicFinalMarkdown } from "../runtime/topic-finalization/finalization-gate.js";
+import {
+  evaluateBusinessQualityPublishGate,
+  evaluateBusinessQualityPublicationHardBlock,
+} from "../steps/phase3/report-polish/business-quality-publish-gate.js";
+import type { Phase1BQualitativeSupplement } from "../steps/phase1b/types.js";
 import type { SelectionManifestV1 } from "../screener/selection-manifest-v2.js";
 import type { ScreenerRunOutput, ScreenerScoredResult } from "../screener/types.js";
+import {
+  commonEvidenceAttachments,
+  deriveBusinessAnalysisConfidence,
+  findPublishedMarkdownQualityViolations,
+  officialAnnualPdfLink,
+  parsePdfQualitySummary,
+  renderBusinessAnalysisPublishedMarkdown,
+  summarizeEvidenceRetrieval,
+} from "./published-markdown/index.js";
+import { rewriteProse } from "./published-markdown/steps/rewrite-prose.js";
+import { toRankingViewItemsFromSelection } from "./rankings/from-selection.js";
+
+export { findPublishedMarkdownQualityViolations } from "./published-markdown/index.js";
 
 export type EmitSiteReportsOptions = {
   /** workflow / business-analysis / screener 单次 run 根目录（含 manifest 或 screener 输出） */
@@ -47,6 +65,13 @@ export type EmitSiteReportsOptions = {
 
 type RankingListFile = RankingListView & {
   sourceRunId: string;
+};
+
+type SwIndustryClassificationPayload = {
+  provider?: string;
+  level1Name?: string;
+  level2Name?: string;
+  level3Name?: string;
 };
 
 function shortRunId(runId: string): string {
@@ -266,47 +291,37 @@ async function writeEntry(params: {
   await writeFile(path.join(dir, "content.md"), contentMarkdown, "utf-8");
 }
 
-export function findPublishedMarkdownQualityViolations(markdown: string): string[] {
-  return PUBLISHED_MARKDOWN_FORBIDDEN.filter(([, re]) => re.test(markdown)).map(([name]) => name);
+async function removeVisibleEntriesForTopic(siteDir: string, input: {
+  date: string;
+  code: string;
+  topic: ReportTopicType;
+}): Promise<void> {
+  const entriesRoot = path.join(siteDir, "entries");
+  let dirs: string[] = [];
+  try {
+    dirs = await readdir(entriesRoot, { withFileTypes: true }).then((xs) =>
+      xs.filter((d) => d.isDirectory()).map((d) => d.name),
+    );
+  } catch {
+    return;
+  }
+  for (const id of dirs) {
+    const metaPath = path.join(entriesRoot, id, "meta.json");
+    if (!(await pathExists(metaPath))) continue;
+    try {
+      const meta = await readJson<EntryMeta>(metaPath);
+      if (
+        meta.code === input.code &&
+        meta.topicType === input.topic &&
+        dateKeyFromIso(meta.publishedAt) === input.date
+      ) {
+        await rm(path.join(entriesRoot, id), { recursive: true, force: true });
+      }
+    } catch {
+      /* broken entry is ignored by rebuild; leave it for manual inspection */
+    }
+  }
 }
-
-const PUBLISHED_MARKDOWN_FORBIDDEN: Array<[string, RegExp]> = [
-  ["文件名包装标题", /^##\s+qualitative_(?:report|d1_d6)\.md\s*$/imu],
-  ["内部状态词：草稿", /草稿/u],
-  ["内部状态词：待 Claude", /待\s*Claude(?:\s*Code)?/iu],
-  ["内部状态词：尚未完成", /尚未完成/u],
-  ["内部状态词：成稿要求", /成稿要求/u],
-  ["内部状态词：初始状态", /初始状态/u],
-  ["内部流程词：机械锚点", /机械锚点/u],
-  ["内部流程词：候选片段", /候选片段/u],
-  ["内部流程词：供六维成稿引用", /供六维成稿引用/u],
-  ["内部流程词：站点只展示", /站点只展示/u],
-  ["内部流程词：完整发布依据", /完整发布依据/u],
-  ["内部流程词：审计用", /审计用/u],
-  ["内部流程词：缺口与 TODO", /缺口与\s*TODO|本 run 无显式 TODO/u],
-  ["内部流程词：valuation_computed.json 为准", /valuation_computed\.json\s*为准/u],
-  ["内部流程词：估值结果 valuation_computed", /估值结果（valuation_computed）/u],
-  ["内部流程词：原始 JSON", /原始\s*JSON/u],
-  ["内部流程词：发布链路", /发布链路/u],
-  ["内部流程词：F10 主链路", /F10\s*主链路/u],
-  ["内部流程词：结构化接口", /结构化接口/u],
-  ["内部流程词：Position Recommendation", /Position\s+Recommendation/iu],
-  ["内部流程词：Topic 质量标准", /Topic\s*质量标准/u],
-  ["内部流程词：结构化证据", /结构化证据/u],
-  ["内部流程词：同一次分析", /同一次分析/u],
-  ["非研报表达：不跨行业硬套指标", /不跨行业硬套指标/u],
-  ["非研报表达：治理风险进入折价而非口号", /治理风险进入折价而非口号/u],
-  ["非研报表达：行业 profile 决定", /行业\s*profile\s*决定/u],
-  ["内部流程词：gateVerdict", /gateVerdict/u],
-  ["内部流程词：本报告可完成终稿", /本报告可完成终稿/u],
-  ["内部流程词：PDF gate", /PDF\s*gate|gate\s*=\s*(?:OK|DEGRADED|CRITICAL)/iu],
-  ["内部流程词：终稿置信度", /终稿置信度/u],
-  ["内部流程词：结论应表述为", /结论应表述为|而不是提前定性/u],
-  ["内部流程词：本 run", /本\s*run/iu],
-  ["内部流程词：Phase1B", /\bPhase1B\b/u],
-  ["本地绝对路径", /\/Users\/|\/private\/|\/var\/folders\//u],
-  ["内部输出路径", /output\/(?:workflow|business-analysis|site)\//u],
-];
 
 function statusRank(s: RequiredFieldsStatus): number {
   if (s === "complete") return 3;
@@ -321,432 +336,25 @@ function isBetterTimelineItem(a: TimelineItem, b: TimelineItem): boolean {
   if (a.publishedAt !== b.publishedAt) return a.publishedAt > b.publishedAt;
   return a.entryId > b.entryId;
 }
-
-function stripFinalStatusLine(markdown: string): string {
-  return markdown
-    .replace(/^\s*\[终稿状态:\s*(?:完成|complete)\]\s*\n*/imu, "")
-    .trim();
-}
-
-function splitEvidenceAppendix(markdown: string): { body: string; appendix: string } {
-  const idx = markdown.search(/^##\s+附录：证据索引\s*$/imu);
-  if (idx < 0) return { body: markdown.trim(), appendix: "" };
-  return {
-    body: markdown.slice(0, idx).trim(),
-    appendix: markdown.slice(idx).trim(),
-  };
-}
-
-function hasD1D6Sections(markdown: string): boolean {
-  return ["D1", "D2", "D3", "D4", "D5", "D6"].every((d) =>
-    new RegExp(`^##\\s+${d}\\b`, "imu").test(markdown),
-  );
-}
-
-type PdfQualitySummary = {
-  gateVerdict?: "OK" | "DEGRADED" | "CRITICAL" | string;
-  lowConfidenceCritical?: string[];
-  missingCritical?: string[];
-  allowsFinalNarrativeComplete?: boolean;
-  humanReviewPriority?: string[];
-};
-
-type EvidenceRetrievalSummary = {
-  hasCriticalGap: boolean;
-  hasConfirmedCriticalEvent: boolean;
-  webSearchUsed: boolean;
-  webSearchLimited: boolean;
-  missingItems: string[];
-  limitedItems: string[];
-};
-
-function parsePdfQualitySummary(markdown: string | undefined): PdfQualitySummary {
-  if (!markdown?.trim()) return {};
-  const m = markdown.match(/<!--\s*PDF_EXTRACT_QUALITY:(\{[\s\S]*?\})\s*-->/u);
-  if (m?.[1]) {
-    try {
-      return JSON.parse(m[1]) as PdfQualitySummary;
-    } catch {
-      /* fall through */
-    }
-  }
-  const gate = markdown.match(/gateVerdict["`:\s=]+(OK|DEGRADED|CRITICAL)/iu)?.[1]?.toUpperCase();
-  return gate ? { gateVerdict: gate } : {};
-}
-
-function isRateLimited(reason: string | undefined): boolean {
-  return /rate[_ -]?limit|限流|quota|too many/i.test(reason ?? "");
-}
-
-function flattenPhase1BItems(phase1b: Phase1BQualitativeSupplement | undefined): Phase1BItem[] {
-  if (!phase1b) return [];
-  return [...(phase1b.section7 ?? []), ...(phase1b.section8 ?? [])];
-}
-
-function isOfficialNoHit(item: Phase1BItem): boolean {
-  const diagnostics = item.retrievalDiagnostics;
-  if (
-    diagnostics?.feedFallbackUsed &&
-    diagnostics.feedEvidenceCount === 0 &&
-    /(?:^|_)feed_empty$/u.test(diagnostics.evidenceRetrievalStatus ?? "")
-  ) {
-    return true;
-  }
-  return /官方源.*(?:无命中|未形成|未检索到)|交易所\/巨潮.*(?:无命中|未形成)|官方.*零命中/u.test(
-    `${item.item}\n${item.content}`,
-  );
-}
-
-function summarizeEvidenceRetrieval(phase1b: Phase1BQualitativeSupplement | undefined): EvidenceRetrievalSummary {
-  const critical = /违规|处罚|诉讼|仲裁|监管|问询|关注函|警示函|立案|纪律处分|公开谴责/u;
-  const confirmedCritical =
-    /违规|处罚|诉讼|仲裁|监管|问询|关注函|警示函|立案|调查|纪律处分|公开谴责|信披|信息披露违法/u;
-  const items = flattenPhase1BItems(phase1b);
-  const missing = items.filter((it) => it.evidences.length === 0);
-  const limited = items.filter((it) => isRateLimited(it.retrievalDiagnostics?.webSearchFailureReason));
-  return {
-    hasCriticalGap: missing.some((it) => critical.test(it.item) && !isOfficialNoHit(it)),
-    hasConfirmedCriticalEvent: items.some(
-      (it) =>
-        critical.test(it.item) &&
-        it.evidences.some((ev) => confirmedCritical.test(`${ev.title}\n${ev.snippet ?? ""}\n${it.content}`)),
-    ),
-    webSearchUsed: items.some((it) => it.retrievalDiagnostics?.webSearchUsed),
-    webSearchLimited: limited.length > 0,
-    missingItems: missing.map((it) => it.item),
-    limitedItems: limited.map((it) => it.item),
-  };
-}
-
-function deriveBusinessAnalysisConfidence(input: {
-  status: RequiredFieldsStatus;
-  finalNarrativeStatus: FinalNarrativeStatus;
-  pdfQuality: PdfQualitySummary;
-  evidence: EvidenceRetrievalSummary;
-}): ConfidenceState {
-  if (input.finalNarrativeStatus === "blocked" || input.status === "missing") return "unknown";
-  if (input.finalNarrativeStatus !== "complete" || input.status === "degraded") return "low";
-  if (input.pdfQuality.gateVerdict === "CRITICAL") return "low";
-  if (input.pdfQuality.gateVerdict === "DEGRADED") return "medium";
-  if (input.evidence.hasCriticalGap || input.evidence.hasConfirmedCriticalEvent) {
-    return "medium";
-  }
-  return "high";
-}
-
-function evidenceStatusLabel(evidence: EvidenceRetrievalSummary): string {
-  if (evidence.webSearchLimited && evidence.missingItems.length > 0) {
-    return "官方信息已优先核验；部分开放信息未形成关键反证";
-  }
-  if (evidence.hasConfirmedCriticalEvent) return "已确认关键监管事件，需跟踪最终结论";
-  if (evidence.hasCriticalGap) return "关键合规事项仍需补充核验";
-  if (evidence.webSearchUsed) return "官方信息与开放信息已完成交叉核验";
-  return "官方信息已完成基础核验";
-}
-
-function businessQualityLabel(input: { confidence: ConfidenceState; evidence: EvidenceRetrievalSummary }): string {
-  if (input.evidence.hasConfirmedCriticalEvent) return "偏弱/观察";
-  if (input.evidence.hasCriticalGap || input.confidence === "low" || input.confidence === "unknown") return "待验证";
-  if (input.confidence === "medium") return "观察";
-  return "较强";
-}
-
-function renderQualitySnapshot(input: {
-  confidence: ConfidenceState;
-  pdfQuality: PdfQualitySummary;
-  evidence: EvidenceRetrievalSummary;
-}): string {
-  const gate = input.pdfQuality.gateVerdict ?? "UNKNOWN";
-  const low = input.pdfQuality.lowConfidenceCritical?.length ? input.pdfQuality.lowConfidenceCritical.join(", ") : "无";
-  return [
-    "## Quality Snapshot",
-    "",
-    "| 项目 | 状态 |",
-    "|:-----|:-----|",
-    `| 商业质量 | ${businessQualityLabel(input)} |`,
-    `| 最终置信度 | ${input.confidence} |`,
-    `| 年报抽取质量 | ${gate}；低置信关键块：${low} |`,
-    `| 监管证据状态 | ${evidenceStatusLabel(input.evidence)} |`,
-    `| 证据完整度 | ${input.evidence.missingItems.length > 0 ? "存在需补充核验项，详见文末证据质量表" : "关键事项已完成基础核验"} |`,
-  ].join("\n");
-}
-
-function compactPdfLead(markdown: string, pdfQuality: PdfQualitySummary): string {
-  const gate = pdfQuality.gateVerdict;
-  if (gate !== "DEGRADED" && gate !== "CRITICAL") return markdown.trim();
-  const low = pdfQuality.lowConfidenceCritical?.length ? pdfQuality.lowConfidenceCritical.join(", ") : "部分章节";
-  const short = `> 证据质量：年报抽取为 ${gate}，${low} 需复核，详见文末。`;
-  return markdown
-    .replace(/^>\s*PDF 抽取质量声明：.*(?:\r?\n)?/mu, `${short}\n`)
-    .trim();
-}
-
-const PUBLISH_DROP_LINE_PATTERNS: RegExp[] = [
-  /本报告可完成终稿/u,
-  /结论应表述为|而不是提前定性/u,
-];
-
-const PUBLISH_TEXT_REWRITES: Array<[RegExp, string]> = [
-  [
-    /\|\s*股东回报 F10 信号为空\s*\|\s*分红仍可从企业行动与财务数据判断，但缺少文字政策摘录\s*\|\s*后续从公告或年报分红政策段补充\s*\[M:§3\]\s*\|/gu,
-    "| 分红政策文字摘录未进入经营画像信号桶 | 不影响 DPS、DDM 与股东回报判断；分红已由企业行动和年报财务数据支持 | 后续可把年报分红政策段纳入经营画像摘要 [M:§3] |",
-  ],
-  [/WebSearch rate limit|WebSearch\s+rate_limit|rate_limit_exceeded|Volc WebSearch API 错误 \[[^\]]+\]/giu, "外部检索受限"],
-  [/、Phase1B\s*监管\/处罚检索缺口，以及\s*P13\s*低置信导致非经常性损益判断需降级/gu, "，以及外部证据与 PDF 抽取质量边界"],
-  [/Phase1B\s*还捕捉到/gu, "外部证据还捕捉到"],
-  [/Phase1B/gu, "外部证据"],
-  [/PDF\s*gate\s*=\s*OK[，,、]?\s*关键(?:年报)?块(?:无缺失|未缺失|可用于终稿)/giu, "年报关键章节已完成定位"],
-  [/PDF\s*gate\s*=\s*OK/giu, "年报抽取质量正常"],
-  [/gate\s*=\s*OK/giu, "年报抽取质量正常"],
-  [/extractQuality\.gateVerdict/giu, "年报抽取质量"],
-  [/"gateVerdict"\s*:\s*"(OK|DEGRADED|CRITICAL)"/giu, '"年报抽取质量": "$1"'],
-  [/gateVerdict\s*`?\s*(OK|DEGRADED|CRITICAL)\s*`?/giu, "年报抽取质量：$1"],
-  [/gateVerdict\s*=\s*(OK|DEGRADED|CRITICAL)/giu, "年报抽取质量：$1"],
-  [/12\/12\s*章节定位完成/giu, "主要章节已定位"],
-  [/年报抽取\s*OK/giu, "年报抽取质量正常"],
-  [/可用于终稿/gu, "可供分析引用"],
-  [/终稿硬阻断/gu, "交付阻断"],
-  [/Claude\s*终稿/gu, "正文"],
-  [/business-analysis-finalize/giu, "证据质量要求"],
-  [/终稿置信度/gu, "分析置信度"],
-  [/本\s*run/giu, "本次证据包"],
-  [/F10\s*主链路/giu, "公开资料与经营画像"],
-  [/结构化接口/gu, "结构化数据"],
-  [/Feed\s*Top\s*10/giu, "自动 Top10"],
-  [/Feed\s*同业池/giu, "自动同业池"],
-  [/由\s*Feed\s*结构化返回/giu, "由结构化数据返回"],
-  [/检索过程受到\s*外部检索受限\s*影响/gu, "外部检索受限"],
-  [/且外部搜索存在限流失败/gu, "且外部检索受限"],
-  [/本次证据包\s+结论/gu, "证据包结论"],
-  [/本次证据包\s+(未|官方|显示|可见)/gu, "本次证据包$1"],
-  [/外部证据\s+(显示|可见|还捕捉到)/gu, "外部证据$1"],
-  [/业务叙事 vs 行业 KPI/gu, "业务叙事 vs 行业关键变量"],
-  [/行业\s*profile\s*决定该跟踪哪些\s*KPI/giu, "行业属性决定收入结构、资本开支和客户指标的验证重点"],
-  [/不跨行业硬套指标/gu, "结论需落到本行业真实经营变量"],
-  [/已确认事项和未确认事项分层披露/gu, "已确认事件、未形成确认事件与待核验事项分开披露"],
-  [/治理风险进入折价而非口号/gu, "治理不确定性体现在估值折价和跟踪清单中"],
-];
-
-function stripPublishInternalLines(markdown: string): string {
-  return markdown
-    .split(/\r?\n/u)
-    .filter((line) => {
-      const trimmed = line.trim();
-      return !trimmed || !PUBLISH_DROP_LINE_PATTERNS.some((re) => re.test(trimmed));
-    })
-    .join("\n");
-}
-
 function normalizePublishedMarkdownProse(markdown: string): string {
-  let next = stripPublishInternalLines(markdown);
-  for (const [pattern, replacement] of PUBLISH_TEXT_REWRITES) {
-    next = next.replace(pattern, replacement);
+  return rewriteProse(markdown, { pdfQuality: {}, evidence: undefined, finalNarrativeStatus: undefined });
+}
+
+async function resolveFinalizedTopicMarkdown(runDir: string, topic: ReportTopicType, draftAbs?: string, configuredRel?: string): Promise<{
+  markdown?: string;
+  absPath?: string;
+}> {
+  const candidates = [
+    configuredRel ? resolveArtifactPath(runDir, configuredRel) : undefined,
+    path.join(runDir, "finalized", `${topic}.md`),
+    draftAbs ? path.join(path.dirname(draftAbs), `${path.basename(draftAbs, path.extname(draftAbs))}.final.md`) : undefined,
+  ].filter((p): p is string => Boolean(p));
+  for (const p of candidates) {
+    if (!(await pathExists(p))) continue;
+    const markdown = (await readFile(p, "utf-8")).trim();
+    if (markdown) return { markdown, absPath: p };
   }
-  next = sanitizePublicEvidenceAppendix(next);
-  next = normalizeEvidenceRefSpacing(next);
-  return next.replace(/\n{3,}/g, "\n\n").trim();
-}
-
-function normalizeEvidenceRefSpacing(markdown: string): string {
-  return markdown
-    .replace(/(\[(?:E\d+|M:§\d+)\])(?=\[(?:E\d+|M:§\d+)\])/giu, "$1 ")
-    .replace(/(\[(?:E\d+|M:§\d+)\]\([^)]*\))(?=\[(?:E\d+|M:§\d+)\]\([^)]*\))/giu, "$1 ");
-}
-
-function officialAnnualPdfLink(input: Record<string, unknown>): ReportSourceLink[] {
-  const href = typeof input.reportUrl === "string" ? input.reportUrl.trim() : "";
-  if (!/^https?:\/\/.+\.pdf(?:[?#].*)?$/iu.test(href)) return [];
-  return [{ id: "annual-pdf-official", label: "原始年报 PDF（官方）", kind: "pdf", href }];
-}
-
-function commonEvidenceAttachments(paths: {
-  marketPath?: string;
-  dataPackReportPath?: string;
-  phase1bMarkdownPath?: string;
-}): PublicEvidencePackSource[] {
-  return [
-    {
-      id: "annual-report-pack",
-      label: "年报证据包摘要",
-      kind: "markdown",
-      sourcePath: paths.dataPackReportPath,
-      fileName: "annual-report-pack.md",
-    },
-    {
-      id: "regulatory-evidence",
-      label: "公告与监管补充",
-      kind: "markdown",
-      sourcePath: paths.phase1bMarkdownPath,
-      fileName: "regulatory-evidence.md",
-    },
-    {
-      id: "market-pack",
-      label: "市场与行业证据摘要",
-      kind: "markdown",
-      sourcePath: paths.marketPath,
-      fileName: "market-pack.md",
-    },
-  ];
-}
-
-function publicEvidenceLocator(raw: string): string {
-  const cell = raw.replace(/`/gu, "").trim();
-  const basename = cell.split(/[\\/]/u).filter(Boolean).at(-1) ?? cell;
-  if (/data_pack_report(?:_interim)?\.md/u.test(basename)) return "[年报证据包 · 可展开/下载](#attachment-annual-report-pack)";
-  if (/phase1b_qualitative\.md/u.test(basename)) return "[公告与监管补充 · 可展开/下载](#attachment-regulatory-evidence)";
-  if (/data_pack_market\.md/u.test(basename)) return "[市场与行业证据摘要 · 可展开/下载](#attachment-market-pack)";
-  if (/phase1a_data_pack\.json/u.test(basename)) return "基础行情与财务数据，已汇总入本页表格";
-  if (/valuation_computed\.json/u.test(basename)) return "[估值模型结果 · 可下载](#attachment-valuation-model)";
-  if (/analysis_report\.md/u.test(basename)) return "[策略计算底稿 · 可展开/下载](#attachment-strategy-calculation)";
-  if (/phase3_preflight\.md/u.test(basename)) return "证据质量预检摘要，见“证据质量与限制”";
-  if (/\.md$|\.json$/u.test(basename)) return "内部证据包摘要，已转写入正文";
-  return cell || "正文引用定位";
-}
-
-function sanitizePublicEvidenceAppendix(markdown: string): string {
-  return markdown
-    .split(/\r?\n/u)
-    .map((line) => {
-      let next = line.replace(/\|\s*链接或定位\s*\|/u, "| 公开定位 |");
-      if (/^\|/.test(next) && /\/Users\/|\/private\/|\/var\/folders\/|output\/(?:workflow|business-analysis|site)\//u.test(next)) {
-        const cells = next.split("|");
-        if (cells.length >= 6) {
-          cells[cells.length - 2] = ` ${publicEvidenceLocator(cells[cells.length - 2] ?? "")} `;
-          next = cells.join("|");
-        }
-      }
-      next = next.replace(/`?[\w./-]*?(?:data_pack_report(?:_interim)?|phase1b_qualitative|data_pack_market|phase1a_data_pack|valuation_computed|analysis_report|phase3_preflight)\.(?:md|json)`?/gu, (m) =>
-        publicEvidenceLocator(m),
-      );
-      next = next
-        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§18/gu, "费用率趋势（市场包 §18）")
-        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§19/gu, "营运资本与现金转换周期（市场包 §19）")
-        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§21/gu, "治理与监管事件时间线（市场包 §21）")
-        .replace(/\[市场与行业证据摘要 · 可展开\/下载\]\(#attachment-market-pack\)\s*§22/gu, "行业关键变量（市场包 §22）");
-      return next.replace(/\/Users\/[^\s|)]+/gu, "内部证据包摘要，已转写入正文");
-    })
-    .join("\n");
-}
-
-function moveEvidenceGapsBeforeAppendix(markdown: string): string {
-  const gapRe = /^##\s+证据缺口清单(?:（(?:Phase1B|外部证据)）)?\s*[\s\S]*?(?=^##\s+附录：证据索引\s*$|(?![\s\S]))/imu;
-  const m = markdown.match(gapRe);
-  if (!m?.[0]) return markdown;
-  const without = markdown.replace(gapRe, "").replace(/\n{3,}/g, "\n\n").trim();
-  const appendixAt = without.search(/^##\s+附录：证据索引\s*$/imu);
-  if (appendixAt < 0) return [without, m[0].trim()].join("\n\n");
-  return [without.slice(0, appendixAt).trim(), m[0].trim(), without.slice(appendixAt).trim()].join("\n\n");
-}
-
-function normalizeRegulatorySection(markdown: string): string {
-  const re = /^##\s+监管与合规要点\s*\n([\s\S]*?)(?=^##\s+)/mu;
-  const m = markdown.match(re);
-  if (!m?.[1]) return markdown;
-  const lines = m[1].trim().split(/\r?\n/u).filter((line) => line.trim());
-  const bullets = lines.filter((line) => line.trim().startsWith("- "));
-  if (bullets.length === 0 || /###\s+已确认事项/u.test(m[1])) return markdown;
-  const confirmed = bullets.filter((line) => /审计意见|内控|资本配置|回购/u.test(line));
-  const notFound = bullets.filter((line) => /处罚|监管措施|诉讼|仲裁/u.test(line));
-  const needsReview = bullets.filter((line) => !confirmed.includes(line) && !notFound.includes(line));
-  const block = [
-    "## 监管与合规要点",
-    "",
-    "### 已确认事项",
-    "",
-    ...(confirmed.length ? confirmed : ["- 本次证据包未形成可直接确认的新增监管事项。"]),
-    "",
-    "### 未发现但证据不足",
-    "",
-    ...(notFound.length ? notFound : ["- 暂无需要以否定式披露的事项；若依赖外部检索，仍以证据缺口清单为准。"]),
-    "",
-    "### 需补充核验",
-    "",
-    ...(needsReview.length ? needsReview : ["- 无额外补充核验项。"]),
-    "",
-  ].join("\n");
-  return markdown.replace(re, `${block}\n`);
-}
-
-function renderEvidenceQualitySection(input: {
-  pdfQuality: PdfQualitySummary;
-  evidence: EvidenceRetrievalSummary;
-}): string {
-  const rows = [
-    "## 证据质量与限制",
-    "",
-    "| 项目 | 说明 |",
-    "|:-----|:-----|",
-  ];
-  const gate = input.pdfQuality.gateVerdict ?? "UNKNOWN";
-  const low = input.pdfQuality.lowConfidenceCritical?.length ? input.pdfQuality.lowConfidenceCritical.join("、") : "无";
-  const missingPdf = input.pdfQuality.missingCritical?.length ? input.pdfQuality.missingCritical.join("、") : "无";
-  rows.push(`| 年报抽取 | ${gate}；低置信关键块：${low}；缺失关键块：${missingPdf} |`);
-  rows.push(`| 人工复核优先级 | ${input.pdfQuality.humanReviewPriority?.length ? input.pdfQuality.humanReviewPriority.join("、") : "无"} |`);
-  rows.push(
-    `| 公司监管事件 | ${
-      input.evidence.hasConfirmedCriticalEvent
-        ? "已形成需跟踪的确认事件。"
-        : input.evidence.hasCriticalGap
-          ? "关键事项仍需补充核验。"
-          : "交易所/巨潮官方源未形成确认事件。"
-    } |`,
-  );
-  rows.push(
-    `| 开放信息 | ${
-      input.evidence.webSearchUsed
-        ? "仅作为背景补充；不作为监管、估值或财务核心证据。"
-        : "未启用或未触发。"
-    } |`,
-  );
-  rows.push("| 结论边界 | “未形成确认事件”不是法律尽调结论；若用于合规尽调，应另接专源核验。 |");
-  return rows.join("\n");
-}
-
-function stripExistingEvidenceQualitySection(markdown: string): string {
-  return markdown
-    .replace(/^##\s+证据质量与限制\s*\n[\s\S]*?(?=^##\s+附录：证据索引\s*$|^##\s+证据缺口清单|^##\s+D[1-6]\b|(?![\s\S]))/imu, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function hasQualitySnapshot(markdown: string): boolean {
-  return /^##\s+Quality Snapshot\s*$/imu.test(markdown);
-}
-
-function renderBusinessAnalysisPublishedMarkdown(input: {
-  qualitativeReportMarkdown: string;
-  qualitativeD1D6Markdown: string;
-  finalNarrativeStatus: FinalNarrativeStatus;
-  confidence: ConfidenceState;
-  pdfQuality: PdfQualitySummary;
-  evidence: EvidenceRetrievalSummary;
-}): string {
-  const q = moveEvidenceGapsBeforeAppendix(
-    normalizeRegulatorySection(
-      normalizePublishedMarkdownProse(compactPdfLead(stripFinalStatusLine(input.qualitativeReportMarkdown), input.pdfQuality)),
-    ),
-  );
-  const d = normalizePublishedMarkdownProse(compactPdfLead(stripFinalStatusLine(input.qualitativeD1D6Markdown), input.pdfQuality));
-  const qSplit = splitEvidenceAppendix(stripExistingEvidenceQualitySection(q));
-  const dSplit = splitEvidenceAppendix(d);
-  const qBody = hasQualitySnapshot(qSplit.body)
-    ? qSplit.body
-    : qSplit.body.replace(/^(# .+?\n(?:> .+?\n)?)/u, `$1\n${renderQualitySnapshot(input)}\n`);
-  const sections = [qBody];
-  if (input.finalNarrativeStatus === "complete" && dSplit.body && !hasD1D6Sections(qSplit.body)) {
-    sections.push(["## D1-D6 深度章节", "", dSplit.body].join("\n"));
-  }
-  sections.push(renderEvidenceQualitySection(input));
-  if (qSplit.appendix) {
-    sections.push(qSplit.appendix);
-  } else if (dSplit.appendix) {
-    sections.push(dSplit.appendix);
-  }
-  const markdown = sections
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join("\n\n");
-  return normalizePublishedMarkdownProse(markdown);
+  return {};
 }
 
 type WorkflowManifest = {
@@ -795,7 +403,10 @@ type WorkflowReportViewModel = {
     siteTopicType?: string;
     qualityStatus?: "complete" | "degraded" | "blocked" | "draft";
     blockingReasons?: string[];
+    finalizedMarkdownRelative?: string;
   }>;
+  businessModel?: { l1Key?: string };
+  dataPackReport?: { pdfGateVerdict?: string };
 };
 
 async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: string): Promise<void> {
@@ -815,20 +426,56 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
   const polishPenetrationPath = resolveArtifactPath(runDir, m.outputs.penetrationReturnMarkdownPath);
   const polishValuationPath = resolveArtifactPath(runDir, m.outputs.valuationMarkdownPath);
   const reportViewModelPath = resolveArtifactPath(runDir, m.outputs.reportViewModelPath);
-  let topicQuality = new Map<string, { qualityStatus?: "complete" | "degraded" | "blocked" | "draft"; blockingReasons?: string[] }>();
+  let topicQuality = new Map<string, {
+    qualityStatus?: "complete" | "degraded" | "blocked" | "draft";
+    blockingReasons?: string[];
+    finalizedMarkdownRelative?: string;
+  }>();
+  let workflowVmForGate: WorkflowReportViewModel | undefined;
   if (reportViewModelPath && (await pathExists(reportViewModelPath))) {
     try {
       const vm = await readJson<WorkflowReportViewModel>(reportViewModelPath);
+      workflowVmForGate = vm;
       topicQuality = new Map(
         (vm.topicReports ?? [])
           .filter((t) => t.siteTopicType)
           .map((t) => [
             String(t.siteTopicType),
-            { qualityStatus: t.qualityStatus, blockingReasons: t.blockingReasons },
+            {
+              qualityStatus: t.qualityStatus,
+              blockingReasons: t.blockingReasons,
+              finalizedMarkdownRelative: t.finalizedMarkdownRelative,
+            },
           ]),
       );
     } catch {
       topicQuality = new Map();
+    }
+  }
+
+  if (polishBusinessPath && (await pathExists(polishBusinessPath))) {
+    const bqMd = (await readFile(polishBusinessPath, "utf-8")).trim();
+    const marketMd =
+      marketPath && (await pathExists(marketPath)) ? (await readFile(marketPath, "utf-8")).trim() : "";
+    const gate = evaluateBusinessQualityPublishGate(bqMd, {
+      hasBusinessModel: Boolean(workflowVmForGate?.businessModel?.l1Key),
+    });
+    const hard = evaluateBusinessQualityPublicationHardBlock(
+      bqMd,
+      marketMd,
+      workflowVmForGate?.dataPackReport?.pdfGateVerdict,
+    );
+    const prev = topicQuality.get("business-quality") ?? {};
+    if (hard.blocked) {
+      topicQuality.set("business-quality", {
+        qualityStatus: "blocked",
+        blockingReasons: [...(prev.blockingReasons ?? []), ...hard.reasons],
+      });
+    } else if (!gate.passed) {
+      topicQuality.set("business-quality", {
+        qualityStatus: "degraded",
+        blockingReasons: [...(prev.blockingReasons ?? []), ...gate.reasons],
+      });
     }
   }
 
@@ -867,6 +514,7 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
     status: RequiredFieldsStatus;
     markdown: string;
     publishable?: boolean;
+    draftAbs?: string;
   }> = [];
 
   /** 龟龟整包 */
@@ -880,7 +528,7 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       markdown = reportMarkdown.trim();
       status = hasValuationJson ? "complete" : "degraded";
     }
-    topics.push({ topic: "turtle-strategy", status, markdown });
+    topics.push({ topic: "turtle-strategy", status, markdown, draftAbs: polishOverviewPath ?? reportMdPath });
   }
 
   /** 估值 */
@@ -904,7 +552,7 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       }
       markdown = joinSections(parts);
     }
-    topics.push({ topic: "valuation", status, markdown });
+    topics.push({ topic: "valuation", status, markdown, draftAbs: polishValuationPath ?? valuationPath ?? reportMdPath });
   }
 
   /** 穿透回报率 */
@@ -928,13 +576,13 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
       }
       markdown = joinSections(parts);
     }
-    topics.push({ topic: "penetration-return", status, markdown });
+    topics.push({ topic: "penetration-return", status, markdown, draftAbs: polishPenetrationPath ?? reportMdPath });
   }
 
-  /** 商业质量终稿由 business-analysis 发布；workflow 侧只保留 manifest 质量信息，不写站点条目。 */
+  /** 商业质量必须由 business-analysis 终稿发布；workflow 侧只保留 topic_manifest/handoff，避免把结构化预览误当终稿。 */
   {
     const markdown = hasPolishBusiness && polishBusinessPath ? (await readFile(polishBusinessPath, "utf-8")).trim() : "";
-    topics.push({ topic: "business-quality", status: markdown ? "degraded" : "missing", markdown, publishable: false });
+    topics.push({ topic: "business-quality", status: markdown ? "degraded" : "missing", markdown, publishable: false, draftAbs: polishBusinessPath });
   }
 
   const sourceMarkdownAbsForTopic = (topic: ReportTopicType): string | undefined => {
@@ -960,16 +608,51 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
 
   for (const t of topics) {
     if (!t.markdown.trim()) continue;
+    const vmTopicQuality = topicQuality.get(t.topic);
+    const configuredFinal = vmTopicQuality?.finalizedMarkdownRelative;
     if (t.publishable === false) {
-      const q = topicQuality.get(t.topic);
       manifestTopics.push({
         v2TopicId: siteTopicTypeToV2TopicId(t.topic),
         siteTopicType: t.topic,
         entryId: buildEntryId(date, codeDigits, t.topic, runShort),
         requiredFieldsStatus: t.status,
         sourceMarkdownRelative: relFromRun(runDir, sourceMarkdownAbsForTopic(t.topic)),
-        qualityStatus: q?.qualityStatus ?? "degraded",
-        blockingReasons: q?.blockingReasons,
+        finalizedMarkdownRelative: configuredFinal,
+        qualityStatus: vmTopicQuality?.qualityStatus ?? "draft",
+        blockingReasons: vmTopicQuality?.blockingReasons,
+      });
+      continue;
+    }
+    const finalized = await resolveFinalizedTopicMarkdown(runDir, t.topic, t.draftAbs, configuredFinal);
+    if (!finalized.markdown) {
+      await removeVisibleEntriesForTopic(siteDir, { date, code: codeDigits, topic: t.topic });
+      manifestTopics.push({
+        v2TopicId: siteTopicTypeToV2TopicId(t.topic),
+        siteTopicType: t.topic,
+        entryId: buildEntryId(date, codeDigits, t.topic, runShort),
+        requiredFieldsStatus: t.status,
+        sourceMarkdownRelative: relFromRun(runDir, sourceMarkdownAbsForTopic(t.topic)),
+        finalizedMarkdownRelative: configuredFinal ?? `finalized/${t.topic}.md`,
+        qualityStatus: "draft",
+        blockingReasons: [
+          `${TOPIC_DISPLAY_PAGE_NAME[t.topic]} 缺少 finalized markdown；结构化草稿不会发布`,
+          ...(vmTopicQuality?.blockingReasons ?? []),
+        ],
+      });
+      continue;
+    }
+    const finalGate = validateTopicFinalMarkdown(t.topic, finalized.markdown);
+    if (finalGate.status !== "complete") {
+      await removeVisibleEntriesForTopic(siteDir, { date, code: codeDigits, topic: t.topic });
+      manifestTopics.push({
+        v2TopicId: siteTopicTypeToV2TopicId(t.topic),
+        siteTopicType: t.topic,
+        entryId: buildEntryId(date, codeDigits, t.topic, runShort),
+        requiredFieldsStatus: t.status,
+        sourceMarkdownRelative: relFromRun(runDir, sourceMarkdownAbsForTopic(t.topic)),
+        finalizedMarkdownRelative: relFromRun(runDir, finalized.absPath),
+        qualityStatus: "draft",
+        blockingReasons: finalGate.blockingReasons,
       });
       continue;
     }
@@ -1015,19 +698,19 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
     await writeEntry({
       siteDir,
       meta,
-      contentMarkdown: t.markdown,
+      contentMarkdown: finalized.markdown,
       attachments,
       sourceLinks: workflowSourceLinks,
     });
-    const q = topicQuality.get(t.topic);
     manifestTopics.push({
       v2TopicId: siteTopicTypeToV2TopicId(t.topic),
       siteTopicType: t.topic,
       entryId,
       requiredFieldsStatus: t.status,
       sourceMarkdownRelative: relFromRun(runDir, sourceMarkdownAbsForTopic(t.topic)),
-      qualityStatus: q?.qualityStatus ?? (t.status === "complete" ? "complete" : "degraded"),
-      blockingReasons: q?.blockingReasons,
+      finalizedMarkdownRelative: relFromRun(runDir, finalized.absPath),
+      qualityStatus: "complete",
+      blockingReasons: undefined,
     });
   }
 
@@ -1073,12 +756,29 @@ async function emitFromTopicManifestOnly(
   const listed = formatListedCode(codeDigits, ctx.market);
 
   for (const row of m.topics) {
-    const rel = row.sourceMarkdownRelative?.trim();
+    if (row.qualityStatus !== "complete") {
+      await removeVisibleEntriesForTopic(siteDir, {
+        date: dateKeyFromIso(publishedAt),
+        code: codeDigits,
+        topic: row.siteTopicType,
+      });
+      continue;
+    }
+    const rel = (row.finalizedMarkdownRelative ?? row.sourceMarkdownRelative)?.trim();
     if (!rel) continue;
     const absMd = path.resolve(runDir, rel);
     if (!(await pathExists(absMd))) continue;
     const markdown = (await readFile(absMd, "utf-8")).trim();
     if (!markdown) continue;
+    const finalGate = validateTopicFinalMarkdown(row.siteTopicType, markdown);
+    if (finalGate.status !== "complete") {
+      await removeVisibleEntriesForTopic(siteDir, {
+        date: dateKeyFromIso(publishedAt),
+        code: codeDigits,
+        topic: row.siteTopicType,
+      });
+      continue;
+    }
     const status: RequiredFieldsStatus =
       row.requiredFieldsStatus === "complete" ||
       row.requiredFieldsStatus === "degraded" ||
@@ -1169,6 +869,7 @@ async function emitFromBusinessAnalysis(
   const entryId = buildEntryId(date, codeDigits, topic, runShort);
 
   if (finalNarrative.status !== "complete") {
+    await removeVisibleEntriesForTopic(siteDir, { date, code: codeDigits, topic });
     const topicManifest: TopicManifestV1 = {
       manifestVersion: TOPIC_MANIFEST_VERSION,
       generatedAt: new Date().toISOString(),
@@ -1292,7 +993,7 @@ function strategyHref(strategyId: string, code: string): string {
   return `/reports?${params.toString()}`;
 }
 
-function buildRankingItem(
+function buildRankingItemFromScreener(
   result: ScreenerScoredResult,
   rank: number,
   strategyId: string,
@@ -1316,6 +1017,90 @@ function buildRankingItem(
       tier1Score: result.tier1Score ?? null,
       reportScore: result.reportScore ?? null,
     },
+  };
+}
+
+
+function normalizeFeedBaseUrl(raw: string | undefined): string | undefined {
+  const value = raw?.trim();
+  return value ? value.replace(/\/+$/u, "") : undefined;
+}
+
+function rankingSwCachePath(code: string): string {
+  return path.join(resolveOutputPath("output/.rankings_cache/sw-industry"), `${code.replace(/[^0-9A-Za-z_.-]/gu, "_")}.json`);
+}
+
+function readSwPayload(body: unknown): SwIndustryClassificationPayload | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const root = body as Record<string, unknown>;
+  const data = root.data && typeof root.data === "object" ? (root.data as Record<string, unknown>) : root;
+  const level1Name = typeof data.level1Name === "string" ? data.level1Name.trim() : "";
+  if (!level1Name) return undefined;
+  return {
+    provider: typeof data.provider === "string" ? data.provider : "sw",
+    level1Name,
+    level2Name: typeof data.level2Name === "string" ? data.level2Name.trim() : undefined,
+    level3Name: typeof data.level3Name === "string" ? data.level3Name.trim() : undefined,
+  };
+}
+
+async function fetchSwIndustryClassification(
+  code: string,
+): Promise<SwIndustryClassificationPayload | undefined> {
+  const cachePath = rankingSwCachePath(code);
+  try {
+    const cached = readSwPayload(await readJson<unknown>(cachePath));
+    if (cached) return cached;
+  } catch {
+    /* cache miss */
+  }
+
+  const baseUrl = normalizeFeedBaseUrl(process.env.FEED_BASE_URL);
+  if (!baseUrl) return undefined;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/stock/industry/sw-classification/${encodeURIComponent(code)}`);
+    if (!res.ok) return undefined;
+    const payload = readSwPayload(await res.json());
+    if (!payload) return undefined;
+    await mkdir(path.dirname(cachePath), { recursive: true });
+    await writeFile(cachePath, JSON.stringify(payload, null, 2), "utf-8");
+    return payload;
+  } catch {
+    return undefined;
+  }
+}
+
+async function enrichRankingListSwIndustries(list: RankingListFile, siteDir: string): Promise<RankingListFile> {
+  if (list.market !== "CN_A" || list.items.length === 0) return list;
+
+  let enriched = 0;
+  const items = await Promise.all(
+    list.items.map(async (item) => {
+      const sw = await fetchSwIndustryClassification(item.code);
+      if (!sw?.level1Name) return item;
+      enriched += 1;
+      return {
+        ...item,
+        metrics: {
+          ...item.metrics,
+          classificationProvider: sw.provider ?? "sw",
+          swLevel1Name: sw.level1Name,
+          swLevel2Name: sw.level2Name ?? null,
+          swLevel3Name: sw.level3Name ?? null,
+        },
+      };
+    }),
+  );
+
+  const reasonCodes = new Set(list.capabilityReasonCodes ?? []);
+  if (enriched > 0) reasonCodes.add("sw_industry_classification_enriched");
+  if (enriched < list.items.length) reasonCodes.add("sw_industry_classification_partial_fallback");
+
+  return {
+    ...list,
+    capabilityReasonCodes: [...reasonCodes],
+    items,
   };
 }
 
@@ -1345,9 +1130,18 @@ async function emitFromScreener(runDir: string, siteDir: string): Promise<void> 
     runId,
   });
   const topN = resolveRankingsTopN(manifest);
-  const topResults = result.results.slice(0, topN);
   const strategyId = manifest.strategyId || result.strategyId || "turtle";
-  const list: RankingListFile = {
+  const candidates = (manifest.candidates ?? []).slice(0, topN);
+  const publishableResults = result.results.filter((item) => item.passed);
+  const topResults = publishableResults.slice(0, topN);
+  const policyResults = (manifest.policyResults ?? []).map((it) => ({
+    policyId: it.policyId,
+    runId,
+    code: it.code,
+    payload: it.payload,
+    reasonRefs: [],
+  }));
+  const list: RankingListFile = await enrichRankingListSwIndustries({
     listId,
     sourceRunId: runId,
     strategyId,
@@ -1358,17 +1152,29 @@ async function emitFromScreener(runDir: string, siteDir: string): Promise<void> 
     capabilityStatus: result.capability?.status,
     capabilityReasonCodes: result.capability?.reasonCodes ?? [],
     topN,
-    totalCandidates: result.results.length,
-    items: topResults.map((item, idx) => buildRankingItem(item, idx + 1, strategyId)),
-  };
+    totalCandidates: manifest.candidates?.length ?? publishableResults.length,
+    items:
+      policyResults.length > 0
+        ? toRankingViewItemsFromSelection({
+            strategyId,
+            candidates,
+            policyResults,
+            hrefResolver: strategyHref,
+          })
+        : topResults.map((item, idx) => buildRankingItemFromScreener(item, idx + 1, strategyId)),
+  }, siteDir);
   const rankingsDir = path.join(siteDir, "rankings", "lists");
   await mkdir(rankingsDir, { recursive: true });
   await writeFile(path.join(rankingsDir, `${listId}.json`), JSON.stringify(list, null, 2), "utf-8");
 }
 
 function isBetterRankingList(next: RankingListView, prev: RankingListView): boolean {
-  if (next.items.length !== prev.items.length) return next.items.length > prev.items.length;
   return next.generatedAt > prev.generatedAt;
+}
+
+function resolveDefaultRankingStrategyId(lists: RankingListView[]): string {
+  if (lists.some((list) => list.strategyId === "turtle")) return "turtle";
+  return lists[0]?.strategyId ?? "turtle";
 }
 
 export async function rebuildSiteRankingsIndex(siteDir: string): Promise<void> {
@@ -1389,7 +1195,7 @@ export async function rebuildSiteRankingsIndex(siteDir: string): Promise<void> {
 
   const dedup = new Map<string, RankingListFile>();
   for (const list of rawLists) {
-    const key = `${dateKeyFromIso(list.generatedAt)}|${list.strategyId}|${list.market}|${list.mode}`;
+    const key = `${list.strategyId}|${list.market}|${list.mode}`;
     const prev = dedup.get(key);
     if (!prev || isBetterRankingList(list, prev)) dedup.set(key, list);
   }
@@ -1408,7 +1214,7 @@ export async function rebuildSiteRankingsIndex(siteDir: string): Promise<void> {
     generatedAt: formatLocalDateTime(new Date()),
     strategyCount: new Set(lists.map((list) => list.strategyId)).size,
     listCount: lists.length,
-    defaultStrategyId: lists[0]?.strategyId ?? "turtle",
+    defaultStrategyId: resolveDefaultRankingStrategyId(lists),
     lists,
   };
   await mkdir(path.join(siteDir, "rankings"), { recursive: true });

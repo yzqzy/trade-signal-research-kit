@@ -1,0 +1,94 @@
+{
+  "code": "601919",
+  "generatedAt": "2026-05-08T13:55:44.505Z",
+  "companyType": "blue_chip_value",
+  "wacc": 7.2202652991247485,
+  "ke": 8.5,
+  "methods": [
+    {
+      "method": "DCF",
+      "value": 32.03521202429438,
+      "range": {
+        "conservative": 27.229930220650225,
+        "central": 32.03521202429438,
+        "optimistic": 36.84049382793854
+      },
+      "assumptions": {
+        "gTerminal": 3,
+        "growth": 0,
+        "fcfBase": 23701.743333333336,
+        "shares": 15312.72
+      }
+    },
+    {
+      "method": "DDM",
+      "note": "invalid growth/ke relationship"
+    },
+    {
+      "method": "PE_BAND",
+      "value": 10.174333333333335,
+      "range": {
+        "conservative": 7.729000000000001,
+        "central": 10.174333333333335,
+        "optimistic": 11.76816666666667
+      },
+      "assumptions": {
+        "currentPe": 5.66,
+        "epsNorm": 2.1833333333333336,
+        "peMedian": 4.66,
+        "peP25": 2.42,
+        "peP50": 4.66,
+        "peP75": 6.12
+      }
+    },
+    {
+      "method": "PEG",
+      "note": "non-positive profit growth"
+    },
+    {
+      "method": "PS",
+      "value": 14.029999895511706,
+      "range": {
+        "conservative": 11.223999916409365,
+        "central": 14.029999895511706,
+        "optimistic": 16.835999874614046
+      },
+      "assumptions": {
+        "currentPs": 0.9787413712773368,
+        "psMedian": 0.9787413712773368,
+        "revenueNow": 219503.81
+      }
+    }
+  ],
+  "crossValidation": {
+    "weightedAverage": 22.6662640138825,
+    "coefficientOfVariation": 51.48048868563041,
+    "consistency": "low",
+    "activeWeights": {
+      "DCF": 0.5714285714285714,
+      "PE_BAND": 0.42857142857142855,
+      "PS": 0
+    },
+    "range": {
+      "conservative": 10.174333333333335,
+      "central": 22.6662640138825,
+      "optimistic": 32.03521202429438
+    }
+  },
+  "impliedExpectations": {
+    "impliedGrowthFromPe": -9.167844522968199,
+    "historicalProfitCagr": -23.693339498262667,
+    "fcfYield": 39.82835302558502,
+    "modelWacc": 7.2202652991247485,
+    "modelKe": 8.5,
+    "market": "CN_A",
+    "rf": 2.5,
+    "beta": 1,
+    "erp": 6,
+    "kdPre": 3.5,
+    "taxRate": 25,
+    "eWeight": 0.7821728168722977,
+    "dWeight": 0.2178271831277023,
+    "gTerminalDefault": 3
+  }
+}

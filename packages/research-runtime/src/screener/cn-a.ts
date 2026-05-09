@@ -23,13 +23,17 @@ function peMissing(row: ScreenerUniverseRow): boolean {
   return v === undefined || v === null || (typeof v === "number" && !Number.isFinite(v));
 }
 
+function isBankIndustry(industry: string | undefined): boolean {
+  return typeof industry === "string" && industry.includes("银行");
+}
+
 export function tier1FilterCnA(rows: ScreenerUniverseRow[], cfg: ScreenerConfig): ScreenerCandidate[] {
   const minCapMm = cfg.minMarketCapYi * 100;
 
   const pre = rows.filter((row) => {
     if (row.market !== "CN_A") return false;
     if ((row.name ?? "").match(/\*ST|ST|PT|退市/)) return false;
-    if (!cfg.includeBank && row.industry === "银行") return false;
+    if (!cfg.includeBank && isBankIndustry(row.industry)) return false;
     if (!listingAgeOk(row.listDate, cfg.minListingYears)) return false;
     if ((safe(row.marketCap) ?? 0) < minCapMm) return false;
     if ((safe(row.turnover) ?? 0) < cfg.minTurnoverPct) return false;
@@ -66,8 +70,7 @@ export function tier1FilterCnA(rows: ScreenerUniverseRow[], cfg: ScreenerConfig)
       const tier1Score = cfg.dvWeight * dvNorm + cfg.peWeight * peNorm + cfg.pbWeight * pbNorm;
       return { ...row, tier1Score };
     })
-    .sort((a, b) => b.tier1Score - a.tier1Score)
-    .slice(0, cfg.tier2MainLimit);
+    .sort((a, b) => b.tier1Score - a.tier1Score);
 
   const rankedObs = observation.map((row) => ({ ...row, tier1Score: 0 }));
   return [...rankedMain, ...rankedObs];

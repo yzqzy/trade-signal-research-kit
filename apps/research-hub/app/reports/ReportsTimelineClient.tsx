@@ -26,10 +26,15 @@ export type TimelineItem = {
   confidenceState: "high" | "medium" | "low" | "unknown";
 };
 
-function statusBadge(s: TimelineItem["requiredFieldsStatus"]): string {
-  if (s === "complete") return "完整";
-  if (s === "degraded") return "降级";
+function statusBadge(it: Pick<TimelineItem, "requiredFieldsStatus" | "topicType">): string {
+  if (it.topicType === "business-quality" && it.requiredFieldsStatus === "degraded") return "结构化预览";
+  if (it.requiredFieldsStatus === "complete") return "完整";
+  if (it.requiredFieldsStatus === "degraded") return "降级";
   return "缺失";
+}
+
+function statusPrefix(it: Pick<TimelineItem, "requiredFieldsStatus" | "topicType">): string {
+  return it.topicType === "business-quality" && it.requiredFieldsStatus === "degraded" ? "状态" : "字段";
 }
 
 function statusClass(s: TimelineItem["requiredFieldsStatus"]): string {
@@ -48,6 +53,15 @@ function formatIsoUtcText(value: string): string {
     return `${parsed.tz(REPORTS_TIMEZONE).format("YYYY-MM-DD HH:mm:ss")} ${REPORTS_TIMEZONE}`;
   }
   return parsed.format("YYYY-MM-DD HH:mm:ss");
+}
+
+function buildReportDetailHref(item: TimelineItem, filters: { topic?: string | null; code?: string }): string {
+  const base = item.href.replace(/\/$/, "");
+  const query = new URLSearchParams();
+  if (filters.topic && TOPIC_TYPES.includes(filters.topic as ReportTopicType)) query.set("topic", filters.topic);
+  if (filters.code) query.set("code", filters.code);
+  const qs = query.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 export function ReportsTimelineClient({
@@ -133,14 +147,16 @@ export function ReportsTimelineClient({
         <ul className="rh-card-list">
           {filtered.map((it) => (
             <li key={it.entryId} className="rh-card">
-              <Link className="rh-card-title" href={it.href.replace(/\/$/, "")}>
+              <Link className="rh-card-title" href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}>
                 {it.displayTitle}
               </Link>
               <div className="rh-card-meta">
                 <span title={it.publishedAt}>{formatIsoUtcText(it.publishedAt)}</span>
                 <span className="rh-pill">{TOPIC_LABEL_ZH[it.topicType]}</span>
                 <span>置信度 {it.confidenceState}</span>
-                <span className={statusClass(it.requiredFieldsStatus)}>字段 {statusBadge(it.requiredFieldsStatus)}</span>
+                <span className={statusClass(it.requiredFieldsStatus)}>
+                  {statusPrefix(it)} {statusBadge(it)}
+                </span>
               </div>
             </li>
           ))}

@@ -5,6 +5,7 @@ export type SelectionPluginContext = {
   runId: string;
   universe: string;
   policyResults?: PolicyResult[];
+  maxCandidates?: number;
 };
 
 export type SelectionPlugin = {

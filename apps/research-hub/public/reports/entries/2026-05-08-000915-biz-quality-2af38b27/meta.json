@@ -1,0 +1,49 @@
+{
+  "entryId": "2026-05-08-000915-biz-quality-2af38b27",
+  "code": "000915",
+  "topicType": "business-quality",
+  "displayTitle": "华特达因 (000915.SZ) · 商业质量评估",
+  "publishedAt": "2026-05-08T13:32:35.605Z",
+  "sourceRunId": "2af38b27-954d-4943-a6a2-32d2120cf64f",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "high",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../business-analysis/000915/2af38b27-954d-4943-a6a2-32d2120cf64f/business_analysis_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 130788,
+      "lines": 2628
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 11474,
+      "lines": 71
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 16554,
+      "lines": 210
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-04-24/1225160961.PDF"
+    }
+  ]
+}

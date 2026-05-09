@@ -7,6 +7,9 @@ export type TopicManifestEntryV1 = {
     entryId: string;
     requiredFieldsStatus: string;
     sourceMarkdownRelative?: string;
+    finalizedMarkdownRelative?: string;
+    qualityStatus?: "complete" | "degraded" | "blocked" | "draft";
+    blockingReasons?: string[];
 };
 export type TopicManifestV1 = {
     manifestVersion: typeof TOPIC_MANIFEST_VERSION;

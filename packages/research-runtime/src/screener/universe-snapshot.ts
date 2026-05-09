@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { resolveOutputPath } from "../crosscut/normalization/resolve-monorepo-path.js";
-import { fetchScreenerUniverseFromHttp } from "./http-source.js";
+import { fetchScreenerUniverseFromHttpWithDiagnostics } from "./http-source.js";
 import type { ScreenerMarket, ScreenerUniverseRow } from "./types.js";
 
 export type UniverseSnapshotMeta = {
@@ -13,6 +13,13 @@ export type UniverseSnapshotMeta = {
   source: "feed:screener-universe";
   count: number;
   reused: boolean;
+  fetchDiagnostics?: {
+    requestedPages: number;
+    expectedTotal?: number;
+    receivedCount: number;
+    shortfall?: number;
+    endedBy: string;
+  };
 };
 
 export type UniverseSnapshotResult = {
@@ -116,7 +123,7 @@ export async function loadOrFetchUniverseSnapshot(
     }
   }
 
-  const rows = (await fetchScreenerUniverseFromHttp(
+  const fetched = await fetchScreenerUniverseFromHttpWithDiagnostics(
     {
       baseUrl: options.feedBaseUrl ?? process.env.FEED_BASE_URL ?? "",
       apiKey: options.feedApiKey ?? process.env.FEED_API_KEY,
@@ -125,7 +132,8 @@ export async function loadOrFetchUniverseSnapshot(
       mode: "all_pages",
     },
     options.market,
-  )) as ScreenerUniverseRow[];
+  );
+  const rows = fetched.items as ScreenerUniverseRow[];
   const meta: UniverseSnapshotMeta = {
     version: "1.0",
     market: options.market,
@@ -134,6 +142,7 @@ export async function loadOrFetchUniverseSnapshot(
     source: "feed:screener-universe",
     count: rows.length,
     reused: false,
+    fetchDiagnostics: fetched.diagnostics,
   };
   await mkdir(paths.dir, { recursive: true });
   await writeFile(paths.dataPath, JSON.stringify(rows, null, 2), "utf-8");

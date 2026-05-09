@@ -14,6 +14,7 @@ import {
 import { renderPublicEvidencePackContent } from "../reports-site/public-evidence-pack-renderer.js";
 import { filterPhase1BHighSensitivityEvidencesForTest } from "../steps/phase1b/collector.js";
 import { renderPhase1BMarkdown } from "../steps/phase1b/renderer.js";
+import { renderQualitativeD1D6Scaffold } from "../runtime/business-analysis/d1-d6-scaffold.js";
 import { renderAllReportPolishMarkdowns } from "../steps/phase3/report-polish/render-report-polish-markdown.js";
 import type {
   ReportPolishComposeBuffers,
@@ -204,6 +205,34 @@ function assertFinalNarrativeValidation(): void {
       dataPackReportMarkdown: "gateVerdict `CRITICAL`",
     }).status,
     "blocked",
+  );
+  assert.equal(
+    validateFinalNarrativeMarkdown({
+      qualitativeReportMarkdown: completeReport.replace(
+        "审计意见正常。[E1]",
+        "测试公司 的商业质量终稿基于年报包、市场包和 外部证据完成。当前证据显示，公司处于 白色家电 相关行业，周期位置为 middle，行业周期判断置信度为 medium；因此商业质量不能只看单期利润或榜单排名。[E1]",
+      ),
+      qualitativeD1D6Markdown: d1d6,
+      dataPackReportMarkdown: "gateVerdict `DEGRADED`",
+    }).status,
+    "draft",
+  );
+  assert.equal(
+    validateFinalNarrativeMarkdown({
+      qualitativeReportMarkdown: completeReport,
+      qualitativeD1D6Markdown: [
+        "[终稿状态: 完成]",
+        "> PDF 抽取质量声明：gate=DEGRADED。",
+        ...["D1", "D2", "D3", "D4", "D5", "D6"].map(
+          (d) =>
+            `## ${d} 测试\n\n**证据链条**：市场包提供行业和同业上下文，年报包提供经营与财务原始披露，Phase1B 提供治理、行业与 MD&A 补充；本维结论以 [E1] 交叉验证。\n\n| 指标 | 为何重要 | 当前读法 | 来源 |\n|:--|:--|:--|:--|\n| 指标A | 验证本维判断是否持续 | 当前仅按证据包建立方向性跟踪，不扩大为确定预测 | [E1] |\n\n**结论**：测试公司 在本维已有可审计证据基础，但仍需后续季报、公告和行业数据复核；若新增证据与当前证据冲突，应优先调整结论强度。[E1]`,
+        ),
+        "## 附录：证据索引",
+        "| 证据ID | 类型 | 摘要 | 链接或定位 |",
+      ].join("\n\n"),
+      dataPackReportMarkdown: "gateVerdict `DEGRADED`",
+    }).status,
+    "draft",
   );
 }
 
@@ -486,17 +515,115 @@ async function assertBusinessAnalysisPublishesSingleMarkdown(): Promise<void> {
     assert.doesNotMatch(content, /^##\s+qualitative_d1_d6\.md$/imu);
     assert.doesNotMatch(content.slice(0, 300), /PDF 抽取质量声明/);
     assert.doesNotMatch(content, /rate_limit_exceeded|Volc WebSearch API/);
-    assert.match(content, /证据质量：年报抽取为 DEGRADED，P13 需复核，详见文末。/);
+    assert.match(content, /证据质量：年报抽取降级可用，P13 需复核；本文已按较保守口径处理。/);
     assert.match(content, /## 证据质量与限制/);
-    assert.match(content, /## D1-D6 深度章节/);
+    assert.match(content, /## 六维深度分析/);
     assert.match(content, /年报证据包 · 可展开\/下载/);
     assert.doesNotMatch(content, /\[(?:E\d+|M:§\d+)\]\[(?:E\d+|M:§\d+)\]/u);
     assert.doesNotMatch(content, /不跨行业硬套指标|治理风险进入折价而非口号|行业 profile 决定/u);
     assert.doesNotMatch(content, /见本页 \[M:§\] 引用/);
-    assert.equal((content.match(/^##\s+Quality Snapshot\s*$/gmu) ?? []).length, 1);
+    assert.equal((content.match(/^##\s+质量快照\s*$/gmu) ?? []).length, 1);
     assert.match(content, /\| 商业质量 \| 偏弱\/观察 \|/);
     assert.doesNotMatch(content, /\| 商业质量 \| 较强/);
     assert.deepEqual(findPublishedMarkdownQualityViolations(content), []);
+
+    await writeFile(
+      path.join(runDir, "qualitative_report.md"),
+      report.replace(
+        "核心判断。[E1]",
+        "测试公司 的商业质量终稿基于年报包、市场包和 外部证据完成。当前证据显示，公司处于 白色家电 相关行业，周期位置为 middle，行业周期判断置信度为 medium；因此商业质量不能只看单期利润或榜单排名。[E1]",
+      ),
+      "utf-8",
+    );
+    await emitSiteReportsFromRun({ runDir, siteDir });
+    await assert.rejects(readFile(path.join(entriesRoot, entryId, "content.md"), "utf-8"));
+    const timeline = JSON.parse(await readFile(path.join(siteDir, "views", "timeline.json"), "utf-8")) as Array<{
+      entryId: string;
+      topicType: string;
+    }>;
+    assert.equal(timeline.some((it) => it.entryId === entryId || it.topicType === "business-quality"), false);
+    const byTopic = JSON.parse(
+      await readFile(path.join(siteDir, "views", "by-topic", "business-quality.json"), "utf-8"),
+    ) as unknown[];
+    assert.deepEqual(byTopic, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
+async function assertWorkflowTopicsRequireFinalization(): Promise<void> {
+  const root = await mkdtemp(path.join(tmpdir(), "reports-workflow-final-"));
+  try {
+    const runDir = path.join(root, "run");
+    const siteDir = path.join(root, "site");
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "data_pack_market.md"), "# 测试公司（600887）\n\n市场证据。", "utf-8");
+    await writeFile(path.join(runDir, "analysis_report.md"), "# 策略计算底稿\n\n规则输出。", "utf-8");
+    await writeFile(path.join(runDir, "turtle_overview.md"), "# 草稿\n\n结构化龟龟草稿。", "utf-8");
+    await writeFile(path.join(runDir, "valuation.md"), "# 草稿\n\n结构化估值草稿。", "utf-8");
+    await writeFile(path.join(runDir, "penetration_return.md"), "# 草稿\n\n结构化穿透草稿。", "utf-8");
+    await writeFile(path.join(runDir, "business_quality.md"), "# 草稿\n\n结构化商业质量草稿。", "utf-8");
+    await writeFile(
+      path.join(runDir, "workflow_manifest.json"),
+      JSON.stringify(
+        {
+          manifestVersion: "1.0",
+          generatedAt: "2026-04-25T03:00:00.000Z",
+          outputLayout: { code: "600887", runId: "wf-run" },
+          input: { code: "600887", companyName: "测试公司" },
+          outputs: {
+            marketPackPath: "data_pack_market.md",
+            reportMarkdownPath: "analysis_report.md",
+            turtleOverviewMarkdownPath: "turtle_overview.md",
+            businessQualityMarkdownPath: "business_quality.md",
+            penetrationReturnMarkdownPath: "penetration_return.md",
+            valuationMarkdownPath: "valuation.md",
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+
+    await emitSiteReportsFromRun({ runDir, siteDir });
+    const timeline1 = JSON.parse(await readFile(path.join(siteDir, "views", "timeline.json"), "utf-8")) as unknown[];
+    assert.deepEqual(timeline1, []);
+    const manifest1 = JSON.parse(await readFile(path.join(runDir, "topic_manifest.json"), "utf-8")) as {
+      topics: Array<{ siteTopicType: string; qualityStatus: string; blockingReasons?: string[] }>;
+    };
+    assert.equal(manifest1.topics.every((t) => t.qualityStatus === "draft" || t.qualityStatus === "degraded"), true);
+    assert.ok(manifest1.topics.some((t) => t.siteTopicType === "turtle-strategy" && (t.blockingReasons ?? []).join("\n").includes("缺少 finalized markdown")));
+
+    await mkdir(path.join(runDir, "finalized"), { recursive: true });
+    await writeFile(
+      path.join(runDir, "finalized", "turtle-strategy.md"),
+      [
+        "# 测试公司（600887）· 龟龟投资策略分析",
+        "## 投资结论",
+        "测试公司的龟龟结论并不是简单的规则通过，而是现金转换、估值安全边际与经营纪律共同支撑的观察型机会。",
+        "## 触发条件",
+        "若未来两个季度经营现金流继续覆盖利润、估值仍低于安全边际，并且收入没有继续恶化，则策略信号可以从观察转向更积极。",
+        "## 仓位与纪律",
+        "仓位纪律应以组合风险预算为上限，单一标的不因短期排名靠前而突破既定仓位约束。",
+        "## 关键指标解释",
+        "穿透 R、ROE、FCF 与安全边际需要一起阅读：R 解释长期回报弹性，FCF 解释利润兑现质量，ROE 解释资本效率。",
+        "## 反证条件",
+        "如果现金流转弱、估值修复只来自情绪扩张，或主营增长继续下滑，当前龟龟判断应降级。",
+        "## 跟踪清单",
+        "后续重点跟踪现金流覆盖率、费用率、估值折价和分红纪律，任何一项持续恶化都会削弱策略结论。",
+      ].join("\n\n"),
+      "utf-8",
+    );
+
+    await emitSiteReportsFromRun({ runDir, siteDir });
+    const timeline2 = JSON.parse(await readFile(path.join(siteDir, "views", "timeline.json"), "utf-8")) as Array<{
+      topicType: string;
+      entryId: string;
+    }>;
+    assert.equal(timeline2.length, 1);
+    assert.equal(timeline2[0]?.topicType, "turtle-strategy");
+    assert.match(await readFile(path.join(siteDir, "entries", timeline2[0]!.entryId, "content.md"), "utf-8"), /投资结论/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -549,11 +676,44 @@ function assertPhase1BRetrievalPresentation(): void {
   assert.equal(filtered[0]?.title, "关于收到监管警示函的公告");
 }
 
+function assertBusinessModelFeatureSliceInD1(): void {
+  const md = renderQualitativeD1D6Scaffold({
+    phase1b: {
+      stockCode: "600887",
+      companyName: "测试公司",
+      year: "2024",
+      generatedAt: "2026-04-25T02:00:00.000Z",
+      channel: "http",
+      section7: [],
+      section8: [],
+      section10: [],
+    },
+    marketMarkdown: [
+      "# 测试公司（600887）",
+      "## §3 利润表",
+      "营业收入与主营业务摘要。",
+      "## §5 现金流量表",
+      "经营活动现金流 OCF 与资本开支 Capex 摘要。",
+      "## §22 行业关键变量",
+      "行业关键变量包括价格与销量。",
+    ].join("\n"),
+    dataPackReportExcerpt: "主营业务、固定资产、资本开支与收入结构摘录。",
+  });
+  assert.match(md, /### businessModel FeatureSlice（D1 输入真源）/);
+  assert.match(md, /"modelType"/);
+  assert.match(md, /"cashConversionProfile"/);
+  assert.match(md, /"capexProfile"/);
+  assert.match(md, /D1 必须消费下方 `businessModel` FeatureSlice/);
+  assert.doesNotMatch(md, /客户需求 \/ 价值主张 \/ 收入模型的可验证描述/);
+}
+
 assertTopicStructures();
 assertFinalNarrativeValidation();
 await assertPublishedQualityGate();
 assertPublicEvidencePackRenderer();
 await assertSiteDedupPrefersComplete();
 await assertBusinessAnalysisPublishesSingleMarkdown();
+await assertWorkflowTopicsRequireFinalization();
 assertPhase1BRetrievalPresentation();
+assertBusinessModelFeatureSliceInD1();
 console.log("[test:topic-markdown-structure] ok");

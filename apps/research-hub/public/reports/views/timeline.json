@@ -1,1 +1,162 @@
-[]
+[
+  {
+    "entryId": "2026-05-08-601919-valuation-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 估值分析",
+    "topicType": "valuation",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-valuation-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-601919-turtle-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-turtle-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-601919-penetration-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-penetration-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-002818-valuation-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-valuation-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-002818-turtle-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-turtle-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-002818-penetration-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-penetration-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-000915-valuation-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-valuation-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "low"
+  },
+  {
+    "entryId": "2026-05-08-000915-turtle-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-turtle-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000915-penetration-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-penetration-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000651-valuation-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-valuation-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000651-turtle-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-turtle-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-000651-penetration-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-penetration-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-000651-biz-quality-83aab8ae",
+    "displayTitle": "格力电器 (000651.SZ) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:32:40.929Z",
+    "href": "/reports/2026-05-08-000651-biz-quality-83aab8ae/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-002818-biz-quality-e4252388",
+    "displayTitle": "富森美 (002818.SZ) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:32:37.822Z",
+    "href": "/reports/2026-05-08-002818-biz-quality-e4252388/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-601919-biz-quality-cc9a762b",
+    "displayTitle": "中远海控 (601919.SH) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:32:36.751Z",
+    "href": "/reports/2026-05-08-601919-biz-quality-cc9a762b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000915-biz-quality-2af38b27",
+    "displayTitle": "华特达因 (000915.SZ) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:32:35.605Z",
+    "href": "/reports/2026-05-08-000915-biz-quality-2af38b27/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  }
+]

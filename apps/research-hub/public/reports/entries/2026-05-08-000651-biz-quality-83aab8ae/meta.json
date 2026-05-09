@@ -1,0 +1,49 @@
+{
+  "entryId": "2026-05-08-000651-biz-quality-83aab8ae",
+  "code": "000651",
+  "topicType": "business-quality",
+  "displayTitle": "格力电器 (000651.SZ) · 商业质量评估",
+  "publishedAt": "2026-05-08T13:32:40.929Z",
+  "sourceRunId": "83aab8ae-b7f3-4f70-b979-881679fc079d",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "medium",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../business-analysis/000651/83aab8ae-b7f3-4f70-b979-881679fc079d/business_analysis_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 124219,
+      "lines": 1854
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 16583,
+      "lines": 73
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 20877,
+      "lines": 210
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-04-29/1225250396.PDF"
+    }
+  ]
+}

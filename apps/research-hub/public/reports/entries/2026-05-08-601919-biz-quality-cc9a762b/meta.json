@@ -1,0 +1,49 @@
+{
+  "entryId": "2026-05-08-601919-biz-quality-cc9a762b",
+  "code": "601919",
+  "topicType": "business-quality",
+  "displayTitle": "中远海控 (601919.SH) · 商业质量评估",
+  "publishedAt": "2026-05-08T13:32:36.751Z",
+  "sourceRunId": "cc9a762b-2662-4276-9e25-e2491d7bc397",
+  "requiredFieldsStatus": "complete",
+  "confidenceState": "medium",
+  "contentFile": "content.md",
+  "sourceManifestPath": "../../business-analysis/601919/cc9a762b-2662-4276-9e25-e2491d7bc397/business_analysis_manifest.json",
+  "attachments": [
+    {
+      "id": "annual-report-pack",
+      "label": "年报证据包摘要",
+      "kind": "markdown",
+      "href": "attachments/annual-report-pack.md",
+      "previewable": true,
+      "bytes": 104468,
+      "lines": 2044
+    },
+    {
+      "id": "regulatory-evidence",
+      "label": "公告与监管补充",
+      "kind": "markdown",
+      "href": "attachments/regulatory-evidence.md",
+      "previewable": true,
+      "bytes": 11449,
+      "lines": 58
+    },
+    {
+      "id": "market-pack",
+      "label": "市场与行业证据摘要",
+      "kind": "markdown",
+      "href": "attachments/market-pack.md",
+      "previewable": true,
+      "bytes": 21443,
+      "lines": 218
+    }
+  ],
+  "sourceLinks": [
+    {
+      "id": "annual-pdf-official",
+      "label": "原始年报 PDF（官方）",
+      "kind": "pdf",
+      "href": "https://static.cninfo.com.cn/finalpage/2026-03-20/1225019947.PDF"
+    }
+  ]
+}

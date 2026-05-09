@@ -6,10 +6,13 @@ import type { PolicyResult, SourceRef, TopicReport } from "@trade-signal/researc
 
 import { parseDataPackMarket } from "../market-pack-parser.js";
 import type { Phase3ExecutionResult } from "../types.js";
+import { buildBusinessQualityFacts } from "./business-quality-facts.js";
+import { classifyBusinessModel } from "./business-model-classifier.js";
 import type {
   ReportPolishComposeResult,
   ReportViewModelTodoV1,
   ReportViewModelV1,
+  BusinessModelVerdictV1,
 } from "./report-view-model.js";
 
 function rel(outputDir: string, filePath: string): string {
@@ -367,14 +370,37 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
   if (input.phase2bMarkdownPath) topicEvidenceRefs.push(fileRef(outputDir, input.phase2bMarkdownPath, "年报 data_pack"));
   if (input.phase3PreflightPath) topicEvidenceRefs.push(fileRef(outputDir, input.phase3PreflightPath, "Phase3 预检"));
   const businessStatus = dataPackReport.present && dataPackReport.pdfGateVerdict !== "CRITICAL" ? "degraded" : "blocked";
+  const peerRowsForBq = (phase1a.peerComparablePool?.peers ?? []).map((p) => ({
+    code: p.code,
+    name: p.name,
+    revenueAllYear: p.revenueAllYear,
+    parentNiAllYear: p.parentNiAllYear,
+  }));
+  const bqFacts = buildBusinessQualityFacts(input.marketPackMarkdown, peerRowsForBq);
+  const bm = classifyBusinessModel(bqFacts);
+  const businessModel: BusinessModelVerdictV1 = {
+    l1Key: bm.l1Key,
+    l1Label: bm.l1Label,
+    secondary: bm.secondary,
+    l2Mechanism: bm.l2Mechanism,
+    l3Constraint: bm.l3Constraint,
+    damodaran: bm.damodaran,
+    greenwaldAxes: bm.greenwaldAxes,
+    buffettHooks: bm.buffettHooks,
+    evidenceBullets: bm.evidenceBullets,
+  };
+
   const topicReports: TopicReport[] = [
     {
       topicId: "topic:turtle-strategy-explainer",
       runId: input.runId ?? "",
       code: input.normalizedCode,
       siteTopicType: "turtle-strategy",
+      draftMarkdownPath: "turtle_overview.md",
       markdownPath: "turtle_overview.md",
-      qualityStatus: "complete",
+      finalizedMarkdownRelative: "finalized/turtle-strategy.md",
+      qualityStatus: "draft",
+      blockingReasons: ["龟龟策略页为结构化草稿；需 finalization 收口后发布"],
       evidenceRefs: topicEvidenceRefs,
     },
     {
@@ -382,7 +408,9 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
       runId: input.runId ?? "",
       code: input.normalizedCode,
       siteTopicType: "business-quality",
+      draftMarkdownPath: "business_quality.md",
       markdownPath: "business_quality.md",
+      finalizedMarkdownRelative: "finalized/business-quality.md",
       qualityStatus: businessStatus,
       blockingReasons:
         businessStatus === "blocked"
@@ -395,8 +423,11 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
       runId: input.runId ?? "",
       code: input.normalizedCode,
       siteTopicType: "penetration-return",
+      draftMarkdownPath: "penetration_return.md",
       markdownPath: "penetration_return.md",
-      qualityStatus: "complete",
+      finalizedMarkdownRelative: "finalized/penetration-return.md",
+      qualityStatus: "draft",
+      blockingReasons: ["穿透回报页为结构化草稿；需 finalization 收口后发布"],
       evidenceRefs: topicEvidenceRefs,
     },
     {
@@ -404,8 +435,14 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
       runId: input.runId ?? "",
       code: input.normalizedCode,
       siteTopicType: "valuation",
+      draftMarkdownPath: "valuation.md",
       markdownPath: "valuation.md",
-      qualityStatus: valuation.methodCount > 0 ? "complete" : "degraded",
+      finalizedMarkdownRelative: "finalized/valuation.md",
+      qualityStatus: valuation.methodCount > 0 ? "draft" : "degraded",
+      blockingReasons:
+        valuation.methodCount > 0
+          ? ["估值页为结构化草稿；需 finalization 收口后发布"]
+          : ["估值方法不足，需补齐估值输入后再收口"],
       evidenceRefs: topicEvidenceRefs,
     },
   ];
@@ -427,6 +464,7 @@ export async function composeReportViewModel(input: ComposeReportViewModelInput)
     policyResult,
     topicReports,
     todos,
+    businessModel,
   };
 
   return {

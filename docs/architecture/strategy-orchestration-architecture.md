@@ -165,6 +165,16 @@ export interface OrchestratorAdapter {
 5. 在 `packages/research-runtime/src/quality/strategy-plugin-smoke.ts` 补最小 smoke 用例。  
 6. 运行回归：`pnpm run typecheck && pnpm run build && pnpm run test:linkage && pnpm run quality:all`。
 
+## V2 多标的选股策略接入操作清单
+
+1. 在 `packages/research-runtime/src/strategy/<your-id>/plugin.ts` 实现策略真身（评分、阈值、决策）。  
+2. 在 `packages/research-policy/src/policy-ids.ts` 增加 `policy:<your-id>`，并在 `bootstrap-policy-registry.ts` 注册薄 adapter（仅负责把上游 payload 包装成 `PolicyResult`）。  
+3. 在 `packages/research-selection/src/selections/<your-id>-cn-a/` 实现 `compose.ts`，消费 `policyResults` 输出 `SelectionResult`。  
+4. 在 `packages/research-selection/src/bootstrap-selection-registry.ts` 注册 `selection:<your-id>:cn_a`。  
+5. 在 `packages/research-runtime/src/screener/cli.ts` 显式按 `FeatureSet -> PolicyResult -> SelectionResult` 顺序调用，并把 `policyResults` 写入 `selection_manifest.json`。  
+6. Publisher 只通过 `packages/research-runtime/src/reports-site/rankings/from-selection.ts` 适配到站点 schema，禁止回流策略计算。  
+7. 运行回归：`pnpm run typecheck && pnpm --filter @trade-signal/research-runtime build && pnpm test:linkage`。
+
 ## 与现状兼容说明
 
 - `apps/screener-web` 冻结策略不变（独立域，见 [流程文档](../guides/workflows.md) 选股器章节）。

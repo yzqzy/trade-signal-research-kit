@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "entryId": "2026-05-08-601919-valuation-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 估值分析",
+    "topicType": "valuation",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-valuation-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-002818-valuation-e2de8e90",
+    "displayTitle": "富森美 (002818.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "002818",
+    "publishedAt": "2026-05-08T13:55:33.393Z",
+    "href": "/reports/2026-05-08-002818-valuation-e2de8e90/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000915-valuation-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-valuation-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "low"
+  },
+  {
+    "entryId": "2026-05-08-000651-valuation-a5391b31",
+    "displayTitle": "格力电器 (000651.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "000651",
+    "publishedAt": "2026-05-08T13:55:03.091Z",
+    "href": "/reports/2026-05-08-000651-valuation-a5391b31/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  }
+]

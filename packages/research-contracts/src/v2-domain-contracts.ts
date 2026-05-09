@@ -45,7 +45,9 @@ export interface TopicReport {
   runId: string;
   code: string;
   siteTopicType?: string;
+  draftMarkdownPath?: string;
   markdownPath?: string;
+  finalizedMarkdownRelative?: string;
   qualityStatus?: "complete" | "degraded" | "blocked" | "draft";
   blockingReasons?: string[];
   evidenceRefs: SourceRef[];
@@ -54,6 +56,8 @@ export interface TopicReport {
 export interface SelectionCandidate {
   code: string;
   score?: number;
+  decision?: string;
+  confidence?: "high" | "medium" | "low" | "unknown";
   policyContributions?: Record<string, number>;
 }
 

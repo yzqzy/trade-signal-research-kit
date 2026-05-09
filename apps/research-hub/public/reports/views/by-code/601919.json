@@ -1,0 +1,42 @@
+[
+  {
+    "entryId": "2026-05-08-601919-valuation-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 估值分析",
+    "topicType": "valuation",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-valuation-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-601919-turtle-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-turtle-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-601919-penetration-4194512b",
+    "displayTitle": "中远海控 (601919.SH) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:55:44.527Z",
+    "href": "/reports/2026-05-08-601919-penetration-4194512b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  },
+  {
+    "entryId": "2026-05-08-601919-biz-quality-cc9a762b",
+    "displayTitle": "中远海控 (601919.SH) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "601919",
+    "publishedAt": "2026-05-08T13:32:36.751Z",
+    "href": "/reports/2026-05-08-601919-biz-quality-cc9a762b/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  }
+]

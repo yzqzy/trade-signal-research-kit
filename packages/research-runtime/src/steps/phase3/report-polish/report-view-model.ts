@@ -159,6 +159,28 @@ export type ReportViewModelTodoV1 = {
   suggestedSource?: string;
 };
 
+/** 商业模式判定结果（确定性分类器输出，可入 `report_view_model.json`） */
+export type BusinessModelVerdictV1 = {
+  l1Key: string;
+  l1Label: string;
+  secondary?: string;
+  l2Mechanism: string;
+  l3Constraint: string;
+  damodaran: "stable" | "cyclical" | "growth" | "hybrid";
+  greenwaldAxes: string[];
+  buffettHooks: string[];
+  evidenceBullets: string[];
+};
+
+/** D1 发布门禁自检结果（workflow 编排写入） */
+export type BusinessQualityPublishGateV1 = {
+  passed: boolean;
+  d1SectionCharCount: number;
+  d1DigitCount: number;
+  numericDensity: number;
+  reasons: string[];
+};
+
 /**
  * @version 与编排 `manifestVersion` 独立；仅描述 view-model 形状演进。
  */
@@ -180,6 +202,10 @@ export type ReportViewModelV1 = {
   topicReports: TopicReport[];
   /** 显式缺口，禁止静默造数 */
   todos: ReportViewModelTodoV1[];
+  /** 商业模式与资本特征：确定性分类结果 */
+  businessModel?: BusinessModelVerdictV1;
+  /** 商业质量 D1 数值化门禁（编排层写入） */
+  businessQualityGate?: BusinessQualityPublishGateV1;
 };
 
 export type ReportPolishComposeBuffers = {

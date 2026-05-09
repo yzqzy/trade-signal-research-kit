@@ -1,0 +1,42 @@
+[
+  {
+    "entryId": "2026-05-08-000915-valuation-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 估值分析",
+    "topicType": "valuation",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-valuation-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "low"
+  },
+  {
+    "entryId": "2026-05-08-000915-turtle-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 龟龟投资策略分析",
+    "topicType": "turtle-strategy",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-turtle-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000915-penetration-312b6465",
+    "displayTitle": "华特达因 (000915.SZ) · 穿透回报率定量分析",
+    "topicType": "penetration-return",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:55:21.181Z",
+    "href": "/reports/2026-05-08-000915-penetration-312b6465/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "medium"
+  },
+  {
+    "entryId": "2026-05-08-000915-biz-quality-2af38b27",
+    "displayTitle": "华特达因 (000915.SZ) · 商业质量评估",
+    "topicType": "business-quality",
+    "code": "000915",
+    "publishedAt": "2026-05-08T13:32:35.605Z",
+    "href": "/reports/2026-05-08-000915-biz-quality-2af38b27/",
+    "requiredFieldsStatus": "complete",
+    "confidenceState": "high"
+  }
+]

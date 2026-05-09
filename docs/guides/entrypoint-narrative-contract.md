@@ -12,14 +12,14 @@
 | **cli-evidence-only** | 仅通过 `pnpm run …` 跑编排时的语义：产出证据与工程合并稿，**不宣称**已完成「AI 六维终稿」 |
 | **final-narrative（终稿叙事）** | **V2 专题 ID**：`topic:business-six-dimension`。落地文件仍为 **`qualitative_report.md` / `qualitative_d1_d6.md`**（**`/business-analysis`** 路径），由 **Claude** 写回：**正文仅 `[E*]`/`[M:§x]`**，**裸 URL 只在附录**；含 **监管与合规要点**、**附录：证据索引**、按需缺口与 PDF 声明；终稿完成态受 **PDF 是否存在 / gateVerdict** 约束（见下文）。对外「含六维的全流程完成」以站点发布集合是否包含该 **Topic** 为准（见 [v2-flow-topology](../architecture/v2-flow-topology.md)）。 |
 | **SelectionResult（选股分支）** | **V2**：`SelectionLayer` 产出候选池与排序（如 screener）；**不得**视为 Topic 子树。候选可 **按需** 触发额外 **TopicReport** 下钻（非强制全量）；证据链仍须满足 [v2-domain-contract](../architecture/v2-domain-contract.md)（经 Feature → Policy）。 |
-| **report-polish（发布型多页稿）** | **`/workflow-analysis`** 在 Phase3 后由 TS 落盘：`report_view_model.json` + `turtle_overview.md` 等四页 Markdown；经 `reports-site:emit` 进入研报站；**不是** `final-narrative`，也**不**替代六维终稿 |
+| **report-polish（Topic draft）** | **`/workflow-analysis`** 在 Phase3 后由 TS 落盘：`report_view_model.json` + `turtle_overview.md` 等四页 Markdown；它们是可审计 draft，不直接进入研报站正式页面；正式 Topic 需 AI/Agent 写回 `finalized/<siteTopicType>.md` 并通过发布门禁 |
 
 ## 入口矩阵
 
 | 入口 | 主要职责 | 是否终稿叙事入口 |
 |------|-----------|------------------|
 | `/business-analysis` / `business-analysis:run` | PDF 链 + Phase1A/1B/2A/2B，产出证据与定性草稿文件 | **Slash 路径**：默认包含你在会话中执行的 **AI 收口**（见下节）；**纯 CLI**：cli-evidence-only |
-| `/workflow-analysis` / `workflow:run` | 全链路至 `analysis_report`、估值、manifest，并 **report-polish** 四页 Markdown + `report_view_model.json` | **发布型终稿**以 report-polish + `reports-site:emit` 为准；**六维定性终稿**仍仅由 **`/business-analysis` + `business-analysis-finalize`** 承担（与 [Agent 编排与 TS 主链](../strategy/agent-framework-comparison.md) 分工一致） |
+| `/workflow-analysis` / `workflow:run` | 全链路至 `analysis_report`、估值、manifest，并 **report-polish** 四页 Markdown + `report_view_model.json` | CLI 产出 Topic draft；龟龟/估值/穿透正式页面需 AI/Agent finalization 写回 finalized Markdown；六维商业质量仍以 **`/business-analysis` + `business-analysis-finalize`** 为主 |
 | `/valuation` / `valuation:run` | 估值 JSON/摘要（可选 full report） | **否** |
 | `/download-annual-report` / `phase0:download` | 年报 PDF 获取与缓存 | **否** |
 | `reports-site:emit` / `sync:reports-to-app` | 将单次 run 聚合为研报站静态数据（`content.md` v2，见 [reports-site-publish](./reports-site-publish.md)） | **否** |
@@ -37,7 +37,7 @@
 ### 全流程（`/workflow-analysis`）
 
 1. 跑 CLI 编排至 manifest、`analysis_report.md`、`valuation_computed.json` 与 **report-polish** 产物（四页 Markdown + `report_view_model.json`）。
-2. 若需进研报站：对 run 根目录执行 `pnpm run reports-site:emit -- --run-dir …`，再 `pnpm run sync:reports-to-app`（见 [reports-site-publish](./reports-site-publish.md)）。
+2. 若需进研报站：先基于 draft 与证据包写回 `finalized/turtle-strategy.md`、`finalized/valuation.md`、`finalized/penetration-return.md` 等 finalized Markdown；再对 run 根目录执行 `pnpm run reports-site:emit -- --run-dir …`，最后 `pnpm run sync:reports-to-app`（见 [reports-site-publish](./reports-site-publish.md)）。
 3. 若仍需 **六维定性终稿**（`qualitative_report.md` / `qualitative_d1_d6.md`）：请走 **`/business-analysis`** 并在会话内执行 **`business-analysis-finalize`**；**不要**用 workflow 会话写回替代 report-polish 发布稿。
 
 ## 输出矩阵（证据包 vs 终稿）

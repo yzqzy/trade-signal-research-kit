@@ -6,7 +6,7 @@
 |--------|-------------------|--------------------------------------------------|------|
 | Tier1 全市场快照 | 脚本内合并多表 | 由上游 **universe JSON**（或 HTTP feed）提供等价字段 | 已对齐（数据契约） |
 | ST/PT/退市 名称过滤 | `_tier1_filter` | `cn-a.ts` 同名正则 | 已对齐 |
-| 银行股 | `include_bank` | `includeBank` | 已对齐 |
+| 银行股 | `include_bank` | `includeBank`；A 股行业名按包含「银行」匹配（如 `银行Ⅱ`） | 已对齐 |
 | 上市年限 | `list_date` 日历截断 | `listDate` YYYYMMDD 日历截断 | 已对齐 |
 | 市值门槛 | 脚本侧「万元→亿元」换算 | `marketCap` **百万元** ≥ `minMarketCapYi * 100` | 已对齐 |
 | 换手率 | `min_turnover_pct`（%） | `minTurnoverPct` | 已对齐 |
@@ -16,10 +16,10 @@
 | Tier1 打分权重 | `dv_weight/pe_weight/pb_weight` | `ScreenerConfig` 三权重 | 已对齐 |
 | Tier1 主通道裁剪 | `tier2_main_limit` | `tier2MainLimit` | 已对齐 |
 | Tier2 硬否决 | 质押、审计意见 | 行字段 `pledgeRatio`、`auditResult`（无字段则跳过该检查） | 已对齐（契约） |
-| Tier2 财务质量（主） | ROE/毛利率/负债率 | `roe`/`grossMargin`/`debtRatio` 与阈值 | 已对齐 |
+| Tier2 财务质量（主） | ROE/毛利率/负债率 | `roe` 按最新一期年化后与阈值比较；`grossMargin`/`debtRatio` 直接比较 | 已对齐（适配 clist 最新一期口径） |
 | 观察通道质量 | FCF 边际、OCF>0、5 年 FCF 正年数等 | `validateObservationQuality` 使用 `ocf`/`capex`/`revenue`/`fcfPositiveYears` | 已对齐（需 universe 提供） |
 | Factor2 R | `R = AA*(M/100)/mkt_cap*100` | `computeFactorSummary`：`payoutRatio`(M)、AA 分项、`marketCap` | 已对齐（M 缺省弱回退） |
-| Factor4 / 打分 | 五维分位 + 权重 | `computeStandaloneScore` 同结构 | 已对齐 |
+| Factor4 / 打分 | 五维分位 + 权重 | 可用维度归一化 + 权重重分配；缺失或无区分度的增强字段不压低全体分数 | 已对齐（工程侧适配字段缺口） |
 | Floor premium | `_extract_floor_price.premium` | `floorPremium` 行字段优先；否则 **受控回退**：默认 `pe/3`（`floorPremiumSource=pe_over_3_heuristic`）；`SCREENER_FLOOR_PREMIUM_FALLBACK=zero` 时为 0 | 已对齐（工程侧：**无 Turtle 五法底价**时显式标注来源；五法需 feed 提供 `floorPremium` 或后续专项实现） |
 | 缓存分层 TTL | Parquet + meta；financial/market/global | `ScreenerDiskCache` JSON + `.meta.json`；分层 TTL 配置项 | 已对齐（实现形态不同） |
 | CLI | `--tier1-only`、`--tier2-limit`、阈值覆盖、缓存刷新 | `cli.ts` 同名语义 | 已对齐 |
