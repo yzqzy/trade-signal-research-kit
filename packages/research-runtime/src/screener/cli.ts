@@ -228,7 +228,7 @@ async function main(): Promise<void> {
           feedBaseUrl: args.feedBaseUrl,
           feedApiBasePath: args.feedApiBasePath,
           feedApiKey: args.feedApiKey,
-          pageSize: args.universePageSize ?? 500,
+          pageSize: args.universePageSize ?? 100,
           refresh: args.refreshUniverse,
         })
       ).rows;

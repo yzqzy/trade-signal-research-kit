@@ -107,8 +107,8 @@ export async function fetchScreenerUniverseFromHttpWithDiagnostics(
   }
   const base = options.baseUrl.replace(/\/+$/, "");
   const apiBasePath = (options.apiBasePath ?? "/api/v1").replace(/\/+$/, "");
-  const pageSizeRaw = options.pageSize ?? 500;
-  const pageSize = Math.min(500, Math.max(1, Math.floor(pageSizeRaw)));
+  const pageSizeRaw = options.pageSize ?? 100;
+  const pageSize = Math.min(100, Math.max(1, Math.floor(pageSizeRaw)));
   const mode: ScreenerUniverseFetchMode = options.mode ?? "all_pages";
 
   const headers: Record<string, string> = {};
