@@ -66,6 +66,21 @@
   margin-bottom: 1rem;
 }
 
+.rh-filter-row--compact {
+  margin-bottom: 0.55rem;
+}
+
+.rh-filter-sticky-wrap {
+  position: sticky;
+  top: 4rem;
+  z-index: 20;
+  margin: 0 0 0.8rem;
+  padding: 0.58rem 0 0.35rem;
+  border-bottom: 1px solid #f0f0f0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+}
+
 .rh-filter-label {
   font-size: 0.75rem;
   font-weight: 600;
@@ -153,6 +168,30 @@
   margin: 0;
   padding: 0;
   border-top: 1px solid #e5e5e5;
+}
+
+.rh-report-group + .rh-report-group {
+  margin-top: 1.15rem;
+}
+
+.rh-report-group-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #737373;
+}
+
+.rh-ranking-group + .rh-ranking-group {
+  margin-top: 1.25rem;
+}
+
+.rh-ranking-group-title {
+  margin: 0 0 0.34rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #737373;
 }
 
 .rh-report-list-item {
@@ -1161,6 +1200,11 @@
   background: transparent;
 }
 
+.dark .rh-filter-sticky-wrap {
+  background: rgba(10, 10, 10, 0.9);
+  border-bottom-color: #262626;
+}
+
 .dark .rh-chip--active {
   border-color: #34d399;
   background: #064e3b;
@@ -1201,6 +1245,14 @@
 }
 
 .dark .rh-report-list-meta {
+  color: #a3a3a3;
+}
+
+.dark .rh-report-group-title {
+  color: #a3a3a3;
+}
+
+.dark .rh-ranking-group-title {
   color: #a3a3a3;
 }
 

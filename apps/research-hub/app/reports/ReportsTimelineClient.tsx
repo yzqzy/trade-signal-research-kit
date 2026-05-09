@@ -26,6 +26,12 @@ export type TimelineItem = {
   confidenceState: "high" | "medium" | "low" | "unknown";
 };
 
+type TimelineGroup = {
+  key: "today" | "recent" | "earlier";
+  label: string;
+  items: TimelineItem[];
+};
+
 function statusBadge(it: Pick<TimelineItem, "requiredFieldsStatus" | "topicType">): string {
   if (it.topicType === "business-quality" && it.requiredFieldsStatus === "degraded") return "结构化预览";
   if (it.requiredFieldsStatus === "complete") return "完整";
@@ -83,6 +89,36 @@ export function ReportsTimelineClient({
     });
   }, [items, topicFilter, codeFilter]);
 
+  const grouped = useMemo<TimelineGroup[]>(() => {
+    const today: TimelineItem[] = [];
+    const recent: TimelineItem[] = [];
+    const earlier: TimelineItem[] = [];
+    const now = dayjs();
+    const startOfToday = now.startOf("day");
+    const sevenDaysAgo = now.subtract(7, "day").startOf("day");
+
+    for (const it of filtered) {
+      const at = dayjs(it.publishedAt);
+      if (!at.isValid()) {
+        earlier.push(it);
+        continue;
+      }
+      if (at.isAfter(startOfToday) || at.isSame(startOfToday)) {
+        today.push(it);
+      } else if (at.isAfter(sevenDaysAgo) || at.isSame(sevenDaysAgo)) {
+        recent.push(it);
+      } else {
+        earlier.push(it);
+      }
+    }
+
+    return [
+      { key: "today", label: "今天", items: today },
+      { key: "recent", label: "近 7 天", items: recent },
+      { key: "earlier", label: "更早", items: earlier },
+    ].filter((group) => group.items.length > 0);
+  }, [filtered]);
+
   const codes = useMemo(() => [...new Set(items.map((i) => i.code))].sort(), [items]);
 
   return (
@@ -100,40 +136,42 @@ export function ReportsTimelineClient({
         ) : null}
       </header>
 
-      <section className="rh-filter-row" aria-label="按专题筛选">
-        <span className="rh-filter-label">专题</span>
-        <Link className={`rh-chip${!topicFilter ? " rh-chip--active" : ""}`} href="/reports">
-          全部
-        </Link>
-        {TOPIC_TYPES.map((t) => (
-          <Link
-            key={t}
-            className={`rh-chip${topicFilter === t ? " rh-chip--active" : ""}`}
-            href={`/reports?topic=${encodeURIComponent(t)}`}
-          >
-            {TOPIC_LABEL_ZH[t]}
+      <div className="rh-filter-sticky-wrap">
+        <section className="rh-filter-row rh-filter-row--compact" aria-label="按专题筛选">
+          <span className="rh-filter-label">专题</span>
+          <Link className={`rh-chip${!topicFilter ? " rh-chip--active" : ""}`} href="/reports">
+            全部
           </Link>
-        ))}
-      </section>
+          {TOPIC_TYPES.map((t) => (
+            <Link
+              key={t}
+              className={`rh-chip${topicFilter === t ? " rh-chip--active" : ""}`}
+              href={`/reports?topic=${encodeURIComponent(t)}`}
+            >
+              {TOPIC_LABEL_ZH[t]}
+            </Link>
+          ))}
+        </section>
 
-      <section className="rh-filter-row" aria-label="按代码筛选">
-        <span className="rh-filter-label">代码</span>
-        <Link
-          className={`rh-chip${!codeFilter ? " rh-chip--active" : ""}`}
-          href={topicFilter ? `/reports?topic=${encodeURIComponent(topicFilter)}` : "/reports"}
-        >
-          全部
-        </Link>
-        {codes.map((c) => (
+        <section className="rh-filter-row rh-filter-row--compact" aria-label="按代码筛选">
+          <span className="rh-filter-label">代码</span>
           <Link
-            key={c}
-            className={`rh-chip${codeFilter === c ? " rh-chip--active" : ""}`}
-            href={`/reports?code=${encodeURIComponent(c)}${topicFilter ? `&topic=${encodeURIComponent(topicFilter)}` : ""}`}
+            className={`rh-chip${!codeFilter ? " rh-chip--active" : ""}`}
+            href={topicFilter ? `/reports?topic=${encodeURIComponent(topicFilter)}` : "/reports"}
           >
-            {c}
+            全部
           </Link>
-        ))}
-      </section>
+          {codes.map((c) => (
+            <Link
+              key={c}
+              className={`rh-chip${codeFilter === c ? " rh-chip--active" : ""}`}
+              href={`/reports?code=${encodeURIComponent(c)}${topicFilter ? `&topic=${encodeURIComponent(topicFilter)}` : ""}`}
+            >
+              {c}
+            </Link>
+          ))}
+        </section>
+      </div>
 
       {filtered.length === 0 ? (
         <div className="rh-empty" role="status">
@@ -144,26 +182,33 @@ export function ReportsTimelineClient({
           )}
         </div>
       ) : (
-        <ul className="rh-report-list" aria-label="报告列表">
-          {filtered.map((it) => (
-            <li key={it.entryId} className="rh-report-list-item">
-              <h2 className="rh-report-list-title">{it.displayTitle}</h2>
-              <Link
-                className="rh-stretched-link"
-                href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}
-                aria-label={`打开报告：${it.displayTitle}`}
-              />
-              <div className="rh-report-list-meta">
-                <span title={it.publishedAt}>{formatIsoUtcText(it.publishedAt)}</span>
-                <span className="rh-pill">{TOPIC_LABEL_ZH[it.topicType]}</span>
-                <span>置信度 {it.confidenceState}</span>
-                <span className={statusClass(it.requiredFieldsStatus)}>
-                  {statusPrefix(it)} {statusBadge(it)}
-                </span>
-              </div>
-            </li>
+        <>
+          {grouped.map((group) => (
+            <section key={group.key} className="rh-report-group" aria-label={`报告分组：${group.label}`}>
+              <h2 className="rh-report-group-title">{group.label}</h2>
+              <ul className="rh-report-list" aria-label={`${group.label}报告列表`}>
+                {group.items.map((it) => (
+                  <li key={it.entryId} className="rh-report-list-item">
+                    <h3 className="rh-report-list-title">{it.displayTitle}</h3>
+                    <Link
+                      className="rh-stretched-link"
+                      href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}
+                      aria-label={`打开报告：${it.displayTitle}`}
+                    />
+                    <div className="rh-report-list-meta">
+                      <span title={it.publishedAt}>{formatIsoUtcText(it.publishedAt)}</span>
+                      <span className="rh-pill">{TOPIC_LABEL_ZH[it.topicType]}</span>
+                      <span>置信度 {it.confidenceState}</span>
+                      <span className={statusClass(it.requiredFieldsStatus)}>
+                        {statusPrefix(it)} {statusBadge(it)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </>
       )}
     </div>
   );
