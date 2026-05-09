@@ -144,13 +144,16 @@ export function ReportsTimelineClient({
           )}
         </div>
       ) : (
-        <ul className="rh-card-list">
+        <ul className="rh-report-list" aria-label="报告列表">
           {filtered.map((it) => (
-            <li key={it.entryId} className="rh-card">
-              <Link className="rh-card-title rh-card-title--clamp" href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}>
-                {it.displayTitle}
-              </Link>
-              <div className="rh-card-meta">
+            <li key={it.entryId} className="rh-report-list-item">
+              <h2 className="rh-report-list-title">{it.displayTitle}</h2>
+              <Link
+                className="rh-stretched-link"
+                href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}
+                aria-label={`打开报告：${it.displayTitle}`}
+              />
+              <div className="rh-report-list-meta">
                 <span title={it.publishedAt}>{formatIsoUtcText(it.publishedAt)}</span>
                 <span className="rh-pill">{TOPIC_LABEL_ZH[it.topicType]}</span>
                 <span>置信度 {it.confidenceState}</span>

@@ -9,8 +9,8 @@ import logo from "../public/logo.svg";
 import "./globals.css";
 
 export const metadata = {
-  title: "研报中心 | TradeSignal",
-  description: "研究报告时间流与条目详情。",
+  title: "报告中心 | TradeSignal",
+  description: "投研报告与策略榜单中心。",
   robots: {
     index: true,
     follow: true,

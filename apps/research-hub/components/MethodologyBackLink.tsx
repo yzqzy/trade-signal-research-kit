@@ -16,26 +16,26 @@ function MethodologyBackLinkInner() {
   if (from === "rankings") {
     return (
       <Link className="rh-back-link" href="/rankings">
-        ← 策略榜单
+        ← 策略榜单中心
       </Link>
     );
   }
   return (
     <Link className="rh-back-link" href="/reports">
-      ← 研报中心
+      ← 报告中心
     </Link>
   );
 }
 
 /**
- * 静态导出下方法论页需客户端读取 `?from=`，否则从榜单进入时「返回」会错误指向研报列表。
+ * 静态导出下方法论页需客户端读取 `?from=`，否则从榜单进入时「返回」会错误指向报告列表。
  */
 export function MethodologyBackLink() {
   return (
     <Suspense
       fallback={
         <Link className="rh-back-link" href="/reports">
-          ← 研报中心
+          ← 报告中心
         </Link>
       }
     >

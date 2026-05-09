@@ -160,6 +160,7 @@ export default async function ReportEntryPage({
             </span>
             <MethodologyGuideLink from="reports" variant="pill" />
           </div>
+          <p className="rh-ai-disclaimer">本页内容可能包含模型辅助生成结果，需结合原始公告与财务数据复核，不构成投资建议。</p>
         </div>
       </header>
       <ReportMarkdownBody markdown={stripLeadingMarkdownTitle(markdown)} />

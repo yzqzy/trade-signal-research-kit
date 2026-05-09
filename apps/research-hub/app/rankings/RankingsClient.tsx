@@ -153,15 +153,18 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
               const strategyMeta = getRankingStrategyMeta(list.strategyId);
               const topSummary = resolveTopSummary(list);
               return (
-                <article key={list.listId} className="rh-card">
+                <article key={list.listId} className="rh-card rh-ranking-list-card">
                   <div className="rh-card-meta rh-card-meta--head">
                     <span className="rh-pill rh-pill--mono">{list.market}</span>
                     <span className="rh-pill rh-pill--mono">{list.mode}</span>
                     <span className={capabilityClass(list)}>{capabilityLabel(list)}</span>
                   </div>
-                  <h2 className="rh-card-title rh-card-title--clamp">
-                    <Link href={buildRankingDetailHref(list, { strategy: strategyFilter, market: marketFilter })}>{strategyMeta.label}</Link>
-                  </h2>
+                  <h2 className="rh-card-title rh-card-title--clamp">{strategyMeta.label}</h2>
+                  <Link
+                    className="rh-stretched-link"
+                    href={buildRankingDetailHref(list, { strategy: strategyFilter, market: marketFilter })}
+                    aria-label={`打开榜单：${strategyMeta.label} ${list.market} ${list.mode}`}
+                  />
                   <p className="rh-ranking-card-highlight">
                     {topSummary ? (
                       <>

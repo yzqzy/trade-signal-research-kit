@@ -112,6 +112,7 @@
 }
 
 .rh-card {
+  position: relative;
   border: 1px solid #e5e5e5;
   border-radius: 0.65rem;
   padding: 1rem;
@@ -127,6 +128,65 @@
   border-color: #d4d4d4;
   box-shadow: 0 6px 20px rgb(0 0 0 / 8%);
   transform: translateY(-1px);
+}
+
+.rh-card:focus-within {
+  border-color: #d4d4d4;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 8%);
+  transform: translateY(-1px);
+}
+
+.rh-stretched-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.rh-stretched-link:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+.rh-report-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.rh-report-list-item {
+  position: relative;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 0.8rem 0.1rem 0.9rem;
+}
+
+.rh-report-list-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  color: #171717;
+  font-size: 1rem;
+  line-height: 1.45;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rh-report-list-meta {
+  margin-top: 0.32rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.rh-report-list-item:hover .rh-report-list-title,
+.rh-report-list-item:focus-within .rh-report-list-title {
+  color: #047857;
 }
 
 .rh-card-title {
@@ -187,6 +247,46 @@
   color: #111827;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.rh-ranking-list-card {
+  border-color: #e7e5e4;
+  background: #fff;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 3%);
+  padding: 0.78rem 0.82rem;
+  border-radius: 0.62rem;
+}
+
+.rh-ranking-list-card:hover {
+  border-color: #d6d3d1;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
+}
+
+.rh-ranking-list-card .rh-card-title {
+  margin-top: 0.24rem;
+  margin-bottom: 0.06rem;
+  font-size: 1rem;
+}
+
+.rh-ranking-list-card .rh-ranking-card-highlight {
+  margin-top: 0.22rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  font-size: 0.82rem;
+}
+
+.rh-ranking-list-card .rh-card-meta--support {
+  margin-top: 0.34rem;
+  font-size: 0.72rem;
+  color: #78716c;
+}
+
+.rh-ranking-list-card .rh-card-excerpt {
+  margin-top: 0.24rem;
+  -webkit-line-clamp: 1;
+  font-size: 0.75rem;
 }
 
 /* 正文段落内链：继承字号，高亮主色（避免误用 rh-card-title 在 0.875rem 段落里过大） */
@@ -399,6 +499,13 @@
 
 .rh-report-hero {
   margin-bottom: 0.5rem;
+}
+
+.rh-ai-disclaimer {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  color: #737373;
+  line-height: 1.55;
 }
 
 .rh-suspense-fallback {
@@ -1071,6 +1178,32 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
 }
 
+.dark .rh-card:focus-within {
+  border-color: #525252;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+.dark .rh-report-list {
+  border-top-color: #404040;
+}
+
+.dark .rh-report-list-item {
+  border-bottom-color: #404040;
+}
+
+.dark .rh-report-list-title {
+  color: #f5f5f5;
+}
+
+.dark .rh-report-list-item:hover .rh-report-list-title,
+.dark .rh-report-list-item:focus-within .rh-report-list-title {
+  color: #6ee7b7;
+}
+
+.dark .rh-report-list-meta {
+  color: #a3a3a3;
+}
+
 .dark .rh-card-subtitle {
   color: #a3a3a3;
 }
@@ -1095,7 +1228,26 @@
   color: #e5e7eb;
 }
 
+.dark .rh-ranking-list-card {
+  border-color: #3f3f46;
+  background: #171717;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 26%);
+}
+
+.dark .rh-ranking-list-card:hover {
+  border-color: #52525b;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 35%);
+}
+
+.dark .rh-ranking-list-card .rh-card-meta--support {
+  color: #a8a29e;
+}
+
 .dark .rh-card-excerpt {
+  color: #a3a3a3;
+}
+
+.dark .rh-ai-disclaimer {
   color: #a3a3a3;
 }
 

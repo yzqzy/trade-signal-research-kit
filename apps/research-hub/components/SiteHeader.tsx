@@ -34,13 +34,13 @@ export function SiteHeader() {
             href="/reports"
             className="text-sm font-medium text-gray-600 no-underline transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
           >
-            研报中心
+            报告中心
           </Link>
           <Link
             href="/rankings"
             className="text-sm font-medium text-gray-600 no-underline transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
           >
-            策略榜单
+            策略榜单中心
           </Link>
           <a
             href="https://github.com/yzqzy"

@@ -6,7 +6,7 @@ const METHODOLOGY_PATH = "/reports/methodology";
 /** 与 `/reports/methodology` 页 `h1` 一致，供各入口复用 */
 export const METHODOLOGY_PAGE_TITLE = "穿透收益率与前置筛选说明" as const;
 
-/** 研报中心 / 策略榜单等正文内统一入口文案 */
+/** 报告中心 / 策略榜单中心等正文内统一入口文案 */
 export const METHODOLOGY_GUIDE_LINK_LABEL = `查看：${METHODOLOGY_PAGE_TITLE}` as const;
 
 /** 报告详情元信息条等窄位：短标签，`title` 用完整 `METHODOLOGY_GUIDE_LINK_LABEL` */
@@ -21,7 +21,7 @@ export function methodologyHrefWithSource(base: string, source: MethodologyFromS
   return `${u.pathname}${u.search}`;
 }
 
-/** 研报列表等入口：固定路径 + from=reports */
+/** 报告列表等入口：固定路径 + from=reports */
 export function methodologyHrefFromReports(): string {
   return `${METHODOLOGY_PATH}?from=reports`;
 }
