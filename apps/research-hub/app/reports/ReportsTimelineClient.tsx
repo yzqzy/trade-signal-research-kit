@@ -147,7 +147,7 @@ export function ReportsTimelineClient({
         <ul className="rh-card-list">
           {filtered.map((it) => (
             <li key={it.entryId} className="rh-card">
-              <Link className="rh-card-title" href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}>
+              <Link className="rh-card-title rh-card-title--clamp" href={buildReportDetailHref(it, { topic: topicFilter, code: codeFilter })}>
                 {it.displayTitle}
               </Link>
               <div className="rh-card-meta">

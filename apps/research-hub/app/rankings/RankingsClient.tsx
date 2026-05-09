@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { MethodologyGuideLink } from "@/components/MethodologyGuideLink";
@@ -9,6 +9,8 @@ import { getRankingStrategyMeta, RANKING_STRATEGIES } from "@/lib/rankings/strat
 import type { RankingsIndex, RankingList } from "@/lib/rankings/types";
 
 import { capabilityClass, capabilityLabel, formatRankingTime } from "./ranking-format";
+
+const LIST_PREVIEW_LIMIT = 18;
 
 function resolveTopN(list: RankingList): number {
   return typeof list.topN === "number" && Number.isFinite(list.topN) && list.topN > 0 ? Math.floor(list.topN) : 200;
@@ -22,6 +24,18 @@ function previewMetrics(list: RankingList): string {
   return `Top1 ${first.code} ${first.name} · ${decision} · ${first.score.toFixed(4)}`;
 }
 
+function resolveTopSummary(list: RankingList): { code: string; name: string; decision: string; score: string } | null {
+  const first = list.items[0];
+  if (!first) return null;
+  const meta = getRankingStrategyMeta(list.strategyId);
+  return {
+    code: first.code,
+    name: first.name,
+    decision: meta.decisionLabel(first.decision),
+    score: first.score.toFixed(4),
+  };
+}
+
 function buildRankingDetailHref(list: RankingList, filters: { strategy?: string; market?: string }): string {
   const base = `/rankings/${encodeURIComponent(list.listId)}`;
   const query = new URLSearchParams();
@@ -33,6 +47,7 @@ function buildRankingDetailHref(list: RankingList, filters: { strategy?: string;
 
 export function RankingsClient({ data }: { data: RankingsIndex }) {
   const sp = useSearchParams();
+  const [showAllLists, setShowAllLists] = useState(false);
   const strategyFilter = sp.get("strategy")?.trim() || "";
   const marketFilter = sp.get("market")?.trim() || "";
 
@@ -52,6 +67,8 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
 
   const selectedStrategyMeta = strategyFilter ? getRankingStrategyMeta(strategyFilter) : undefined;
   const markets = useMemo(() => [...new Set(data.lists.map((list) => list.market))].sort(), [data.lists]);
+  const displayLists = showAllLists ? filteredLists : filteredLists.slice(0, LIST_PREVIEW_LIMIT);
+  const isListTruncated = filteredLists.length > LIST_PREVIEW_LIMIT;
 
   return (
     <div className="rh-container rankings-root">
@@ -120,31 +137,54 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
           {data.listCount === 0 ? "暂无榜单数据。可先运行 screener 并执行 reports-site:emit / sync。" : "没有符合当前筛选条件的榜单。"}
         </div>
       ) : (
-        <section className="rh-grid">
-          {filteredLists.map((list) => {
-            const strategyMeta = getRankingStrategyMeta(list.strategyId);
-            return (
-              <article key={list.listId} className="rh-card">
-                <div className="rh-card-meta">
-                  <span className="rh-pill">{strategyMeta.label}</span>
-                  <span className="rh-pill rh-pill--mono">{list.market}</span>
-                  <span className="rh-pill rh-pill--mono">{list.mode}</span>
-                  <span className={capabilityClass(list)}>{capabilityLabel(list)}</span>
-                </div>
-                <h2 className="rh-card-title">
-                  <Link href={buildRankingDetailHref(list, { strategy: strategyFilter, market: marketFilter })}>
-                    {strategyMeta.label} · {list.market} · {list.mode}
-                  </Link>
-                </h2>
-                <p className="rh-card-excerpt">{strategyMeta.shortDescription}</p>
-                <p className="rh-page-meta">
-                  更新时间 {formatRankingTime(list.generatedAt)} · 展示 Top {resolveTopN(list)} · 候选 {list.totalCandidates ?? list.items.length}
-                </p>
-                <p className="rh-page-desc">{previewMetrics(list)}</p>
-              </article>
-            );
-          })}
-        </section>
+        <>
+          {isListTruncated ? (
+            <div className="rh-filter-row">
+              <span className="rh-page-meta">
+                当前条件下共 {filteredLists.length} 个榜单，默认展示前 {LIST_PREVIEW_LIMIT} 个。
+              </span>
+              <button className="rh-chip" type="button" onClick={() => setShowAllLists((value) => !value)} aria-pressed={showAllLists}>
+                {showAllLists ? `收起到前 ${LIST_PREVIEW_LIMIT} 个` : "展开全部榜单"}
+              </button>
+            </div>
+          ) : null}
+          <section className="rh-grid">
+            {displayLists.map((list) => {
+              const strategyMeta = getRankingStrategyMeta(list.strategyId);
+              const topSummary = resolveTopSummary(list);
+              return (
+                <article key={list.listId} className="rh-card">
+                  <div className="rh-card-meta rh-card-meta--head">
+                    <span className="rh-pill rh-pill--mono">{list.market}</span>
+                    <span className="rh-pill rh-pill--mono">{list.mode}</span>
+                    <span className={capabilityClass(list)}>{capabilityLabel(list)}</span>
+                  </div>
+                  <h2 className="rh-card-title rh-card-title--clamp">
+                    <Link href={buildRankingDetailHref(list, { strategy: strategyFilter, market: marketFilter })}>{strategyMeta.label}</Link>
+                  </h2>
+                  <p className="rh-ranking-card-highlight">
+                    {topSummary ? (
+                      <>
+                        <span className="rh-ranking-card-highlight-label">Top1</span>
+                        <span className="rh-ranking-card-highlight-main">
+                          {topSummary.code} {topSummary.name}
+                        </span>
+                        <span className="rh-ranking-card-highlight-meta">{topSummary.decision}</span>
+                        <span className="rh-ranking-card-highlight-score">{topSummary.score}</span>
+                      </>
+                    ) : (
+                      previewMetrics(list)
+                    )}
+                  </p>
+                  <p className="rh-page-meta rh-card-meta--support">
+                    展示 Top {resolveTopN(list)} · 候选 {list.totalCandidates ?? list.items.length} · 更新时间 {formatRankingTime(list.generatedAt)}
+                  </p>
+                  <p className="rh-card-excerpt">{strategyMeta.shortDescription}</p>
+                </article>
+              );
+            })}
+          </section>
+        </>
       )}
     </div>
   );
