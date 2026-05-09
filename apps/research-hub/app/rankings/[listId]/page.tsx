@@ -8,8 +8,6 @@ import { getRankingStrategyMeta } from "@/lib/rankings/strategies";
 import { capabilityClass, capabilityLabel, formatRankingTime } from "../ranking-format";
 import { readRankingsData } from "../read-rankings";
 
-const CARD_PREVIEW_LIMIT = 36;
-
 function RankingBackLinkBoundary() {
   return (
     <Suspense
@@ -87,8 +85,6 @@ export default async function RankingDetailPage({ params }: { params: Promise<{ 
   const strategyMeta = getRankingStrategyMeta(list.strategyId);
   const columns = strategyMeta.columns;
   const metricColumnCount = Math.max(columns.length - 5, 0);
-  const cardItems = list.items.slice(0, CARD_PREVIEW_LIMIT);
-  const isCardListTruncated = list.items.length > CARD_PREVIEW_LIMIT;
 
   return (
     <div className="rh-container rankings-root">
@@ -138,13 +134,8 @@ export default async function RankingDetailPage({ params }: { params: Promise<{ 
       </section>
 
       <section className="rh-ranking-block">
-        {isCardListTruncated ? (
-          <p className="rh-page-meta">
-            卡片视图仅展示前 {CARD_PREVIEW_LIMIT} 条（共 {list.items.length} 条），完整数据请展开下方紧凑表格。
-          </p>
-        ) : null}
         <div className="rh-ranking-cards">
-          {cardItems.map((item) => (
+          {list.items.map((item) => (
             <article key={`${list.listId}-${item.code}-card`} className="rh-card">
               <div className="rh-ranking-card-top">
                 <span className="rh-pill rh-pill--mono">#{item.rank}</span>
@@ -159,44 +150,6 @@ export default async function RankingDetailPage({ params }: { params: Promise<{ 
             </article>
           ))}
         </div>
-        <details className="rh-ranking-table-details">
-          <summary>展开紧凑表格</summary>
-          <div className="rh-ranking-table-wrap">
-            <table className="rh-ranking-table">
-              <thead>
-                <tr>
-                  {columns.map((column) => (
-                    <th key={column.key}>{column.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {list.items.map((item) => (
-                  <tr key={`${list.listId}-${item.code}`}>
-                    {columns.map((column) => {
-                      let text = column.render(item);
-                      if (column.key === "decision") text = strategyMeta.decisionLabel(item.decision);
-                      if (column.key === "security") {
-                        return (
-                          <td key={column.key}>
-                            {item.href ? (
-                              <Link className="rh-card-title" href={item.href}>
-                                {text}
-                              </Link>
-                            ) : (
-                              text
-                            )}
-                          </td>
-                        );
-                      }
-                      return <td key={column.key}>{text}</td>;
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
       </section>
     </div>
   );
