@@ -167,7 +167,6 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid #e5e5e5;
 }
 
 .rh-report-group + .rh-report-group {
@@ -198,6 +197,10 @@
   position: relative;
   border-bottom: 1px solid #e5e5e5;
   padding: 0.8rem 0.1rem 0.9rem;
+}
+
+.rh-report-list-item:last-child {
+  border-bottom: 0;
 }
 
 .rh-report-list-title {
@@ -1225,10 +1228,6 @@
 .dark .rh-card:focus-within {
   border-color: #525252;
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
-}
-
-.dark .rh-report-list {
-  border-top-color: #404040;
 }
 
 .dark .rh-report-list-item {

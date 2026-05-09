@@ -98,5 +98,5 @@ pnpm run test:linkage
 
 ## 参考与许可
 
-- 参考工程：[Turtle_investment_framework](https://github.com/terancejiang/Turtle_investment_framework)（本仓库镜像路径：`references/projects/Turtle_investment_framework/`）
+- 参考工程：[Turtle_investment_framework](https://github.com/terancejiang/Turtle_investment_framework)
 - License: MIT

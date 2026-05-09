@@ -50,15 +50,35 @@ function statusClass(s: TimelineItem["requiredFieldsStatus"]): string {
 }
 
 function formatIsoUtcText(value: string): string {
-  const parsed = dayjs(value);
-  if (!parsed.isValid()) return value;
+  const parsed = toZonedDayjs(value);
+  if (!parsed.isValid()) return value || "—";
   if (REPORTS_TIMEZONE === "Asia/Shanghai") {
-    return `${parsed.tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm:ss")} 北京时间`;
+    return `${parsed.format("YYYY-MM-DD HH:mm:ss")} 北京时间`;
   }
   if (REPORTS_TIMEZONE !== "local") {
-    return `${parsed.tz(REPORTS_TIMEZONE).format("YYYY-MM-DD HH:mm:ss")} ${REPORTS_TIMEZONE}`;
+    return `${parsed.format("YYYY-MM-DD HH:mm:ss")} ${REPORTS_TIMEZONE}`;
   }
   return parsed.format("YYYY-MM-DD HH:mm:ss");
+}
+
+function toZonedDayjs(value: string): dayjs.Dayjs {
+  const parsed = dayjs(value);
+  if (!parsed.isValid()) return parsed;
+  if (REPORTS_TIMEZONE === "Asia/Shanghai") {
+    return parsed.tz("Asia/Shanghai");
+  }
+  if (REPORTS_TIMEZONE !== "local") {
+    return parsed.tz(REPORTS_TIMEZONE);
+  }
+  return parsed;
+}
+
+function formatPublishedAtByGroup(value: string, groupKey: TimelineGroup["key"]): string {
+  const parsed = toZonedDayjs(value);
+  if (!parsed.isValid()) return "—";
+  if (groupKey === "today") return parsed.format("HH:mm");
+  if (groupKey === "recent") return parsed.format("MM-DD HH:mm");
+  return parsed.format("YYYY-MM-DD");
 }
 
 function buildReportDetailHref(item: TimelineItem, filters: { topic?: string | null; code?: string }): string {
@@ -89,16 +109,26 @@ export function ReportsTimelineClient({
     });
   }, [items, topicFilter, codeFilter]);
 
+  const sortedFiltered = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const bTs = toZonedDayjs(b.publishedAt).valueOf();
+      const aTs = toZonedDayjs(a.publishedAt).valueOf();
+      const safeBTs = Number.isFinite(bTs) ? bTs : Number.NEGATIVE_INFINITY;
+      const safeATs = Number.isFinite(aTs) ? aTs : Number.NEGATIVE_INFINITY;
+      return safeBTs - safeATs;
+    });
+  }, [filtered]);
+
   const grouped = useMemo<TimelineGroup[]>(() => {
     const today: TimelineItem[] = [];
     const recent: TimelineItem[] = [];
     const earlier: TimelineItem[] = [];
-    const now = dayjs();
+    const now = toZonedDayjs(new Date().toISOString());
     const startOfToday = now.startOf("day");
     const sevenDaysAgo = now.subtract(7, "day").startOf("day");
 
-    for (const it of filtered) {
-      const at = dayjs(it.publishedAt);
+    for (const it of sortedFiltered) {
+      const at = toZonedDayjs(it.publishedAt);
       if (!at.isValid()) {
         earlier.push(it);
         continue;
@@ -118,7 +148,7 @@ export function ReportsTimelineClient({
       { key: "earlier", label: "更早", items: earlier },
     ];
     return groups.filter((group) => group.items.length > 0);
-  }, [filtered]);
+  }, [sortedFiltered]);
 
   const codes = useMemo(() => [...new Set(items.map((i) => i.code))].sort(), [items]);
 
@@ -197,7 +227,7 @@ export function ReportsTimelineClient({
                       aria-label={`打开报告：${it.displayTitle}`}
                     />
                     <div className="rh-report-list-meta">
-                      <span title={it.publishedAt}>{formatIsoUtcText(it.publishedAt)}</span>
+                      <span title={formatIsoUtcText(it.publishedAt)}>{formatPublishedAtByGroup(it.publishedAt, group.key)}</span>
                       <span className="rh-pill">{TOPIC_LABEL_ZH[it.topicType]}</span>
                       <span>置信度 {it.confidenceState}</span>
                       <span className={statusClass(it.requiredFieldsStatus)}>

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 import { MethodologyGuideLink } from "@/components/MethodologyGuideLink";
 import { getRankingStrategyMeta, RANKING_STRATEGIES } from "@/lib/rankings/strategies";
@@ -10,12 +13,32 @@ import type { RankingsIndex, RankingList } from "@/lib/rankings/types";
 
 import { capabilityClass, capabilityLabel, formatRankingTime } from "./ranking-format";
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const REPORTS_TIMEZONE = process.env.NEXT_PUBLIC_REPORTS_TIMEZONE?.trim() || "local";
 const LIST_PREVIEW_LIMIT = 18;
 type RankingListGroup = {
   key: "today" | "recent" | "earlier";
   label: string;
   lists: RankingList[];
 };
+
+function toZonedDayjs(value: string): dayjs.Dayjs {
+  const parsed = dayjs(value);
+  if (!parsed.isValid()) return parsed;
+  if (REPORTS_TIMEZONE === "Asia/Shanghai") return parsed.tz("Asia/Shanghai");
+  if (REPORTS_TIMEZONE !== "local") return parsed.tz(REPORTS_TIMEZONE);
+  return parsed;
+}
+
+function formatRankingTimeByGroup(value: string, groupKey: RankingListGroup["key"]): string {
+  const parsed = toZonedDayjs(value);
+  if (!parsed.isValid()) return "—";
+  if (groupKey === "today") return parsed.format("HH:mm");
+  if (groupKey === "recent") return parsed.format("MM-DD HH:mm");
+  return parsed.format("YYYY-MM-DD");
+}
 
 function resolveTopN(list: RankingList): number {
   return typeof list.topN === "number" && Number.isFinite(list.topN) && list.topN > 0 ? Math.floor(list.topN) : 200;
@@ -74,15 +97,24 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
   const markets = useMemo(() => [...new Set(data.lists.map((list) => list.market))].sort(), [data.lists]);
   const displayLists = showAllLists ? filteredLists : filteredLists.slice(0, LIST_PREVIEW_LIMIT);
   const isListTruncated = filteredLists.length > LIST_PREVIEW_LIMIT;
+  const sortedDisplayLists = useMemo(() => {
+    return [...displayLists].sort((a, b) => {
+      const bTs = toZonedDayjs(b.generatedAt).valueOf();
+      const aTs = toZonedDayjs(a.generatedAt).valueOf();
+      const safeBTs = Number.isFinite(bTs) ? bTs : Number.NEGATIVE_INFINITY;
+      const safeATs = Number.isFinite(aTs) ? aTs : Number.NEGATIVE_INFINITY;
+      return safeBTs - safeATs;
+    });
+  }, [displayLists]);
   const groupedLists = useMemo<RankingListGroup[]>(() => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const sevenDaysAgo = startOfToday - 7 * 24 * 60 * 60 * 1000;
+    const now = toZonedDayjs(new Date().toISOString());
+    const startOfToday = now.startOf("day").valueOf();
+    const sevenDaysAgo = now.subtract(7, "day").startOf("day").valueOf();
     const today: RankingList[] = [];
     const recent: RankingList[] = [];
     const earlier: RankingList[] = [];
-    for (const list of displayLists) {
-      const ts = Date.parse(list.generatedAt);
+    for (const list of sortedDisplayLists) {
+      const ts = toZonedDayjs(list.generatedAt).valueOf();
       if (!Number.isFinite(ts)) {
         earlier.push(list);
         continue;
@@ -101,7 +133,7 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
       { key: "earlier", label: "更早", lists: earlier },
     ];
     return groups.filter((group) => group.lists.length > 0);
-  }, [displayLists]);
+  }, [sortedDisplayLists]);
 
   return (
     <div className="rh-container rankings-root">
@@ -216,7 +248,8 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
                         )}
                       </p>
                       <p className="rh-page-meta rh-card-meta--support">
-                        展示 Top {resolveTopN(list)} · 候选 {list.totalCandidates ?? list.items.length} · 更新时间 {formatRankingTime(list.generatedAt)}
+                        展示 Top {resolveTopN(list)} · 候选 {list.totalCandidates ?? list.items.length} · 更新时间{" "}
+                        <span title={formatRankingTime(list.generatedAt)}>{formatRankingTimeByGroup(list.generatedAt, group.key)}</span>
                       </p>
                       <p className="rh-card-excerpt">{strategyMeta.shortDescription}</p>
                     </article>
