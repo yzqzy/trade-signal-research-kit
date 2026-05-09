@@ -3,6 +3,8 @@ export type SelectionManifestV1 = {
     manifestVersion: typeof SELECTION_MANIFEST_VERSION;
     schema: "selection-result-v2";
     runProfile: "selection_fast";
+    strategyId: string;
+    strategyLabel: string;
     selectionId: string;
     runId: string;
     universe: string;
@@ -11,11 +13,22 @@ export type SelectionManifestV1 = {
         code: string;
         score?: number;
         decision?: string;
+        confidence?: "high" | "medium" | "low" | "unknown";
         policyContributions?: Record<string, number>;
     }>;
+    policyResults?: Array<{
+        policyId: string;
+        code: string;
+        payload: Record<string, unknown>;
+    }>;
     drillDownTopicIds?: string[];
+    rankingsTopN?: number;
 };
 export type SelectionSourceLike = {
+    strategyId?: string;
+    strategyLabel?: string;
+    selectionId?: string;
+    universe?: string;
     market: string;
     mode: string;
     generatedAt: string;
@@ -27,4 +40,7 @@ export type SelectionSourceLike = {
         screenerScore?: number;
     }>;
 };
-export declare function buildSelectionManifestV1(output: SelectionSourceLike, runId: string): SelectionManifestV1;
+export type SelectionManifestBuildOptions = {
+    rankingsTopN?: number;
+};
+export declare function buildSelectionManifestV1(output: SelectionSourceLike, runId: string, options?: SelectionManifestBuildOptions): SelectionManifestV1;

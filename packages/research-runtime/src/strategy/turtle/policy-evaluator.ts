@@ -1,4 +1,5 @@
 import type { FeatureSet, SourceRef } from "@trade-signal/research-contracts";
+import { evaluateTurtleCore, type TurtleMetricQualityStatus } from "./core.js";
 
 type DecisionConfidence = "high" | "medium" | "low";
 
@@ -14,13 +15,17 @@ export type TurtlePolicyPayload = {
   confidence: DecisionConfidence;
   metrics: {
     penetrationR: number | null;
+    refinedPenetrationGG: number | null;
     rf: number | null;
     thresholdII: number | null;
+    ownerEarningsI: number | null;
     roe: number | null;
     fcfYield: number | null;
     evEbitda: number | null;
     floorPremium: number | null;
     payoutM: number | null;
+    taxQ: number | null;
+    buybackO: number | null;
     aa: number | null;
     ocf: number | null;
     capex: number | null;
@@ -32,6 +37,11 @@ export type TurtlePolicyPayload = {
     marketCap: number | null;
     turnover: number | null;
     rVsII: "below_rf" | "fail" | "marginal" | "pass" | null;
+    ggVsII: "below_rf" | "fail" | "marginal" | "pass" | null;
+    safetyMarginPct: number | null;
+    metricQuality: TurtleMetricQualityStatus;
+    missingFields: string[];
+    fallbacksUsed: string[];
   };
 };
 
@@ -63,35 +73,33 @@ function listedAtLeastYears(raw: unknown, minYears: number): boolean {
 }
 
 function computeTurtleMetrics(f: Record<string, unknown>): TurtlePolicyPayload["metrics"] {
-  const rf = finiteNumber(f.riskFreeRatePct) ?? 2.5;
-  const thresholdII = Math.max(3.5, rf + 2);
-  const ocf = finiteNumber(f.ocf);
-  const capex = finiteNumber(f.capex);
-  const assetDispIncome = finiteNumber(f.assetDispIncome) ?? 0;
-  const nonOperIncome = finiteNumber(f.nonOperIncome) ?? 0;
-  const othIncome = finiteNumber(f.othIncome) ?? 0;
-  const aa =
-    ocf !== undefined && capex !== undefined
-      ? ocf + assetDispIncome - nonOperIncome - othIncome - Math.abs(capex)
-      : undefined;
-
+  const core = evaluateTurtleCore({
+    market: text(f.market),
+    code: text(f.code),
+    marketCap: finiteNumber(f.marketCap),
+    netProfit: finiteNumber(f.netProfit),
+    minorityPnL: finiteNumber(f.minorityPnL),
+    ocf: finiteNumber(f.ocf),
+    capex: finiteNumber(f.capex),
+    depreciationAmortization: finiteNumber(f.depreciationAmortization),
+    payoutRatio: finiteNumber(f.payoutRatio),
+    taxRate: finiteNumber(f.taxRate),
+    buybackCancellationAmount: finiteNumber(f.buybackCancellationAmount),
+    riskFreeRatePct: finiteNumber(f.riskFreeRatePct),
+    assetDispIncome: finiteNumber(f.assetDispIncome),
+    nonOperIncome: finiteNumber(f.nonOperIncome),
+    othIncome: finiteNumber(f.othIncome),
+    fcfYield: finiteNumber(f.fcfYield),
+    evEbitda: finiteNumber(f.evEbitda),
+    floorPremium: finiteNumber(f.floorPremium),
+    pe: finiteNumber(f.pe),
+    roe: finiteNumber(f.roe) !== undefined ? finiteNumber(f.roe)! * 4 : undefined,
+  });
   const dividendYield = finiteNumber(f.dv);
-  const payoutRaw = finiteNumber(f.payoutRatio);
-  const payoutM =
-    payoutRaw !== undefined && payoutRaw > 0
-      ? payoutRaw
-      : dividendYield !== undefined
-        ? Math.min(100, dividendYield * 5)
-        : undefined;
   const marketCap = finiteNumber(f.marketCap);
-  const penetrationR =
-    aa !== undefined && payoutM !== undefined && marketCap !== undefined && marketCap > 0
-      ? (aa * (payoutM / 100) / marketCap) * 100
-      : undefined;
 
   const pe = finiteNumber(f.pe);
-  const floorRaw = finiteNumber(f.floorPremium);
-  const floorPremium = floorRaw ?? (pe !== undefined && pe > 0 ? pe / 3 : undefined);
+  const floorPremium = core.metrics.floorPremium;
   const totalLiabilities = finiteNumber(f.totalLiabilities) ?? 0;
   const totalAssets = finiteNumber(f.totalAssets) ?? 0;
   const ebitda = finiteNumber(f.ebitda) ?? finiteNumber(f.netProfit);
@@ -101,26 +109,22 @@ function computeTurtleMetrics(f: Record<string, unknown>): TurtlePolicyPayload["
       ? (marketCap + Math.max(0, totalLiabilities) - Math.max(0, totalAssets) * 0.15) / ebitda
       : undefined);
 
-  let rVsII: TurtlePolicyPayload["metrics"]["rVsII"] = null;
-  if (penetrationR !== undefined) {
-    if (penetrationR < rf) rVsII = "below_rf";
-    else if (penetrationR < thresholdII * 0.5) rVsII = "fail";
-    else if (penetrationR < thresholdII) rVsII = "marginal";
-    else rVsII = "pass";
-  }
-
   return {
-    penetrationR: penetrationR ?? null,
-    rf,
-    thresholdII,
+    penetrationR: core.metrics.penetrationR,
+    refinedPenetrationGG: core.metrics.refinedPenetrationGG,
+    rf: core.metrics.rf,
+    thresholdII: core.metrics.thresholdII,
+    ownerEarningsI: core.metrics.ownerEarningsI,
     roe: finiteNumber(f.roe) !== undefined ? finiteNumber(f.roe)! * 4 : null,
-    fcfYield: finiteNumber(f.fcfYield) ?? null,
+    fcfYield: core.metrics.fcfYield,
     evEbitda: evEbitda ?? null,
-    floorPremium: floorPremium ?? null,
-    payoutM: payoutM ?? null,
-    aa: aa ?? null,
-    ocf: ocf ?? null,
-    capex: capex ?? null,
+    floorPremium: floorPremium,
+    payoutM: core.metrics.payoutM,
+    taxQ: core.metrics.taxQ,
+    buybackO: core.metrics.buybackO,
+    aa: core.metrics.availableCashAA,
+    ocf: finiteNumber(f.ocf) ?? null,
+    capex: finiteNumber(f.capex) ?? null,
     grossMargin: finiteNumber(f.grossMargin) ?? null,
     debtRatio: finiteNumber(f.debtRatio) ?? null,
     pe: pe ?? null,
@@ -128,7 +132,12 @@ function computeTurtleMetrics(f: Record<string, unknown>): TurtlePolicyPayload["
     dividendYield: dividendYield ?? null,
     marketCap: marketCap ?? null,
     turnover: finiteNumber(f.turnover) ?? null,
-    rVsII,
+    rVsII: core.verdict.rVsII,
+    ggVsII: core.verdict.ggVsII,
+    safetyMarginPct: core.verdict.safetyMarginPct,
+    metricQuality: core.quality.status,
+    missingFields: core.quality.missingFields,
+    fallbacksUsed: core.quality.fallbacksUsed,
   };
 }
 

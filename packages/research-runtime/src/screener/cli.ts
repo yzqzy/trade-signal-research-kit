@@ -19,7 +19,7 @@ import { bootstrapV2PluginRegistry } from "../bootstrap/v2-plugin-registry.js";
 import { resolvePolicyPlugin } from "@trade-signal/research-policy";
 import { resolveSelectionPlugin } from "@trade-signal/research-selection";
 import type { FeatureSet, PolicyResult, SelectionResult } from "@trade-signal/research-contracts";
-import { resolveScreenerStrategyRoute } from "../strategy/registry.js";
+import { resolveStrategyDefinition } from "../strategy/registry.js";
 
 type CliArgs = {
   market: "CN_A" | "HK";
@@ -257,7 +257,9 @@ async function main(): Promise<void> {
   }
 
   let enrichedUniverse = universe;
-  if (args.market === "CN_A" && !args.tier1Only && !args.skipFinancialEnrichment) {
+  const strategy = resolveStrategyDefinition(args.strategyId);
+
+  if (args.market === "CN_A" && !args.tier1Only && !args.skipFinancialEnrichment && strategy.requiredEnrichment.includes("financial_history")) {
     const feedBaseUrl = args.feedBaseUrl ?? process.env.FEED_BASE_URL ?? "";
     const limitRaw = args.financialEnrichmentLimit;
     const tier1Rows = tier1FilterCnA(universe, cfg);
@@ -284,7 +286,6 @@ async function main(): Promise<void> {
   }
 
   const capability = buildUniverseCapability(args.market, enrichedUniverse);
-  const route = resolveScreenerStrategyRoute(args.strategyId);
   const generatedAt = new Date().toISOString();
   const tier1Rows = args.market === "CN_A" ? tier1FilterCnA(enrichedUniverse, cfg) : [];
   const runDirectory = resolveScreenerRunDirectory({
@@ -299,8 +300,8 @@ async function main(): Promise<void> {
 
   if (capability.status === "hk_not_ready" || capability.status === "blocked_missing_required_fields") {
     result = {
-      strategyId: route.strategyId,
-      strategyLabel: route.strategyLabel,
+      strategyId: strategy.strategyId,
+      strategyLabel: strategy.label,
       market: args.market,
       mode: args.mode,
       generatedAt,
@@ -313,13 +314,13 @@ async function main(): Promise<void> {
     };
   } else {
     bootstrapV2PluginRegistry();
-    const policyPlugin = resolvePolicyPlugin(route.policyId);
+    const policyPlugin = resolvePolicyPlugin(strategy.policyId);
     const featureSetRows = enrichedUniverse.map((row) => toFeatureSet(runIdForPolicy, row));
     policyResults = await Promise.all(
       featureSetRows.map((featureSet) =>
         Promise.resolve(
           policyPlugin.evaluate({
-            policyId: route.policyId,
+            policyId: strategy.policyId,
             runId: runIdForPolicy,
             code: featureSet.code,
             featureSet,
@@ -331,12 +332,12 @@ async function main(): Promise<void> {
     const rankingsTopNForSelection =
       typeof rankingsTopNRaw === "number" && Number.isFinite(rankingsTopNRaw) && rankingsTopNRaw > 0
         ? Math.floor(rankingsTopNRaw)
-        : 200;
-    const selectionPlugin = resolveSelectionPlugin(route.selectionId);
+        : strategy.defaultRankingsTopN;
+    const selectionPlugin = resolveSelectionPlugin(strategy.selectionId);
     selectionResult = await selectionPlugin.compose({
-      selectionId: route.selectionId,
+      selectionId: strategy.selectionId,
       runId: runIdForPolicy,
-      universe: route.universe,
+      universe: strategy.universe,
       policyResults,
       maxCandidates: rankingsTopNForSelection,
     });
@@ -346,8 +347,8 @@ async function main(): Promise<void> {
       generatedAt,
       universe: enrichedUniverse,
       tier1: tier1Rows,
-      strategyId: route.strategyId,
-      strategyLabel: route.strategyLabel,
+      strategyId: strategy.strategyId,
+      strategyLabel: strategy.label,
       policyResults,
     });
     result.capability = capability;
@@ -392,12 +393,12 @@ async function main(): Promise<void> {
   const rankingsTopN =
     typeof topNRaw === "number" && Number.isFinite(topNRaw) && topNRaw > 0
       ? Math.floor(topNRaw)
-      : 200;
+      : strategy.defaultRankingsTopN;
   const manifest = buildSelectionManifestV1(result, runId, { rankingsTopN });
-  manifest.strategyId = route.strategyId;
-  manifest.strategyLabel = route.strategyLabel;
-  manifest.selectionId = route.selectionId;
-  manifest.universe = route.universe;
+  manifest.strategyId = strategy.strategyId;
+  manifest.strategyLabel = strategy.label;
+  manifest.selectionId = strategy.selectionId;
+  manifest.universe = strategy.universe;
   manifest.candidates = (selectionResult?.candidates ?? []).map((it) => ({
     code: it.code,
     score: it.score,

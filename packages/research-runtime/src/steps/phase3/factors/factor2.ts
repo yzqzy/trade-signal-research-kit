@@ -1,4 +1,5 @@
 import type { DataPackMarketParsed, Factor1BResult, Factor2Result } from "../types.js";
+import { evaluateTurtleCore } from "../../../strategy/turtle/core.js";
 
 function avg(values: Array<number | undefined>): number {
   const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
@@ -17,15 +18,48 @@ export function runFactor2(market: DataPackMarketParsed, factor1b: Factor1BResul
   const E = Math.abs(latest.capex ?? 0);
   const G = factor1b.moduleRatings["3.1资本消耗"] === "capital-hungry" ? 1.3 : 0.9;
   const I = C + D - E * G;
-  const M = avg(market.financials.slice(0, 3).map((f) => (f.dps && f.basicEps && f.basicEps > 0 ? (f.dps / f.basicEps) * 100 : undefined)));
+  const payoutRatios = market.financials.slice(0, 3).map((f) => (f.dps && f.basicEps && f.basicEps > 0 ? (f.dps / f.basicEps) * 100 : undefined));
+  const M = avg(payoutRatios);
   const O = 0;
   const Q = 20;
   const price = market.price ?? 0;
   const shares = market.totalShares ?? 0;
   const marketCap = market.marketCap ?? (price && shares ? price * shares : 0);
-  const R = marketCap > 0 ? (I / marketCap) * 100 : undefined;
-  const rf = market.rf ?? 2.5;
-  const II = Math.max(3.5, rf + 2);
+  const core = evaluateTurtleCore({
+    market: market.market,
+    code: market.code,
+    marketCap,
+    netProfit: C,
+    minorityPnL: B,
+    ocf: latest.ocf,
+    capex: latest.capex,
+    payoutRatios: payoutRatios.filter((v): v is number => typeof v === "number" && Number.isFinite(v)),
+    taxRate: Q,
+    buybackCancellationAmount: O,
+    riskFreeRatePct: market.rf,
+  });
+  const R = core.metrics.penetrationR ?? undefined;
+  const II = core.metrics.thresholdII;
+
+  if (core.quality.status === "blocked") {
+    return {
+      passed: false,
+      reason: `因子2无法计算：核心字段缺失（${core.quality.missingFields.join(", ")}）`,
+      A,
+      B,
+      C,
+      D,
+      E,
+      G,
+      I,
+      M,
+      O,
+      Q,
+      R,
+      II,
+      rejectType: "S4",
+    };
+  }
 
   const debtSeries = market.financials.slice(0, 3).map((f) => f.interestBearingDebt ?? 0);
   const fcfSeries = market.financials.slice(0, 3).map((f) => (f.ocf ?? 0) - Math.abs(f.capex ?? 0));

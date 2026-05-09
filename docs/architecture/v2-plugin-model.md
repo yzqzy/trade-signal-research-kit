@@ -71,12 +71,14 @@ Publisher 消费 **`topic_manifest.json`**（`manifestVersion: "1.0"`），由 `
 
 ## 现状索引（已注册真实插件）
 
+策略注册入口统一在 `packages/research-runtime/src/strategy/definitions.ts`。新增或调整选股策略时，先维护 `StrategyDefinition`（`strategyId / policyId / selectionId / markets / requiredEnrichment / defaultRankingsTopN`），再实现对应 Policy / Selection；`screener` 只负责 universe 获取、缓存、enrichment 与运行入口，不再维护独立策略路由。
+
 - **Policy**
   - `policy:turtle`（薄 adapter，承接 runtime 策略输出）
   - `policy:value_v1`（薄 adapter，承接 runtime 策略输出）
   - `policy:high_dividend`（薄 adapter，承接 `strategy/high-dividend` 输出）
 - **Selection**
-  - `selection:turtle:cn_a_universe`（兼容 stub）
+  - `selection:turtle:cn_a_universe`（消费 `policy:turtle` 的 PolicyResult 排序）
   - `selection:high_dividend:cn_a`（真实组合：过滤 + 排序 + topN）
 - **Topic**
   - `topic:business-six-dimension`

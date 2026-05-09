@@ -30,6 +30,8 @@ export type SelectionManifestV1 = {
 export type SelectionSourceLike = {
   strategyId?: string;
   strategyLabel?: string;
+  selectionId?: string;
+  universe?: string;
   market: string;
   mode: string;
   generatedAt: string;
@@ -52,8 +54,9 @@ export function buildSelectionManifestV1(
   runId: string,
   options: SelectionManifestBuildOptions = {},
 ): SelectionManifestV1 {
-  const selectionId = `selection:screener:${output.market}:${output.mode}`;
-  const universe = `${String(output.market).toLowerCase()}_${output.mode}`;
+  const strategyId = output.strategyId?.trim() || "turtle";
+  const selectionId = output.selectionId?.trim() || `selection:${strategyId}:${String(output.market).toLowerCase()}_${output.mode}`;
+  const universe = output.universe?.trim() || `${String(output.market).toLowerCase()}_${output.mode}`;
   const topNRaw = options.rankingsTopN;
   const rankingsTopN =
     typeof topNRaw === "number" && Number.isFinite(topNRaw) && topNRaw > 0
@@ -63,7 +66,7 @@ export function buildSelectionManifestV1(
     manifestVersion: SELECTION_MANIFEST_VERSION,
     schema: "selection-result-v2",
     runProfile: "selection_fast",
-    strategyId: output.strategyId?.trim() || "turtle",
+    strategyId,
     strategyLabel: output.strategyLabel?.trim() || "龟龟策略",
     selectionId,
     runId,

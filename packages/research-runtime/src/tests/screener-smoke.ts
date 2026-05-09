@@ -137,7 +137,7 @@ async function testTurtlePolicyAndSelectionUseV2Path(): Promise<void> {
     industry: "食品",
     listDate: "20100101",
     close: 10,
-    marketCap: 2000,
+    marketCap: 500,
     turnover: 1,
     dv: 3,
     grossMargin: 30,

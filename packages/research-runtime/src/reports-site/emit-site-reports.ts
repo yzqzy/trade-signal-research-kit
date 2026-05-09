@@ -41,7 +41,7 @@ import {
 } from "../steps/phase3/report-polish/business-quality-publish-gate.js";
 import type { Phase1BQualitativeSupplement } from "../steps/phase1b/types.js";
 import type { SelectionManifestV1 } from "../screener/selection-manifest-v2.js";
-import type { ScreenerRunOutput, ScreenerScoredResult } from "../screener/types.js";
+import type { ScreenerRunOutput } from "../screener/types.js";
 import {
   commonEvidenceAttachments,
   deriveBusinessAnalysisConfidence,
@@ -106,16 +106,6 @@ async function pathExists(p: string): Promise<boolean> {
 async function readJson<T>(p: string): Promise<T> {
   const raw = await readFile(p, "utf-8");
   return JSON.parse(raw) as T;
-}
-
-function normalizeRankingConfidence(raw: string | undefined): ConfidenceState {
-  if (raw === "high" || raw === "medium" || raw === "low") return raw;
-  return "unknown";
-}
-
-function normalizeRankingDecision(raw: string | undefined): string {
-  const v = raw?.trim();
-  return v ? v : "unknown";
 }
 
 function resolveArtifactPath(runDir: string, filePath?: string): string | undefined {
@@ -993,34 +983,6 @@ function strategyHref(strategyId: string, code: string): string {
   return `/reports?${params.toString()}`;
 }
 
-function buildRankingItemFromScreener(
-  result: ScreenerScoredResult,
-  rank: number,
-  strategyId: string,
-): RankingViewItem {
-  return {
-    rank,
-    code: result.code,
-    name: result.name,
-    industry: result.industry,
-    score: Number.isFinite(result.totalScore) ? result.totalScore : 0,
-    decision: normalizeRankingDecision(result.decision),
-    confidence: normalizeRankingConfidence(result.confidence),
-    href: strategyHref(strategyId, result.code),
-    metrics: {
-      channel: result.channel,
-      roe: result.roe ?? null,
-      fcfYield: result.fcfYield ?? null,
-      penetrationR: result.factors.penetrationR ?? null,
-      evEbitda: result.factors.evEbitda ?? null,
-      floorPremium: result.factors.floorPremium ?? null,
-      tier1Score: result.tier1Score ?? null,
-      reportScore: result.reportScore ?? null,
-    },
-  };
-}
-
-
 function normalizeFeedBaseUrl(raw: string | undefined): string | undefined {
   const value = raw?.trim();
   return value ? value.replace(/\/+$/u, "") : undefined;
@@ -1132,8 +1094,6 @@ async function emitFromScreener(runDir: string, siteDir: string): Promise<void> 
   const topN = resolveRankingsTopN(manifest);
   const strategyId = manifest.strategyId || result.strategyId || "turtle";
   const candidates = (manifest.candidates ?? []).slice(0, topN);
-  const publishableResults = result.results.filter((item) => item.passed);
-  const topResults = publishableResults.slice(0, topN);
   const policyResults = (manifest.policyResults ?? []).map((it) => ({
     policyId: it.policyId,
     runId,
@@ -1141,6 +1101,9 @@ async function emitFromScreener(runDir: string, siteDir: string): Promise<void> 
     payload: it.payload,
     reasonRefs: [],
   }));
+  if (!manifest.policyResults || manifest.policyResults.length === 0) {
+    throw new Error("[reports-site] selection_manifest.json 缺少 policyResults，rankings 不再回退到 screener_results.json");
+  }
   const list: RankingListFile = await enrichRankingListSwIndustries({
     listId,
     sourceRunId: runId,
@@ -1152,16 +1115,13 @@ async function emitFromScreener(runDir: string, siteDir: string): Promise<void> 
     capabilityStatus: result.capability?.status,
     capabilityReasonCodes: result.capability?.reasonCodes ?? [],
     topN,
-    totalCandidates: manifest.candidates?.length ?? publishableResults.length,
-    items:
-      policyResults.length > 0
-        ? toRankingViewItemsFromSelection({
-            strategyId,
-            candidates,
-            policyResults,
-            hrefResolver: strategyHref,
-          })
-        : topResults.map((item, idx) => buildRankingItemFromScreener(item, idx + 1, strategyId)),
+    totalCandidates: manifest.candidates?.length ?? 0,
+    items: toRankingViewItemsFromSelection({
+      strategyId,
+      candidates,
+      policyResults,
+      hrefResolver: strategyHref,
+    }),
   }, siteDir);
   const rankingsDir = path.join(siteDir, "rankings", "lists");
   await mkdir(rankingsDir, { recursive: true });

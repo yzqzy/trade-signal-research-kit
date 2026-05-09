@@ -13,6 +13,11 @@ type FinancialHistoryItem = {
   capitalExpenditure?: unknown;
   revenue?: unknown;
   ebitda?: unknown;
+  basicEps?: unknown;
+  earningsPerShare?: unknown;
+  dps?: unknown;
+  dividendPerShare?: unknown;
+  dividendsPerShare?: unknown;
 };
 
 type FinancialHistoryPayload = {
@@ -34,6 +39,7 @@ function latestFinancials(payload: FinancialHistoryPayload): {
   revenue?: number;
   ebitda?: number;
   fcfPositiveYears?: number;
+  payoutRatio?: number;
 } {
   const items = Array.isArray(payload.items) ? payload.items : [];
   const latest = items[0];
@@ -42,12 +48,20 @@ function latestFinancials(payload: FinancialHistoryPayload): {
     const capex = finite(item.capitalExpenditure);
     return ocf !== undefined && capex !== undefined && ocf - Math.abs(capex) > 0;
   }).length;
+  const payoutRatios = items
+    .map((item) => {
+      const eps = finite(item.basicEps) ?? finite(item.earningsPerShare);
+      const dps = finite(item.dps) ?? finite(item.dividendPerShare) ?? finite(item.dividendsPerShare);
+      return eps !== undefined && eps > 0 && dps !== undefined && dps >= 0 ? (dps / eps) * 100 : undefined;
+    })
+    .filter((value): value is number => value !== undefined && Number.isFinite(value));
   return {
     ocf: finite(latest?.operatingCashFlow),
     capex: finite(latest?.capitalExpenditure),
     revenue: finite(latest?.revenue),
     ebitda: finite(latest?.ebitda),
     fcfPositiveYears: items.length > 0 ? positiveYears : undefined,
+    payoutRatio: payoutRatios.length > 0 ? payoutRatios.slice(0, 3).reduce((a, b) => a + b, 0) / Math.min(3, payoutRatios.length) : undefined,
   };
 }
 
@@ -116,6 +130,7 @@ export async function enrichUniverseFinancials(
         if (f.revenue !== undefined) row.revenue = f.revenue;
         if (f.ebitda !== undefined) row.ebitda = f.ebitda;
         if (f.fcfPositiveYears !== undefined) row.fcfPositiveYears = f.fcfPositiveYears;
+        if (f.payoutRatio !== undefined) row.payoutRatio = f.payoutRatio;
         if (row.marketCap && row.marketCap > 0) {
           row.fcfYield = ((f.ocf - Math.abs(f.capex)) / row.marketCap) * 100;
         }

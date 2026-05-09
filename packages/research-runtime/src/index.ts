@@ -42,6 +42,8 @@ export * from "@trade-signal/research-topic";
 export * from "@trade-signal/research-selection";
 export { bootstrapV2PluginRegistry } from "./bootstrap/v2-plugin-registry.js";
 export * from "./strategy/contracts.js";
+export * from "./strategy/definitions.js";
+export * from "./strategy/turtle/core.js";
 export { createTurtleStrategyPlugin } from "./strategy/turtle/plugin.js";
 export { createValueV1StrategyPlugin } from "./strategy/value-v1/plugin.js";
 export { resolveWorkflowStrategyPlugin } from "./strategy/registry.js";

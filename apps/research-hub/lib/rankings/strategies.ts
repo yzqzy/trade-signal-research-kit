@@ -40,6 +40,12 @@ function formatMetricCompact(value: RankingMetricValue): string {
   return value.toFixed(2);
 }
 
+function formatMetricText(value: RankingMetricValue): string {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "boolean") return value ? "是" : "否";
+  return "—";
+}
+
 function metric(metrics: RankingMetricMap, key: string): RankingMetricValue {
   return Object.prototype.hasOwnProperty.call(metrics, key) ? metrics[key] : null;
 }
@@ -72,17 +78,17 @@ export const RANKING_STRATEGIES: RankingStrategyMeta[] = [
     criteriaDetails: [
       "初筛：CN_A、非 ST/退市、非银行、上市年限 >= 3 年、市值 >= 5 亿、换手率 >= 0.1%、PB 在 0-10。",
       "主通道：PE 在 0-50 且股息率可用；观察通道仅保留少量 PE 缺失的大市值样本。",
-      "财报要求：必须拉取 OCF 与 Capex，FCF Yield 与穿透 R 不允许用 0 或降级值代替。",
-      "硬门槛：穿透 R 必须真实可算，且不低于当期 rf；财务质量需满足 ROE、毛利率、负债率等策略阈值。",
-      "排序权重：ROE 20%、FCF Yield 20%、穿透 R 25%、EV/EBITDA 15%、地板溢价 20%。",
+      "财报要求：必须拉取 OCF、Capex 与真实分红率 M，FCF Yield、穿透 R/GG 不允许用 0 或静默降级值代替。",
+      "硬门槛：穿透 R/GG 必须真实可算，并与当期 rf、II 门槛比较；财务质量需满足 ROE、毛利率、负债率等策略阈值。",
+      "排序权重：ROE 20%、FCF Yield 20%、穿透回报 25%、EV/EBITDA 15%、地板溢价 20%。",
       "结论：综合分 >= 0.65 为候选，>= 0.45 为观察，其余为回避。",
     ],
     methodologyHref: "/reports/methodology",
     metricGroups: [
-      { label: "核心评分", keys: ["roe", "fcfYield", "penetrationR"] },
-      { label: "回报门槛", keys: ["rf", "thresholdII", "dividendYield"] },
-      { label: "估值", keys: ["pe", "pb", "marketCap"] },
-      { label: "质量与流动性", keys: ["grossMargin", "debtRatio", "turnover", "ocf", "capex"] },
+      { label: "核心评分", keys: ["roe", "fcfYield", "penetrationR", "refinedPenetrationGG"] },
+      { label: "回报门槛", keys: ["rf", "thresholdII", "payoutM", "taxQ", "safetyMarginPct"] },
+      { label: "估值", keys: ["pe", "pb", "evEbitda", "floorPremium", "marketCap"] },
+      { label: "现金质量", keys: ["ownerEarningsI", "aa", "ocf", "capex", "metricQuality"] },
     ],
     decisionLabel(decision) {
       if (decision === "buy") return "候选";
@@ -103,17 +109,29 @@ export const RANKING_STRATEGIES: RankingStrategyMeta[] = [
         label: "穿透 R",
         render: (item) => formatMetricPercent(metric(item.metrics, "penetrationR")),
       },
+      {
+        key: "refinedPenetrationGG",
+        label: "精算 GG",
+        render: (item) => formatMetricPercent(metric(item.metrics, "refinedPenetrationGG")),
+      },
       { key: "rf", label: "rf", render: (item) => formatMetricPercent(metric(item.metrics, "rf")) },
       { key: "thresholdII", label: "II门槛", render: (item) => formatMetricPercent(metric(item.metrics, "thresholdII")) },
+      { key: "payoutM", label: "分配率 M", render: (item) => formatMetricPercent(metric(item.metrics, "payoutM")) },
+      { key: "taxQ", label: "税率 Q", render: (item) => formatMetricPercent(metric(item.metrics, "taxQ")) },
+      { key: "safetyMarginPct", label: "安全边际", render: (item) => formatMetricNumber(metric(item.metrics, "safetyMarginPct")) },
       { key: "pe", label: "PE", render: (item) => formatMetricNumber(metric(item.metrics, "pe")) },
       { key: "pb", label: "PB", render: (item) => formatMetricNumber(metric(item.metrics, "pb")) },
+      { key: "evEbitda", label: "EV/EBITDA", render: (item) => formatMetricNumber(metric(item.metrics, "evEbitda")) },
+      { key: "floorPremium", label: "底价溢价", render: (item) => formatMetricPercent(metric(item.metrics, "floorPremium")) },
       { key: "dividendYield", label: "股息率", render: (item) => formatMetricPercent(metric(item.metrics, "dividendYield")) },
       { key: "grossMargin", label: "毛利率", render: (item) => formatMetricPercent(metric(item.metrics, "grossMargin")) },
       { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
       { key: "marketCap", label: "市值", render: (item) => formatMetricMoney(metric(item.metrics, "marketCap")) },
       { key: "turnover", label: "换手", render: (item) => formatMetricPercent(metric(item.metrics, "turnover")) },
+      { key: "ownerEarningsI", label: "Owner Earnings", render: (item) => formatMetricCompact(metric(item.metrics, "ownerEarningsI")) },
       { key: "ocf", label: "OCF", render: (item) => formatMetricCompact(metric(item.metrics, "ocf")) },
       { key: "capex", label: "Capex", render: (item) => formatMetricCompact(metric(item.metrics, "capex")) },
+      { key: "metricQuality", label: "指标质量", render: (item) => formatMetricText(metric(item.metrics, "metricQuality")) },
     ],
   },
   {

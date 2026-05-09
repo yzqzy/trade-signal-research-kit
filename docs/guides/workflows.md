@@ -392,12 +392,12 @@ pnpm --filter @trade-signal/research-runtime run run:screener -- \
 Screener 输出：
 
 - `screener_results.json`（pipeline 全量按策略综合分降序，供审计）
-- `selection_manifest.json`（含 `strategyId / strategyLabel / rankingsTopN`，下游 `reports-site:emit` 据此截取站点榜单）
+- `selection_manifest.json`（榜单主契约，含 `strategyId / strategyLabel / selectionId / candidates / policyResults / rankingsTopN`；下游 `reports-site:emit` 只按该文件发布榜单）
 - `screener_input.csv`
 - `screener_report.md`
 - `screener_report.html`
 
-榜单 Top N：站点 `/rankings` 仅展示按策略综合分降序后的前 N 名，**默认 200**。`pnpm run screener:run` 接受 `--rankings-top-n <N>` 显式覆盖；不传时 manifest 与 emit 均按 **200** 兜底。`reports-site:emit` 从 `selection_manifest.rankingsTopN` 取值，写入 `rankings/lists/*.json` 时同时记录 `topN` 与 `totalCandidates`，便于审计「谁被截掉了」。
+榜单 Top N：站点 `/rankings` 仅展示按策略综合分降序后的前 N 名，**默认由 StrategyDefinition 决定（当前 200）**。`pnpm run screener:run` 接受 `--rankings-top-n <N>` 显式覆盖；不传时 manifest 与 emit 均按策略默认值兜底。`reports-site:emit` 从 `selection_manifest.rankingsTopN` 取值，写入 `rankings/lists/*.json` 时同时记录 `topN` 与 `totalCandidates`，便于审计「谁被截掉了」。`screener_results.json` 仅为审计附件；若 `selection_manifest.policyResults` 缺失，发布会失败，不再回退拼旧 screener 结果。
 
 质量门禁：
 
