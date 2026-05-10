@@ -72,8 +72,8 @@ function titleCaseDecision(raw: string): string {
 export const RANKING_STRATEGIES: RankingStrategyMeta[] = [
   {
     id: "turtle",
-    label: "龟龟策略",
-    shortDescription: "以 ROE、FCF 收益率、穿透回报率与估值因子做综合排序。",
+    label: "质量价值（Turtle框架）",
+    shortDescription: "以 ROE、FCF 收益率、穿透回报率与估值因子做质量价值排序。",
     criteriaSummary: "非 ST、非银行、上市满 3 年，满足市值/换手/估值初筛，并要求现金流可计算穿透 R。",
     criteriaDetails: [
       "初筛：CN_A、非 ST/退市、非银行、上市年限 >= 3 年、市值 >= 5 亿、换手率 >= 0.1%、PB 在 0-10。",
@@ -136,8 +136,8 @@ export const RANKING_STRATEGIES: RankingStrategyMeta[] = [
   },
   {
     id: "high_dividend",
-    label: "高股息策略",
-    shortDescription: "以股息率、估值安全边际、年化 ROE 与负债约束筛选现金回报型候选。",
+    label: "红利因子",
+    shortDescription: "以股息率、估值安全边际、年化 ROE 与负债约束筛选稳健分红候选。",
     criteriaSummary: "股息率 >= 3%，ROE、估值、负债、毛利率、市值和流动性共同约束，极端值封顶处理。",
     criteriaDetails: [
       "硬筛：CN_A、非 ST/退市、非银行、股息率 >= 3%、PE 在 0-25、PB 在 0-3、年化 ROE >= 8%。",
@@ -178,6 +178,222 @@ export const RANKING_STRATEGIES: RankingStrategyMeta[] = [
       { key: "pbScore", label: "PB分", render: (item) => formatMetricNumber(metric(item.metrics, "pbScore"), 3) },
       { key: "roeScore", label: "ROE分", render: (item) => formatMetricNumber(metric(item.metrics, "roeScore"), 3) },
       { key: "debtScore", label: "负债分", render: (item) => formatMetricNumber(metric(item.metrics, "debtScore"), 3) },
+    ],
+  },
+  {
+    id: "value_factor",
+    label: "价值因子",
+    shortDescription: "以低估值为主，叠加基础质量约束，过滤明显财务脆弱样本。",
+    criteriaSummary: "核心看 PE/PB/EV/EBITDA 与 FCF Yield，同时要求流动性与财务安全边界达标。",
+    criteriaDetails: [
+      "CN_A、非 ST/退市、非银行，市值与换手率达标。",
+      "估值：PE、PB、EV/EBITDA 处于合理区间，FCF Yield 越高越优。",
+      "质量兜底：ROE、负债率不过于极端。",
+    ],
+    metricGroups: [
+      { label: "核心因子", keys: ["factorValue", "factorQuality"] },
+      { label: "估值指标", keys: ["pe", "pb", "evEbitda"] },
+      { label: "补充指标", keys: ["fcfYield", "annualizedRoe", "debtRatio"] },
+    ],
+    decisionLabel(decision) {
+      if (decision === "buy") return "候选";
+      if (decision === "watch") return "观察";
+      if (decision === "avoid") return "回避";
+      return titleCaseDecision(decision);
+    },
+    columns: [
+      { key: "rank", label: "排名", render: (item) => String(item.rank) },
+      { key: "security", label: "代码 / 名称", render: (item) => `${item.code} ${item.name}` },
+      { key: "industry", label: "行业", render: formatIndustry },
+      { key: "decision", label: "策略结论", render: (item) => (item.decision ? item.decision : "—") },
+      { key: "score", label: "综合分", render: (item) => item.score.toFixed(4) },
+      { key: "factorValue", label: "价值因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorValue"), 3) },
+      { key: "factorQuality", label: "质量因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorQuality"), 3) },
+      { key: "pe", label: "PE", render: (item) => formatMetricNumber(metric(item.metrics, "pe")) },
+      { key: "pb", label: "PB", render: (item) => formatMetricNumber(metric(item.metrics, "pb")) },
+      { key: "evEbitda", label: "EV/EBITDA", render: (item) => formatMetricNumber(metric(item.metrics, "evEbitda")) },
+      { key: "fcfYield", label: "FCF Yield", render: (item) => formatMetricPercent(metric(item.metrics, "fcfYield")) },
+      { key: "annualizedRoe", label: "年化 ROE", render: (item) => formatMetricPercent(metric(item.metrics, "annualizedRoe")) },
+      { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
+    ],
+  },
+  {
+    id: "quality_factor",
+    label: "质量因子",
+    shortDescription: "以 ROE、毛利率、负债率、现金流质量衡量经营稳定性。",
+    criteriaSummary: "强调盈利质量与资产负债结构，减少低质量财报标的。",
+    criteriaDetails: [
+      "CN_A、非 ST/退市、非银行，市值与换手率达标。",
+      "核心：年化 ROE、毛利率、负债率、FCF Yield。",
+      "极端估值样本按风控门槛过滤。",
+    ],
+    metricGroups: [
+      { label: "核心因子", keys: ["factorQuality", "factorDefensive"] },
+      { label: "质量指标", keys: ["annualizedRoe", "grossMargin", "debtRatio", "fcfYield"] },
+    ],
+    decisionLabel(decision) {
+      if (decision === "buy") return "候选";
+      if (decision === "watch") return "观察";
+      if (decision === "avoid") return "回避";
+      return titleCaseDecision(decision);
+    },
+    columns: [
+      { key: "rank", label: "排名", render: (item) => String(item.rank) },
+      { key: "security", label: "代码 / 名称", render: (item) => `${item.code} ${item.name}` },
+      { key: "industry", label: "行业", render: formatIndustry },
+      { key: "decision", label: "策略结论", render: (item) => (item.decision ? item.decision : "—") },
+      { key: "score", label: "综合分", render: (item) => item.score.toFixed(4) },
+      { key: "factorQuality", label: "质量因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorQuality"), 3) },
+      { key: "factorDefensive", label: "防守因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorDefensive"), 3) },
+      { key: "annualizedRoe", label: "年化 ROE", render: (item) => formatMetricPercent(metric(item.metrics, "annualizedRoe")) },
+      { key: "grossMargin", label: "毛利率", render: (item) => formatMetricPercent(metric(item.metrics, "grossMargin")) },
+      { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
+      { key: "fcfYield", label: "FCF Yield", render: (item) => formatMetricPercent(metric(item.metrics, "fcfYield")) },
+    ],
+  },
+  {
+    id: "dividend_factor",
+    label: "红利因子",
+    shortDescription: "以股息率为主，叠加估值与财务质量约束。",
+    criteriaSummary: "优先分红能力，同时要求 ROE、负债率和估值不过于激进。",
+    criteriaDetails: [
+      "CN_A、非 ST/退市、非银行，市值与换手率达标。",
+      "核心：股息率、负债率、年化 ROE 与估值。",
+      "过高估值或财务压力样本剔除。",
+    ],
+    metricGroups: [
+      { label: "核心因子", keys: ["factorDividend", "factorQuality"] },
+      { label: "红利与质量", keys: ["dividendYield", "annualizedRoe", "debtRatio"] },
+      { label: "估值", keys: ["pe", "pb"] },
+    ],
+    decisionLabel(decision) {
+      if (decision === "buy") return "候选";
+      if (decision === "watch") return "观察";
+      if (decision === "avoid") return "回避";
+      return titleCaseDecision(decision);
+    },
+    columns: [
+      { key: "rank", label: "排名", render: (item) => String(item.rank) },
+      { key: "security", label: "代码 / 名称", render: (item) => `${item.code} ${item.name}` },
+      { key: "industry", label: "行业", render: formatIndustry },
+      { key: "decision", label: "策略结论", render: (item) => (item.decision ? item.decision : "—") },
+      { key: "score", label: "综合分", render: (item) => item.score.toFixed(4) },
+      { key: "factorDividend", label: "红利因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorDividend"), 3) },
+      { key: "factorQuality", label: "质量因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorQuality"), 3) },
+      { key: "dividendYield", label: "股息率", render: (item) => formatMetricPercent(metric(item.metrics, "dividendYield")) },
+      { key: "annualizedRoe", label: "年化 ROE", render: (item) => formatMetricPercent(metric(item.metrics, "annualizedRoe")) },
+      { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
+      { key: "pe", label: "PE", render: (item) => formatMetricNumber(metric(item.metrics, "pe")) },
+      { key: "pb", label: "PB", render: (item) => formatMetricNumber(metric(item.metrics, "pb")) },
+    ],
+  },
+  {
+    id: "quality_value",
+    label: "质量价值",
+    shortDescription: "价值与质量等权组合，平衡低估值与经营稳健性。",
+    criteriaSummary: "避免单因子偏离，强调“便宜且稳健”的交集。",
+    criteriaDetails: [
+      "CN_A、非 ST/退市、非银行，市值与换手率达标。",
+      "价值：PE/PB/EV/EBITDA/FCF Yield。",
+      "质量：年化 ROE、毛利率、负债率。",
+    ],
+    metricGroups: [
+      { label: "核心因子", keys: ["factorValue", "factorQuality"] },
+      { label: "价值维度", keys: ["pe", "pb", "evEbitda", "fcfYield"] },
+      { label: "质量维度", keys: ["annualizedRoe", "grossMargin", "debtRatio"] },
+    ],
+    decisionLabel(decision) {
+      if (decision === "buy") return "候选";
+      if (decision === "watch") return "观察";
+      if (decision === "avoid") return "回避";
+      return titleCaseDecision(decision);
+    },
+    columns: [
+      { key: "rank", label: "排名", render: (item) => String(item.rank) },
+      { key: "security", label: "代码 / 名称", render: (item) => `${item.code} ${item.name}` },
+      { key: "industry", label: "行业", render: formatIndustry },
+      { key: "decision", label: "策略结论", render: (item) => (item.decision ? item.decision : "—") },
+      { key: "score", label: "综合分", render: (item) => item.score.toFixed(4) },
+      { key: "factorValue", label: "价值因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorValue"), 3) },
+      { key: "factorQuality", label: "质量因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorQuality"), 3) },
+      { key: "pe", label: "PE", render: (item) => formatMetricNumber(metric(item.metrics, "pe")) },
+      { key: "pb", label: "PB", render: (item) => formatMetricNumber(metric(item.metrics, "pb")) },
+      { key: "annualizedRoe", label: "年化 ROE", render: (item) => formatMetricPercent(metric(item.metrics, "annualizedRoe")) },
+      { key: "grossMargin", label: "毛利率", render: (item) => formatMetricPercent(metric(item.metrics, "grossMargin")) },
+      { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
+    ],
+  },
+  {
+    id: "defensive_factor",
+    label: "低波防守",
+    shortDescription: "以大市值、低杠杆、稳定盈利为核心的防守型排序。",
+    criteriaSummary: "偏好大盘与稳健财务结构，降低组合脆弱性。",
+    criteriaDetails: [
+      "CN_A、非 ST/退市、非银行，市值与换手率达标。",
+      "核心：市值、负债率、毛利率、年化 ROE、股息率。",
+      "估值极端样本过滤，避免防守策略承担过高估值风险。",
+    ],
+    metricGroups: [
+      { label: "核心因子", keys: ["factorDefensive", "factorQuality", "factorDividend"] },
+      { label: "防守指标", keys: ["marketCap", "debtRatio", "annualizedRoe", "grossMargin", "dividendYield"] },
+    ],
+    decisionLabel(decision) {
+      if (decision === "buy") return "候选";
+      if (decision === "watch") return "观察";
+      if (decision === "avoid") return "回避";
+      return titleCaseDecision(decision);
+    },
+    columns: [
+      { key: "rank", label: "排名", render: (item) => String(item.rank) },
+      { key: "security", label: "代码 / 名称", render: (item) => `${item.code} ${item.name}` },
+      { key: "industry", label: "行业", render: formatIndustry },
+      { key: "decision", label: "策略结论", render: (item) => (item.decision ? item.decision : "—") },
+      { key: "score", label: "综合分", render: (item) => item.score.toFixed(4) },
+      { key: "factorDefensive", label: "防守因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorDefensive"), 3) },
+      { key: "factorQuality", label: "质量因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorQuality"), 3) },
+      { key: "factorDividend", label: "红利因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorDividend"), 3) },
+      { key: "marketCap", label: "市值", render: (item) => formatMetricMoney(metric(item.metrics, "marketCap")) },
+      { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
+      { key: "annualizedRoe", label: "年化 ROE", render: (item) => formatMetricPercent(metric(item.metrics, "annualizedRoe")) },
+      { key: "grossMargin", label: "毛利率", render: (item) => formatMetricPercent(metric(item.metrics, "grossMargin")) },
+      { key: "dividendYield", label: "股息率", render: (item) => formatMetricPercent(metric(item.metrics, "dividendYield")) },
+    ],
+  },
+  {
+    id: "multi_factor_core",
+    label: "综合多因子",
+    shortDescription: "价值、质量、红利三因子组合，追求更均衡的横截面暴露。",
+    criteriaSummary: "在统一风险边界下综合三因子打分，降低单因子失效冲击。",
+    criteriaDetails: [
+      "CN_A、非 ST/退市、非银行，市值与换手率达标。",
+      "价值 + 质量 + 红利三因子加权。",
+      "统一估值与财务底线，控制极端样本。",
+    ],
+    metricGroups: [
+      { label: "核心因子", keys: ["factorValue", "factorQuality", "factorDividend", "factorDefensive"] },
+      { label: "基础指标", keys: ["pe", "pb", "annualizedRoe", "debtRatio", "dividendYield"] },
+    ],
+    decisionLabel(decision) {
+      if (decision === "buy") return "候选";
+      if (decision === "watch") return "观察";
+      if (decision === "avoid") return "回避";
+      return titleCaseDecision(decision);
+    },
+    columns: [
+      { key: "rank", label: "排名", render: (item) => String(item.rank) },
+      { key: "security", label: "代码 / 名称", render: (item) => `${item.code} ${item.name}` },
+      { key: "industry", label: "行业", render: formatIndustry },
+      { key: "decision", label: "策略结论", render: (item) => (item.decision ? item.decision : "—") },
+      { key: "score", label: "综合分", render: (item) => item.score.toFixed(4) },
+      { key: "factorValue", label: "价值因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorValue"), 3) },
+      { key: "factorQuality", label: "质量因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorQuality"), 3) },
+      { key: "factorDividend", label: "红利因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorDividend"), 3) },
+      { key: "factorDefensive", label: "防守因子分", render: (item) => formatMetricNumber(metric(item.metrics, "factorDefensive"), 3) },
+      { key: "pe", label: "PE", render: (item) => formatMetricNumber(metric(item.metrics, "pe")) },
+      { key: "pb", label: "PB", render: (item) => formatMetricNumber(metric(item.metrics, "pb")) },
+      { key: "annualizedRoe", label: "年化 ROE", render: (item) => formatMetricPercent(metric(item.metrics, "annualizedRoe")) },
+      { key: "debtRatio", label: "负债率", render: (item) => formatMetricPercent(metric(item.metrics, "debtRatio")) },
+      { key: "dividendYield", label: "股息率", render: (item) => formatMetricPercent(metric(item.metrics, "dividendYield")) },
     ],
   },
 ];

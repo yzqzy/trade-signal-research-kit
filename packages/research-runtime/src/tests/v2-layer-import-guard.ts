@@ -12,6 +12,7 @@ import { bootstrapV2PluginRegistry } from "../bootstrap/v2-plugin-registry.js";
 function main(): void {
   bootstrapV2PluginRegistry();
   assert.ok(listRegisteredPolicyIds().includes("policy:turtle"));
+  assert.ok(listRegisteredPolicyIds().includes("policy:multi_factor_core"));
   assert.ok(listRegisteredTopicIds().includes("topic:business-six-dimension"));
   console.log("[test:v2-layer-import-guard] ok");
 }

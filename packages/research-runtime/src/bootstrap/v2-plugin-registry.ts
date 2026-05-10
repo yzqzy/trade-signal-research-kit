@@ -25,6 +25,36 @@ export function bootstrapV2PluginRegistry(): void {
       ? resolvePolicyPayloadEvaluator(POLICY_IDS.valueV1)(featureSet)
       : { strategyId: "value_v1", stub: true },
   );
+  registerPolicyEvaluator(POLICY_IDS.valueFactor, ({ featureSet }) =>
+    featureSet
+      ? resolvePolicyPayloadEvaluator(POLICY_IDS.valueFactor)(featureSet)
+      : { strategyId: "value_factor", stub: true },
+  );
+  registerPolicyEvaluator(POLICY_IDS.qualityFactor, ({ featureSet }) =>
+    featureSet
+      ? resolvePolicyPayloadEvaluator(POLICY_IDS.qualityFactor)(featureSet)
+      : { strategyId: "quality_factor", stub: true },
+  );
+  registerPolicyEvaluator(POLICY_IDS.dividendFactor, ({ featureSet }) =>
+    featureSet
+      ? resolvePolicyPayloadEvaluator(POLICY_IDS.dividendFactor)(featureSet)
+      : { strategyId: "dividend_factor", stub: true },
+  );
+  registerPolicyEvaluator(POLICY_IDS.qualityValue, ({ featureSet }) =>
+    featureSet
+      ? resolvePolicyPayloadEvaluator(POLICY_IDS.qualityValue)(featureSet)
+      : { strategyId: "quality_value", stub: true },
+  );
+  registerPolicyEvaluator(POLICY_IDS.defensiveFactor, ({ featureSet }) =>
+    featureSet
+      ? resolvePolicyPayloadEvaluator(POLICY_IDS.defensiveFactor)(featureSet)
+      : { strategyId: "defensive_factor", stub: true },
+  );
+  registerPolicyEvaluator(POLICY_IDS.multiFactorCore, ({ featureSet }) =>
+    featureSet
+      ? resolvePolicyPayloadEvaluator(POLICY_IDS.multiFactorCore)(featureSet)
+      : { strategyId: "multi_factor_core", stub: true },
+  );
   bootstrapTopicRegistry();
   bootstrapSelectionRegistry();
 }

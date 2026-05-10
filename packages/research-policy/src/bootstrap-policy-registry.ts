@@ -34,4 +34,22 @@ export function bootstrapPolicyRegistry(): void {
   registerPolicyPlugin(POLICY_IDS.highDividend, () => ({
     ...createAdapter(POLICY_IDS.highDividend),
   }));
+  registerPolicyPlugin(POLICY_IDS.valueFactor, () => ({
+    ...createAdapter(POLICY_IDS.valueFactor),
+  }));
+  registerPolicyPlugin(POLICY_IDS.qualityFactor, () => ({
+    ...createAdapter(POLICY_IDS.qualityFactor),
+  }));
+  registerPolicyPlugin(POLICY_IDS.dividendFactor, () => ({
+    ...createAdapter(POLICY_IDS.dividendFactor),
+  }));
+  registerPolicyPlugin(POLICY_IDS.qualityValue, () => ({
+    ...createAdapter(POLICY_IDS.qualityValue),
+  }));
+  registerPolicyPlugin(POLICY_IDS.defensiveFactor, () => ({
+    ...createAdapter(POLICY_IDS.defensiveFactor),
+  }));
+  registerPolicyPlugin(POLICY_IDS.multiFactorCore, () => ({
+    ...createAdapter(POLICY_IDS.multiFactorCore),
+  }));
 }

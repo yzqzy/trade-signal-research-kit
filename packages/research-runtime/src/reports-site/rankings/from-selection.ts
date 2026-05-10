@@ -57,6 +57,16 @@ const ALLOWED_METRIC_KEYS = new Set([
   "swLevel1Name",
   "swLevel2Name",
   "swLevel3Name",
+  "factorValue",
+  "factorQuality",
+  "factorDividend",
+  "factorDefensive",
+  "valueFactorScore",
+  "qualityFactorScore",
+  "dividendFactorScore",
+  "qualityValueScore",
+  "defensiveFactorScore",
+  "multiFactorCoreScore",
 ]);
 
 function readPayload(policyResults: PolicyResult[] | undefined, code: string): PolicyPayload | undefined {

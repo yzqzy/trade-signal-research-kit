@@ -17,10 +17,18 @@ import { exportScreenerResultsCsv } from "../screener/export-results.js";
 import { buildUniverseCapability } from "../screener/capability.js";
 import type { ScreenerRunOutput, ScreenerUniverseRow } from "../screener/types.js";
 import { isAfterCnAClose, loadOrFetchUniverseSnapshot } from "../screener/universe-snapshot.js";
-import { evaluateTurtlePolicy } from "../strategy/turtle/policy-evaluator.js";
 import { bootstrapV2PluginRegistry } from "../bootstrap/v2-plugin-registry.js";
 import { resolvePolicyPlugin } from "@trade-signal/research-policy";
-import { resolveSelectionPlugin, TURTLE_CN_A_SELECTION_ID } from "@trade-signal/research-selection";
+import {
+  DEFENSIVE_FACTOR_CN_A_SELECTION_ID,
+  DIVIDEND_FACTOR_CN_A_SELECTION_ID,
+  MULTI_FACTOR_CORE_CN_A_SELECTION_ID,
+  QUALITY_FACTOR_CN_A_SELECTION_ID,
+  QUALITY_VALUE_CN_A_SELECTION_ID,
+  TURTLE_CN_A_SELECTION_ID,
+  VALUE_FACTOR_CN_A_SELECTION_ID,
+  resolveSelectionPlugin,
+} from "@trade-signal/research-selection";
 import type { FeatureSet } from "@trade-signal/research-contracts";
 
 async function testDiskCache(): Promise<void> {
@@ -173,6 +181,76 @@ async function testTurtlePolicyAndSelectionUseV2Path(): Promise<void> {
   });
   assert.ok(selection.candidates.length > 0);
   assert.equal(selection.candidates[0]?.code, "GOOD");
+}
+
+async function testFactorPoliciesAndSelectionsUseV2Path(): Promise<void> {
+  const base: ScreenerUniverseRow = {
+    code: "BASE",
+    name: "BASE",
+    market: "CN_A",
+    industry: "食品",
+    listDate: "20110101",
+    close: 10,
+    marketCap: 22000,
+    turnover: 1.2,
+    dv: 5.1,
+    pe: 12,
+    pb: 1.8,
+    evEbitda: 9.5,
+    roe: 5.2,
+    grossMargin: 28,
+    debtRatio: 36,
+    fcfYield: 5.4,
+    ocf: 800,
+    capex: -120,
+  };
+  const rows = [
+    { ...base, code: "GOOD", name: "因子优选" },
+    { ...base, code: "WEAK", name: "因子较弱", pe: 40, pb: 6, dv: 0.2, roe: 0.5, debtRatio: 90, grossMargin: 3 },
+    { ...base, code: "BANK", name: "银行样本", industry: "银行Ⅱ" },
+  ];
+  const pairs = [
+    { policyId: "policy:value_factor", selectionId: VALUE_FACTOR_CN_A_SELECTION_ID },
+    { policyId: "policy:quality_factor", selectionId: QUALITY_FACTOR_CN_A_SELECTION_ID },
+    { policyId: "policy:dividend_factor", selectionId: DIVIDEND_FACTOR_CN_A_SELECTION_ID },
+    { policyId: "policy:quality_value", selectionId: QUALITY_VALUE_CN_A_SELECTION_ID },
+    { policyId: "policy:defensive_factor", selectionId: DEFENSIVE_FACTOR_CN_A_SELECTION_ID },
+    { policyId: "policy:multi_factor_core", selectionId: MULTI_FACTOR_CORE_CN_A_SELECTION_ID },
+  ] as const;
+
+  bootstrapV2PluginRegistry();
+  for (const pair of pairs) {
+    const policy = resolvePolicyPlugin(pair.policyId);
+    const policyResults = await Promise.all(
+      rows.map((row) =>
+        policy.evaluate({
+          policyId: pair.policyId,
+          runId: "test-run",
+          code: row.code,
+          featureSet: toFeatureSet(row),
+        }),
+      ),
+    );
+    const goodPayload = policyResults.find((it) => it.code === "GOOD")?.payload as {
+      passesUniverseGate?: boolean;
+      score?: number;
+    };
+    const bankPayload = policyResults.find((it) => it.code === "BANK")?.payload as {
+      filterReasons?: string[];
+    };
+    assert.equal(goodPayload.passesUniverseGate, true, `${pair.policyId} GOOD 应通过门槛`);
+    assert.ok(typeof goodPayload.score === "number" && goodPayload.score > 0.4, `${pair.policyId} GOOD 应有有效分数`);
+    assert.ok(bankPayload.filterReasons?.includes("bank_industry_excluded"), `${pair.policyId} 应剔除银行`);
+
+    const selection = await resolveSelectionPlugin(pair.selectionId).compose({
+      selectionId: pair.selectionId,
+      runId: "test-run",
+      universe: "cn_a",
+      policyResults,
+      maxCandidates: 10,
+    });
+    assert.equal(selection.candidates[0]?.code, "GOOD", `${pair.policyId} 选股结果应优先 GOOD`);
+  }
 }
 
 async function testUniverseCapabilityHkEmpty(): Promise<void> {
@@ -434,6 +512,7 @@ async function main(): Promise<void> {
   testConfig();
   testTier1Filter();
   await testTurtlePolicyAndSelectionUseV2Path();
+  await testFactorPoliciesAndSelectionsUseV2Path();
   testParseScreenerUniversePayload();
   await testFetchScreenerUniversePagesUntilTotal();
   await testFetchScreenerUniverseContinuesWhenTotalLooksLikePageCount();
