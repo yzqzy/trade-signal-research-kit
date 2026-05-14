@@ -1,4 +1,9 @@
-export type ReportTopicType = "business-quality" | "valuation" | "penetration-return" | "turtle-strategy";
+export type ReportTopicType =
+  | "business-quality"
+  | "valuation"
+  | "penetration-return"
+  | "turtle-strategy"
+  | "financial-minesweeper";
 export declare const TOPIC_MANIFEST_VERSION: "1.0";
 export declare function siteTopicTypeToV2TopicId(topic: ReportTopicType): string;
 export type TopicManifestEntryV1 = {

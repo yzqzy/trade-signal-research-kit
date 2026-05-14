@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r run typecheck",
     "phase0:download": "pnpm --filter @trade-signal/research-runtime run run:phase0-download",
     "workflow:run": "pnpm --filter @trade-signal/research-runtime run run:workflow",
+    "financial-minesweeper:run": "pnpm --filter @trade-signal/research-runtime run run:financial-minesweeper",
     "business-analysis:run": "pnpm --filter @trade-signal/research-runtime run run:business-analysis",
     "websearch:smoke": "pnpm run build:runtime && pnpm --filter @trade-signal/research-runtime run run:websearch-smoke --",
     "valuation:run": "pnpm --filter @trade-signal/research-runtime run run:valuation",

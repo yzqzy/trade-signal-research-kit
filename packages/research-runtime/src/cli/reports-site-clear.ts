@@ -10,7 +10,13 @@ import type { ReportTopicType, SiteReportsIndex } from "../reports-site/types.js
 type TargetPreset = "app" | "site" | "legacy-docs";
 type ClearPart = "all" | "entries" | "timeline" | "by-topic" | "by-code" | "index";
 
-const TOPICS: ReportTopicType[] = ["business-quality", "valuation", "penetration-return", "turtle-strategy"];
+const TOPICS: ReportTopicType[] = [
+  "business-quality",
+  "valuation",
+  "penetration-return",
+  "turtle-strategy",
+  "financial-minesweeper",
+];
 
 type CliArgs = {
   target: TargetPreset;

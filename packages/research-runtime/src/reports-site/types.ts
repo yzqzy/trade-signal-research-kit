@@ -3,7 +3,8 @@ export type ReportTopicType =
   | "business-quality"
   | "valuation"
   | "penetration-return"
-  | "turtle-strategy";
+  | "turtle-strategy"
+  | "financial-minesweeper";
 
 export type RequiredFieldsStatus = "complete" | "degraded" | "missing";
 

@@ -13,7 +13,7 @@
 
 | 组件 | 职责 |
 |------|------|
-| `trade-signal-research-kit`（`@trade-signal/research-runtime`） | 从单次 `workflow` / `business-analysis` run 归一化生成 `output/site/reports/**` |
+| `trade-signal-research-kit`（`@trade-signal/research-runtime`） | 从单次 `workflow` / `business-analysis` / **`financial-minesweeper`** run 归一化生成 `output/site/reports/**` |
 | `apps/research-hub`（`@trade-signal/research-hub`） | 消费 `public/reports/**`，静态导出 `/reports` 列表与详情（详情页 **仅 Markdown 渲染**） |
 
 ## 目录协议（`site/reports`）
@@ -35,6 +35,11 @@
 # 从已有 run 目录聚合写入 output/site/reports（并重建 views/index）
 pnpm run reports-site:emit -- --run-dir output/workflow/600941/<runId>
 
+# 财报排雷 run → 站点（先跑排雷 CLI，再对 run 根 emit）
+pnpm run financial-minesweeper:run -- --code 600887 --year 2024
+pnpm run reports-site:emit -- --run-dir output/financial-minesweeper/600887/<runId>
+pnpm run sync:reports-to-app
+
 # 仅重建索引（entries 已存在）
 pnpm --filter @trade-signal/research-runtime run run:reports-site-emit -- --reindex-only
 
@@ -51,7 +56,13 @@ pnpm --filter @trade-signal/research-runtime run run:reports-site-sync -- \
 
 根脚本 `reports-site:emit` / `sync:reports-to-app` 只会构建 `@trade-signal/research-runtime` 后执行发布 CLI，不会触发 `apps/research-hub` 的 Next build；如需完整站点构建，另行执行 `pnpm run app:build`。同一工作区内避免并发执行多个会写入 `.next` 的站点构建命令。
 
-`workflow:run` / `business-analysis:run` 可选 **`--reports-site-dir output/site/reports`**：跑完后追加写入同一聚合目录。
+`workflow:run` / `business-analysis:run` / **`financial-minesweeper:run`** 可选 **`--reports-site-dir output/site/reports`**：跑完后追加写入同一聚合目录。
+
+### 财报排雷（`financial_minesweeper_manifest.json`）
+
+- run 根目录含 **`financial_minesweeper_manifest.json`** 时，`reports-site:emit` 走 **`emitFromFinancialMinesweeper`**：读取 `outputs.reportMarkdownPath`，通过 **Topic Finalization Gate** 与 **`findPublishedMarkdownQualityViolations`** 后写入 **`siteTopicType: financial-minesweeper`** 的 entry；`outputs.analysisJsonPath` 作为可下载附件。
+- 与 workflow 的 **多 Topic finalized** 不同：排雷页由 CLI **一次写满**正文，仍须满足站点禁用词与终稿式段落门槛（见 `validateTopicFinalMarkdown` 中 **`financial-minesweeper`** 规则组）。
+- **emit 识别顺序**：若目录同时存在多种 manifest，优先级为 **`workflow_manifest.json` → `business_analysis_manifest.json` → `financial_minesweeper_manifest.json` → `topic_manifest.json` → screener 双文件**（与实现一致）。
 
 ## 架构 V2：`topic_manifest.json` / `publish_only`
 

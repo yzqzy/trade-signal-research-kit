@@ -42,6 +42,7 @@ import {
 import type { Phase1BQualitativeSupplement } from "../steps/phase1b/types.js";
 import type { SelectionManifestV1 } from "../screener/selection-manifest-v2.js";
 import type { ScreenerRunOutput } from "../screener/types.js";
+import type { FinancialMinesweeperManifestV1 } from "../contracts/financial-minesweeper-manifest.js";
 import {
   commonEvidenceAttachments,
   deriveBusinessAnalysisConfidence,
@@ -57,7 +58,7 @@ import { toRankingViewItemsFromSelection } from "./rankings/from-selection.js";
 export { findPublishedMarkdownQualityViolations } from "./published-markdown/index.js";
 
 export type EmitSiteReportsOptions = {
-  /** workflow / business-analysis / screener 单次 run 根目录（含 manifest 或 screener 输出） */
+  /** workflow / business-analysis / financial-minesweeper / screener 单次 run 根目录（含 manifest 或 screener 输出） */
   runDir: string;
   /** 聚合站点根目录，默认 `output/site/reports`（相对 monorepo 根） */
   siteDir?: string;
@@ -587,6 +588,8 @@ async function emitFromWorkflow(runDir: string, siteDir: string, manifestPath: s
         const p1bPath = resolveArtifactPath(runDir, m.outputs.phase1bMarkdownPath);
         return polishBusinessPath ?? p1bPath ?? reportMdPath;
       }
+      case "financial-minesweeper":
+        return undefined;
       default: {
         const _ex: never = topic;
         return _ex;
@@ -953,6 +956,130 @@ async function emitFromBusinessAnalysis(
   await writeTopicManifest(runDir, topicManifest);
 }
 
+function minesweeperConfidenceFromSummary(band?: string): ConfidenceState {
+  if (band === "低") return "high";
+  if (band === "中") return "medium";
+  return "low";
+}
+
+async function emitFromFinancialMinesweeper(runDir: string, siteDir: string, manifestPath: string): Promise<void> {
+  const m = await readJson<FinancialMinesweeperManifestV1>(manifestPath);
+  const publishedAt = m.generatedAt;
+  const date = dateKeyFromIso(publishedAt);
+  const codeDigits = String(m.outputLayout.code ?? "").replace(/\D/g, "") || m.outputLayout.code;
+  const sourceRunId = String(m.outputLayout.runId ?? "");
+  const runShort = shortRunId(sourceRunId || "run");
+  const reportAbs = resolveArtifactPath(runDir, m.outputs.reportMarkdownPath);
+  const analysisAbs = resolveArtifactPath(runDir, m.outputs.analysisJsonPath);
+  if (!reportAbs || !(await pathExists(reportAbs))) return;
+
+  const markdown = (await readFile(reportAbs, "utf-8")).trim();
+  const topic: ReportTopicType = "financial-minesweeper";
+  const gate = validateTopicFinalMarkdown(topic, markdown);
+  const manifestRel = path.relative(siteDir, manifestPath);
+  const ctx = await tryReadCompanyContext(runDir, {
+    code: codeDigits,
+    companyName: m.input.companyName,
+  } as Record<string, unknown>);
+  const listed = formatListedCode(codeDigits, ctx.market);
+  const entryId = buildEntryId(date, codeDigits, topic, runShort);
+
+  if (gate.status !== "complete") {
+    await removeVisibleEntriesForTopic(siteDir, { date, code: codeDigits, topic });
+    const topicManifest: TopicManifestV1 = {
+      manifestVersion: TOPIC_MANIFEST_VERSION,
+      generatedAt: new Date().toISOString(),
+      publishedAt,
+      runProfile: "stock_full",
+      outputLayout: { code: m.outputLayout.code, runId: m.outputLayout.runId },
+      topics: [
+        {
+          v2TopicId: siteTopicTypeToV2TopicId(topic),
+          siteTopicType: topic,
+          entryId,
+          requiredFieldsStatus: "degraded",
+          sourceMarkdownRelative: relFromRun(runDir, reportAbs),
+          qualityStatus: "draft",
+          blockingReasons: gate.blockingReasons,
+        },
+      ],
+    };
+    await writeTopicManifest(runDir, topicManifest);
+    return;
+  }
+
+  const violations = findPublishedMarkdownQualityViolations(markdown);
+  if (violations.length > 0) {
+    await removeVisibleEntriesForTopic(siteDir, { date, code: codeDigits, topic });
+    const topicManifest: TopicManifestV1 = {
+      manifestVersion: TOPIC_MANIFEST_VERSION,
+      generatedAt: new Date().toISOString(),
+      publishedAt,
+      runProfile: "stock_full",
+      outputLayout: { code: m.outputLayout.code, runId: m.outputLayout.runId },
+      topics: [
+        {
+          v2TopicId: siteTopicTypeToV2TopicId(topic),
+          siteTopicType: topic,
+          entryId,
+          requiredFieldsStatus: "degraded",
+          sourceMarkdownRelative: relFromRun(runDir, reportAbs),
+          qualityStatus: "draft",
+          blockingReasons: [`发布禁用内容：${violations.join(", ")}`],
+        },
+      ],
+    };
+    await writeTopicManifest(runDir, topicManifest);
+    return;
+  }
+
+  const meta: EntryMeta = {
+    entryId,
+    code: codeDigits,
+    topicType: topic,
+    displayTitle: buildDisplayTitle({ companyName: ctx.name, listedCode: listed, topic }),
+    publishedAt,
+    sourceRunId,
+    requiredFieldsStatus: "complete",
+    confidenceState: minesweeperConfidenceFromSummary(m.summary?.riskBand),
+    contentFile: "content.md",
+    sourceManifestPath: manifestRel,
+  };
+
+  const attachments: PublicEvidencePackSource[] = [];
+  if (analysisAbs && (await pathExists(analysisAbs))) {
+    attachments.push({
+      id: "financial-minesweeper-analysis",
+      label: "排雷规则明细（JSON）",
+      kind: "json",
+      sourcePath: analysisAbs,
+      fileName: "financial-minesweeper-analysis.json",
+      previewable: true,
+    });
+  }
+
+  await writeEntry({ siteDir, meta, contentMarkdown: markdown, attachments });
+
+  const topicManifest: TopicManifestV1 = {
+    manifestVersion: TOPIC_MANIFEST_VERSION,
+    generatedAt: new Date().toISOString(),
+    publishedAt,
+    runProfile: "stock_full",
+    outputLayout: { code: m.outputLayout.code, runId: m.outputLayout.runId },
+    topics: [
+      {
+        v2TopicId: siteTopicTypeToV2TopicId(topic),
+        siteTopicType: topic,
+        entryId,
+        requiredFieldsStatus: "complete",
+        sourceMarkdownRelative: relFromRun(runDir, reportAbs),
+        qualityStatus: "complete",
+      },
+    ],
+  };
+  await writeTopicManifest(runDir, topicManifest);
+}
+
 function buildRankingListId(params: {
   generatedAt: string;
   strategyId: string;
@@ -1270,6 +1397,7 @@ export async function emitSiteReportsFromRun(opts: EmitSiteReportsOptions): Prom
 
   const wf = path.join(runDir, "workflow_manifest.json");
   const ba = path.join(runDir, "business_analysis_manifest.json");
+  const fm = path.join(runDir, "financial_minesweeper_manifest.json");
   const tm = path.join(runDir, "topic_manifest.json");
   const screener = path.join(runDir, "screener_results.json");
   const selectionManifest = path.join(runDir, "selection_manifest.json");
@@ -1278,13 +1406,15 @@ export async function emitSiteReportsFromRun(opts: EmitSiteReportsOptions): Prom
     await emitFromWorkflow(runDir, siteDir, wf);
   } else if (await pathExists(ba)) {
     await emitFromBusinessAnalysis(runDir, siteDir, ba);
+  } else if (await pathExists(fm)) {
+    await emitFromFinancialMinesweeper(runDir, siteDir, fm);
   } else if (await pathExists(tm)) {
     await emitFromTopicManifestOnly(runDir, siteDir, tm);
   } else if ((await pathExists(screener)) && (await pathExists(selectionManifest))) {
     await emitFromScreener(runDir, siteDir);
   } else {
     throw new Error(
-      `[reports-site] 未找到 workflow_manifest.json / business_analysis_manifest.json / topic_manifest.json / screener_results.json：${runDir}`,
+      `[reports-site] 未找到 workflow_manifest.json / business_analysis_manifest.json / financial_minesweeper_manifest.json / topic_manifest.json / screener 双文件：${runDir}`,
     );
   }
 

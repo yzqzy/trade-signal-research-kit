@@ -66,6 +66,13 @@ function topicSpecificBlockingReasons(topic: ReportTopicType, markdown: string):
       ["缺少核心发现", [/核心发现|关键发现/u]],
       ["缺少 D1-D6 实质章节", [/D1|维度一/u, /D6|维度六/u]],
     ],
+    "financial-minesweeper": [
+      ["缺少排雷结论章节", [/##\s*排雷结论摘要/u]],
+      ["缺少综合风险与 Verdict 段", [/##\s*综合风险判断与 Verdict/u]],
+      ["缺少反证与局限段", [/##\s*反证与数据局限/u]],
+      ["缺少关键财务口径说明", [/##\s*关键财务口径说明/u]],
+      ["缺少后续观察与人工复核", [/##\s*后续观察与人工复核/u]],
+    ],
   };
   for (const [label, patterns] of rules[topic]) {
     if (!hasAny(markdown, patterns)) reasons.push(label);

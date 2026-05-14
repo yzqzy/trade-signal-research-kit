@@ -2,7 +2,8 @@ export type TopicSiteType =
   | "business-quality"
   | "valuation"
   | "penetration-return"
-  | "turtle-strategy";
+  | "turtle-strategy"
+  | "financial-minesweeper";
 
 export const TOPIC_MANIFEST_VERSION = "1.0" as const;
 
@@ -16,6 +17,8 @@ export function siteTopicTypeToV2TopicId(topic: TopicSiteType): string {
       return "topic:penetration-return";
     case "turtle-strategy":
       return "topic:turtle-strategy-explainer";
+    case "financial-minesweeper":
+      return "topic:financial-minesweeper";
     default: {
       const _exhaustive: never = topic;
       return _exhaustive;

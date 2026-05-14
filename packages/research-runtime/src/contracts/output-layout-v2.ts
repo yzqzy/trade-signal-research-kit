@@ -14,7 +14,8 @@ export type OutputLayoutArea =
   | "valuation"
   | "phase3"
   | "report"
-  | "screener";
+  | "screener"
+  | "financial-minesweeper";
 
 export type OutputLayoutV2Meta = {
   version: typeof OUTPUT_LAYOUT_VERSION;
@@ -132,6 +133,41 @@ export function resolveScreenerRunDirectory(input: {
       version: OUTPUT_LAYOUT_VERSION,
       area: "screener",
       code: `${input.market}_${input.mode}`,
+      runId,
+    },
+  };
+}
+
+/**
+ * 财报排雷：`--output-dir output` → `output/financial-minesweeper/<code>/<runId>/`
+ */
+export function resolveFinancialMinesweeperDefaultRunDirectory(input: {
+  outputDirArg: string;
+  stockCode: string;
+}): { outputDir: string; runId: string; layout: OutputLayoutV2Meta } {
+  const runId = randomUUID();
+  const normalizedCode = normalizeCodeForFeed(input.stockCode.trim());
+  const raw = input.outputDirArg.trim() || "output";
+  if (raw !== "output") {
+    return {
+      outputDir: resolveOutputPath(raw),
+      runId,
+      layout: {
+        version: OUTPUT_LAYOUT_VERSION,
+        area: "financial-minesweeper",
+        code: normalizedCode,
+        runId,
+      },
+    };
+  }
+  const outputDir = resolveOutputPath(path.join("output", "financial-minesweeper", normalizedCode, runId));
+  return {
+    outputDir,
+    runId,
+    layout: {
+      version: OUTPUT_LAYOUT_VERSION,
+      area: "financial-minesweeper",
+      code: normalizedCode,
       runId,
     },
   };

@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   }
 
   if (!args.runDir?.trim()) {
-    throw new Error("[reports-site:emit] 需要 --run-dir <workflow|business-analysis run 根目录>，或传 --reindex-only");
+    throw new Error("[reports-site:emit] 需要 --run-dir <workflow|business-analysis|financial-minesweeper|screener run 根目录>，或传 --reindex-only");
   }
 
   const { siteDir: out } = await emitSiteReportsFromRun({

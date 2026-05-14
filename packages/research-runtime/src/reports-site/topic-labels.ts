@@ -6,6 +6,7 @@ export const TOPIC_DISPLAY_PAGE_NAME: Record<ReportTopicType, string> = {
   valuation: "估值分析",
   "penetration-return": "穿透回报率定量分析",
   "turtle-strategy": "龟龟投资策略分析",
+  "financial-minesweeper": "财报排雷",
 };
 
 /** entryId 中使用的短 slug（小写、无点号） */
@@ -14,6 +15,7 @@ export const TOPIC_ENTRY_SLUG: Record<ReportTopicType, string> = {
   valuation: "valuation",
   "penetration-return": "penetration",
   "turtle-strategy": "turtle",
+  "financial-minesweeper": "minesweeper",
 };
 
 export function buildDisplayTitle(input: {

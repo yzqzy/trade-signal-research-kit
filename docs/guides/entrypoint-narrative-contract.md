@@ -20,6 +20,7 @@
 |------|-----------|------------------|
 | `/business-analysis` / `business-analysis:run` | PDF 链 + Phase1A/1B/2A/2B，产出证据与定性草稿文件 | **Slash 路径**：默认包含你在会话中执行的 **AI 收口**（见下节）；**纯 CLI**：cli-evidence-only |
 | `/workflow-analysis` / `workflow:run` | 全链路至 `analysis_report`、估值、manifest，并 **report-polish** 四页 Markdown + `report_view_model.json` | CLI 产出 Topic draft；龟龟/估值/穿透正式页面需 AI/Agent finalization 写回 finalized Markdown；六维商业质量仍以 **`/business-analysis` + `business-analysis-finalize`** 为主 |
+| `/financial-minesweeper` / `financial-minesweeper:run` | HTTP Feed 多年财报与质量趋势，规则化「财报排雷」报告 + manifest；可进站为 **`financial-minesweeper`** 专题 | **否**（确定性 TS；非六维终稿路径） |
 | `/valuation` / `valuation:run` | 估值 JSON/摘要（可选 full report） | **否** |
 | `/download-annual-report` / `phase0:download` | 年报 PDF 获取与缓存 | **否** |
 | `reports-site:emit` / `sync:reports-to-app` | 将单次 run 聚合为研报站静态数据（`content.md` v2，见 [reports-site-publish](./reports-site-publish.md)） | **否** |

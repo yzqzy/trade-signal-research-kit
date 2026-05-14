@@ -2,13 +2,15 @@ export type ReportTopicType =
   | "business-quality"
   | "valuation"
   | "penetration-return"
-  | "turtle-strategy";
+  | "turtle-strategy"
+  | "financial-minesweeper";
 
 export const TOPIC_LABEL_ZH: Record<ReportTopicType, string> = {
   "business-quality": "商业质量评估",
   valuation: "估值分析",
   "penetration-return": "穿透回报率定量分析",
   "turtle-strategy": "龟龟投资策略分析",
+  "financial-minesweeper": "财报排雷",
 };
 
 export const TOPIC_TYPES: ReportTopicType[] = [
@@ -16,4 +18,5 @@ export const TOPIC_TYPES: ReportTopicType[] = [
   "valuation",
   "penetration-return",
   "turtle-strategy",
+  "financial-minesweeper",
 ];

@@ -9,6 +9,8 @@ export function siteTopicTypeToV2TopicId(topic) {
             return "topic:penetration-return";
         case "turtle-strategy":
             return "topic:turtle-strategy-explainer";
+        case "financial-minesweeper":
+            return "topic:financial-minesweeper";
         default: {
             const _exhaustive = topic;
             return _exhaustive;

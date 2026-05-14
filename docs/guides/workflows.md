@@ -37,7 +37,7 @@
 
 ## 环境变量与 `.env`（CLI 统一初始化）
 
-`@trade-signal/research-runtime` 下**所有可执行入口**（`workflow` / `business-analysis` / `phase0:download` / `valuation` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
+`@trade-signal/research-runtime` 下**所有可执行入口**（`workflow` / `business-analysis` / `financial-minesweeper` / `phase0:download` / `valuation` / `reports-site-emit` / `reports-site-sync` / `screener`、Phase2/3 子 CLI、`quality:*`、`test:*`、`dev:*` demo 等）在启动时会调用 `initCliEnv()`，按顺序尝试加载：
 
 1. **当前工作目录**下的 `.env`
 2. 若不存在，再尝试 **`../../.env`**（从 `packages/research-runtime` 执行时通常对应**仓库根**的 `.env`）
@@ -49,11 +49,12 @@
 - **根目录**：仍使用仓库根下 `output/`（包内执行时解析到 monorepo 根，见 `resolve-monorepo-path`）。
 - **workflow**：未传 `--output-dir` 时默认父目录为 `output/workflow/<code>/`，产物在 `output/workflow/<code>/<runId>/`；`<runId>` 为 UUID。显式 `--output-dir <父目录>` 时写入 `<父目录>/<runId>/`。
 - **business-analysis**：与 workflow 共用同一套阶段语义（独立 `business-analysis` 编排器）；未传 `--output-dir` 时默认父目录为 `output/business-analysis/<code>/`，产物在 `output/business-analysis/<code>/<runId>/`。
+- **financial-minesweeper（财报排雷）**：独立编排器；未传 `--output-dir` 时默认 `output/financial-minesweeper/<code>/<runId>/`，写入 `financial_minesweeper_manifest.json`、`financial_minesweeper_report.md`、`financial_minesweeper_analysis.json` 等；**仅 HTTP Feed**（`FEED_BASE_URL`），规则为确定性计分。发布见 [reports-site-publish](./reports-site-publish.md)。
 - **续跑**：`--resume-from-stage` 时必须传入 `--output-dir`，且指向**已有 run 根目录**（该目录下含 `workflow_checkpoint.json`）。
 - **`valuation:run`（独立 CLI）**：`--output-dir` 为默认 `output` 时，写入 `output/valuation/<code>/<runId>/`；可用 `--code` 指定分区（缺省 `_adhoc`）。**`--from-manifest` 且未传 `--code` 时**，分区代码回退到 **`manifest.outputLayout.code`**（避免 `_adhoc`）。`--from-manifest` 且默认 `--output-dir` 时，估值产物仍写入 manifest 所在 run 目录。
 - **`run:phase3`（独立 CLI）**：`--output-dir` 为默认 `output` 时，写入 `output/phase3/<code>/<runId>/`；可用 `--code` 指定分区（缺省 `_adhoc`）。显式 `--output-dir` 为**写入根目录**，不再追加子 UUID。
 - **screener**：在 `--output-dir` 根下写入 `output/screener/<market>/<mode>/<runId>/`（若根为默认 `output`，则完整路径为 `output/screener/...`）。
-- **清单字段**：`workflow_manifest.json` / `business_analysis_manifest.json` 的 `manifestVersion` 为 **`2.0`**，并含 `outputLayout: { version, area, code, runId }`。
+- **清单字段**：`workflow_manifest.json` / `business_analysis_manifest.json` 的 `manifestVersion` 为 **`2.0`**，并含 `outputLayout: { version, area, code, runId }`；**`financial_minesweeper_manifest.json`** 为独立清单，`manifestVersion` 为 **`1.0`**，`outputLayout.area` 为 **`financial-minesweeper`**。
 
 源码目录职责见下文「research-runtime 源码目录职责」；策略注册步骤见 [策略与流程解耦](../architecture/strategy-orchestration-architecture.md)。
 
@@ -86,6 +87,18 @@ pnpm run valuation:run -- \
   --code 600887 \
   --output-dir "./output/workflow/600887/<runId>"
 ```
+
+**4）财报排雷（独立 run，默认 `output/financial-minesweeper/<code>/<runId>/`）**
+
+```bash
+pnpm run financial-minesweeper:run -- \
+  --code 600887 \
+  --year 2024 \
+  [--output-dir "./output/financial-minesweeper/600887"] \
+  [--reports-site-dir "output/site/reports"]
+```
+
+随后可与其它 run 一样执行 `pnpm run reports-site:emit -- --run-dir <排雷 run 根目录>` 与 `pnpm run sync:reports-to-app`；emit 识别 **`financial_minesweeper_manifest.json`** 并写入专题类型 **`financial-minesweeper`**（见 [reports-site-publish](./reports-site-publish.md)）。
 
 ## Stage 与 Phase 对照
 

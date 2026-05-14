@@ -14,12 +14,13 @@ Guidance for **Codex** (Codex.ai/code) in this repo. **Rules live in `docs/guide
 | Goal | Slash | Root CLI | Key outputs |
 |------|--------|----------|-------------|
 | Full workflow (strict) | `/workflow-analysis` | `pnpm run workflow:run -- --mode turtle-strict ...` | `analysis_report.md`, `valuation_computed.json`, `workflow_manifest.json`, **report-polish** (`report_view_model.json`, four topic `.md`) |
+| Financial minesweeper | `/financial-minesweeper` | `pnpm run financial-minesweeper:run -- --code … --year …` | `financial_minesweeper_manifest.json`, `financial_minesweeper_report.md`, `financial_minesweeper_analysis.json` |
 | PDF-first qualitative | `/business-analysis` | `pnpm run business-analysis:run -- ...` | evidence-pack, `business_analysis_manifest.json`; CLI `qualitative_*` may be drafts until Codex finalizes |
 | Valuation only | `/valuation` | `pnpm run valuation:run -- ...` | `valuation_computed.json`, `valuation_summary.md` |
 | Annual PDF | `/download-annual-report` | `pnpm run phase0:download -- ...` | local PDF |
 | Reports site | — | `pnpm run reports-site:emit -- --run-dir …` then `pnpm run sync:reports-to-app` | `output/site/reports/**` → `apps/research-hub/public/reports` |
 
-Quick slash examples: `/workflow-analysis 600887` · `/business-analysis 600887` · `/valuation 600887`. Strategy is a **parameter**: `/workflow-analysis 600887 --strategy value_v1` (not a separate entry name).
+Quick slash examples: `/workflow-analysis 600887` · `/business-analysis 600887` · `/financial-minesweeper 600887 --year 2024` · `/valuation 600887`. Strategy is a **parameter**: `/workflow-analysis 600887 --strategy value_v1` (not a separate entry name).
 
 ## Final output boundaries
 
@@ -49,6 +50,7 @@ pnpm run build
 pnpm run test:linkage
 pnpm run workflow:run -- --code <CODE> --mode turtle-strict [--pdf …] [--output-dir …]
 pnpm run business-analysis:run -- --code <CODE> [--strict] [--output-dir …]
+pnpm run financial-minesweeper:run -- --code <CODE> --year <YEAR> [--output-dir …] [--reports-site-dir …]
 pnpm run reports-site:emit -- --run-dir ./output/workflow/<code>/<runId>
 pnpm run sync:reports-to-app
 ```

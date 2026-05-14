@@ -10,7 +10,7 @@
 |------|---------|
 | Feature | `feature:penetration.R` |
 | Policy | `policy:turtle`、`policy:value_v1` |
-| Topic | `topic:business-six-dimension`、`topic:valuation`、`topic:penetration-return`、`topic:turtle-strategy-explainer`、`topic:earnings-alert` |
+| Topic | `topic:business-six-dimension`、`topic:valuation`、`topic:penetration-return`、`topic:turtle-strategy-explainer`、`topic:financial-minesweeper`、`topic:earnings-alert` |
 | Selection | `selection:turtle:cn_a_universe` |
 
 ## FeatureContract（特征插件）
