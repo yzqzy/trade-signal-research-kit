@@ -13,11 +13,16 @@ export type FinancialMinesweeperManifestV1 = {
     code: string;
     year: string;
     companyName?: string;
+    fiscalYearResolved?: string;
+    reportUrlResolved?: string;
   };
   outputs: {
     reportMarkdownPath: string;
     analysisJsonPath: string;
     rawDataJsonPath?: string;
+    pdfPath?: string;
+    phase2aJsonPath?: string;
+    phase2bMarkdownPath?: string;
   };
   summary?: {
     totalScore: number;

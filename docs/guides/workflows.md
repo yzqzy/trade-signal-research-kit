@@ -49,7 +49,7 @@
 - **根目录**：仍使用仓库根下 `output/`（包内执行时解析到 monorepo 根，见 `resolve-monorepo-path`）。
 - **workflow**：未传 `--output-dir` 时默认父目录为 `output/workflow/<code>/`，产物在 `output/workflow/<code>/<runId>/`；`<runId>` 为 UUID。显式 `--output-dir <父目录>` 时写入 `<父目录>/<runId>/`。
 - **business-analysis**：与 workflow 共用同一套阶段语义（独立 `business-analysis` 编排器）；未传 `--output-dir` 时默认父目录为 `output/business-analysis/<code>/`，产物在 `output/business-analysis/<code>/<runId>/`。
-- **financial-minesweeper（财报排雷）**：独立编排器；未传 `--output-dir` 时默认 `output/financial-minesweeper/<code>/<runId>/`，写入 `financial_minesweeper_manifest.json`、`financial_minesweeper_report.md`、`financial_minesweeper_analysis.json` 等；**仅 HTTP Feed**（`FEED_BASE_URL`），规则为确定性计分。发布见 [reports-site-publish](./reports-site-publish.md)。
+- **financial-minesweeper（财报排雷）**：独立编排器；未传 `--output-dir` 时默认 `output/financial-minesweeper/<code>/<runId>/`，写入 `financial_minesweeper_manifest.json`、`financial_minesweeper_report.md`、`financial_minesweeper_analysis.json` 等；运行时会**强制获取当年年报 PDF**（自动发现并下载，失败即终止），再执行 Phase2A/2B 与排雷评分。发布见 [reports-site-publish](./reports-site-publish.md)。
 - **续跑**：`--resume-from-stage` 时必须传入 `--output-dir`，且指向**已有 run 根目录**（该目录下含 `workflow_checkpoint.json`）。
 - **`valuation:run`（独立 CLI）**：`--output-dir` 为默认 `output` 时，写入 `output/valuation/<code>/<runId>/`；可用 `--code` 指定分区（缺省 `_adhoc`）。**`--from-manifest` 且未传 `--code` 时**，分区代码回退到 **`manifest.outputLayout.code`**（避免 `_adhoc`）。`--from-manifest` 且默认 `--output-dir` 时，估值产物仍写入 manifest 所在 run 目录。
 - **`run:phase3`（独立 CLI）**：`--output-dir` 为默认 `output` 时，写入 `output/phase3/<code>/<runId>/`；可用 `--code` 指定分区（缺省 `_adhoc`）。显式 `--output-dir` 为**写入根目录**，不再追加子 UUID。
@@ -94,6 +94,7 @@ pnpm run valuation:run -- \
 pnpm run financial-minesweeper:run -- \
   --code 600887 \
   --year 2024 \
+  [--report-url "https://...pdf"] \
   [--output-dir "./output/financial-minesweeper/600887"] \
   [--reports-site-dir "output/site/reports"]
 ```

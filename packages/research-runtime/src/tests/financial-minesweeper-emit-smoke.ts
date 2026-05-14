@@ -22,6 +22,10 @@ async function main(): Promise<void> {
     snapshots: [],
     trends: [],
     governanceEvents: [],
+    annualMetaByYear: {},
+    incomeByYear: {},
+    balanceByYear: {},
+    cashflowByYear: {},
   });
   const md = renderFinancialMinesweeperMarkdown({
     companyName: "测试公司",

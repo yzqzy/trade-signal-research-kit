@@ -971,6 +971,8 @@ async function emitFromFinancialMinesweeper(runDir: string, siteDir: string, man
   const runShort = shortRunId(sourceRunId || "run");
   const reportAbs = resolveArtifactPath(runDir, m.outputs.reportMarkdownPath);
   const analysisAbs = resolveArtifactPath(runDir, m.outputs.analysisJsonPath);
+  const phase2aAbs = resolveArtifactPath(runDir, m.outputs.phase2aJsonPath);
+  const phase2bAbs = resolveArtifactPath(runDir, m.outputs.phase2bMarkdownPath);
   if (!reportAbs || !(await pathExists(reportAbs))) return;
 
   const markdown = (await readFile(reportAbs, "utf-8")).trim();
@@ -1055,6 +1057,25 @@ async function emitFromFinancialMinesweeper(runDir: string, siteDir: string, man
       sourcePath: analysisAbs,
       fileName: "financial-minesweeper-analysis.json",
       previewable: true,
+    });
+  }
+  if (phase2aAbs && (await pathExists(phase2aAbs))) {
+    attachments.push({
+      id: "financial-minesweeper-phase2a",
+      label: "PDF 章节抽取（Phase2A）",
+      kind: "json",
+      sourcePath: phase2aAbs,
+      fileName: "pdf-sections.json",
+      previewable: true,
+    });
+  }
+  if (phase2bAbs && (await pathExists(phase2bAbs))) {
+    attachments.push({
+      id: "financial-minesweeper-phase2b",
+      label: "年报证据包（Phase2B）",
+      kind: "markdown",
+      sourcePath: phase2bAbs,
+      fileName: "data-pack-report.md",
     });
   }
 

@@ -80,7 +80,9 @@ export interface Phase3MarketInput {
 
 export interface DataPackReportParsed {
   hasReportPack: boolean;
-  sections: Partial<Record<"P2" | "P3" | "P4" | "P6" | "P13" | "SUB" | "MDA", string>>;
+  sections: Partial<
+    Record<"P2" | "P3" | "P4" | "P6" | "P13" | "SUB" | "MDA" | "BUSINESS" | "SEGMENT" | "OPERATING" | "CAPEX" | "DIVIDEND", string>
+  >;
   warningHints: string[];
 }
 

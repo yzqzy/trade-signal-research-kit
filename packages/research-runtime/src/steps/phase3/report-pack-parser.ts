@@ -1,6 +1,19 @@
 import type { DataPackReportParsed } from "./types.js";
 
-const SECTION_IDS = ["P2", "P3", "P4", "P6", "P13", "SUB", "MDA"] as const;
+const SECTION_IDS = [
+  "P2",
+  "P3",
+  "P4",
+  "P6",
+  "P13",
+  "SUB",
+  "MDA",
+  "BUSINESS",
+  "SEGMENT",
+  "OPERATING",
+  "CAPEX",
+  "DIVIDEND",
+] as const;
 
 export function parseDataPackReport(markdown?: string): DataPackReportParsed {
   if (!markdown) {

@@ -60,7 +60,8 @@ pnpm --filter @trade-signal/research-runtime run run:reports-site-sync -- \
 
 ### 财报排雷（`financial_minesweeper_manifest.json`）
 
-- run 根目录含 **`financial_minesweeper_manifest.json`** 时，`reports-site:emit` 走 **`emitFromFinancialMinesweeper`**：读取 `outputs.reportMarkdownPath`，通过 **Topic Finalization Gate** 与 **`findPublishedMarkdownQualityViolations`** 后写入 **`siteTopicType: financial-minesweeper`** 的 entry；`outputs.analysisJsonPath` 作为可下载附件。
+- run 根目录含 **`financial_minesweeper_manifest.json`** 时，`reports-site:emit` 走 **`emitFromFinancialMinesweeper`**：读取 `outputs.reportMarkdownPath`，通过 **Topic Finalization Gate** 与 **`findPublishedMarkdownQualityViolations`** 后写入 **`siteTopicType: financial-minesweeper`** 的 entry；`outputs.analysisJsonPath` 为默认附件，若存在 `outputs.phase2aJsonPath` / `outputs.phase2bMarkdownPath` 也会作为可下载附件发布。
+- 财报排雷入口为**强制 PDF 语义**：运行时必须获取当年年报 PDF（自动发现/下载或 `--report-url` 兜底）；若未获得 PDF，run 直接失败，不产生可发布 entry。
 - 与 workflow 的 **多 Topic finalized** 不同：排雷页由 CLI **一次写满**正文，仍须满足站点禁用词与终稿式段落门槛（见 `validateTopicFinalMarkdown` 中 **`financial-minesweeper`** 规则组）。
 - **emit 识别顺序**：若目录同时存在多种 manifest，优先级为 **`workflow_manifest.json` → `business_analysis_manifest.json` → `financial_minesweeper_manifest.json` → `topic_manifest.json` → screener 双文件**（与实现一致）。
 

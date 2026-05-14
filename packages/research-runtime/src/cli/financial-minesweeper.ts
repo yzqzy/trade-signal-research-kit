@@ -3,38 +3,11 @@
 import { initCliEnv } from "../lib/init-cli-env.js";
 import { emitSiteReportsFromRun } from "../reports-site/emit-site-reports.js";
 import { runFinancialMinesweeper } from "../runtime/financial-minesweeper/orchestrator.js";
-
-type CliArgs = {
-  code?: string;
-  year?: string;
-  companyName?: string;
-  outputDir?: string;
-  reportsSiteDir?: string;
-};
-
-function parseArgs(argv: string[]): CliArgs {
-  const values: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const key = argv[i];
-    if (key === "--") continue;
-    if (!key.startsWith("--")) continue;
-    const value = argv[i + 1];
-    if (!value || value.startsWith("--")) throw new Error(`Missing value for argument: ${key}`);
-    values[key.slice(2)] = value;
-    i += 1;
-  }
-  return {
-    code: values.code,
-    year: values.year,
-    companyName: values["company-name"],
-    outputDir: values["output-dir"],
-    reportsSiteDir: values["reports-site-dir"]?.trim() || undefined,
-  };
-}
+import { parseFinancialMinesweeperArgs } from "./financial-minesweeper-args.js";
 
 async function main(): Promise<void> {
   initCliEnv();
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseFinancialMinesweeperArgs(process.argv.slice(2));
   if (!args.code) throw new Error("Missing required argument: --code <stock-code>");
   if (!args.year?.trim()) throw new Error("Missing required argument: --year <fiscal-year>");
 
@@ -43,11 +16,16 @@ async function main(): Promise<void> {
     year: args.year.trim(),
     outputDirArg: args.outputDir,
     companyName: args.companyName,
+    reportUrl: args.reportUrl,
   });
 
   console.log(`[financial-minesweeper] outputDir -> ${result.outputDir}`);
   console.log(`[financial-minesweeper] report -> ${result.reportMarkdownPath}`);
   console.log(`[financial-minesweeper] analysis -> ${result.analysisJsonPath}`);
+  if (result.pdfPath) console.log(`[financial-minesweeper] pdf -> ${result.pdfPath}`);
+  if (result.reportUrlResolved) console.log(`[financial-minesweeper] report-url -> ${result.reportUrlResolved}`);
+  if (result.phase2aJsonPath) console.log(`[financial-minesweeper] phase2a -> ${result.phase2aJsonPath}`);
+  if (result.phase2bMarkdownPath) console.log(`[financial-minesweeper] phase2b -> ${result.phase2bMarkdownPath}`);
   console.log(`[financial-minesweeper] manifest -> ${result.manifestPath}`);
 
   if (args.reportsSiteDir) {
