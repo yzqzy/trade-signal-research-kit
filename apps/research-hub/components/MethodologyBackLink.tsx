@@ -16,7 +16,7 @@ function MethodologyBackLinkInner() {
   if (from === "rankings") {
     return (
       <Link className="rh-back-link" href="/rankings">
-        ← 策略榜单中心
+        ← 策略榜单
       </Link>
     );
   }

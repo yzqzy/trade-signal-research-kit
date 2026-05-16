@@ -40,7 +40,7 @@ export function SiteHeader() {
             href="/rankings"
             className="text-sm font-medium text-gray-600 no-underline transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
           >
-            策略榜单中心
+            策略榜单
           </Link>
           <a
             href="https://github.com/yzqzy"

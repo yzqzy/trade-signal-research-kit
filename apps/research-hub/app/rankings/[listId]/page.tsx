@@ -13,7 +13,7 @@ function RankingBackLinkBoundary() {
     <Suspense
       fallback={
         <Link className="rh-back-link" href="/rankings">
-          ← 策略榜单中心
+          ← 策略榜单
         </Link>
       }
     >
@@ -91,7 +91,7 @@ export default async function RankingDetailPage({ params }: { params: Promise<{ 
       <RankingBackLinkBoundary />
       <header className="rh-page-header">
         <p className="rh-page-meta">
-          <Link href="/rankings">策略榜单中心</Link> / {strategyMeta.label}
+          <Link href="/rankings">策略榜单</Link> / {strategyMeta.label}
         </p>
         <h1 className="rh-page-title">
           {strategyMeta.label} · {list.market} · {list.mode}

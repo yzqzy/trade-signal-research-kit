@@ -13,7 +13,7 @@ export function RankingBackLink() {
   const qs = query.toString();
   return (
     <Link className="rh-back-link" href={qs ? `/rankings?${qs}` : "/rankings"}>
-      ← 策略榜单中心
+      ← 策略榜单
     </Link>
   );
 }

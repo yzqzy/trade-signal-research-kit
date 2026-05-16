@@ -138,7 +138,7 @@ export function RankingsClient({ data }: { data: RankingsIndex }) {
   return (
     <div className="rh-container rankings-root">
       <header className="rh-page-header">
-        <h1 className="rh-page-title">策略榜单中心</h1>
+        <h1 className="rh-page-title">策略榜单</h1>
         <p className="rh-page-desc">
           这里按“策略 · 市场 · 模式”聚合榜单摘要；点击榜单卡片进入明细，避免在中心页一次铺开所有标的。
         </p>

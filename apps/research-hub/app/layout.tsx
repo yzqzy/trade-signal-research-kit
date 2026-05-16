@@ -10,7 +10,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "报告中心 | TradeSignal",
-  description: "投研报告与策略榜单中心。",
+  description: "投研报告与策略榜单。",
   robots: {
     index: true,
     follow: true,
